@@ -1,0 +1,9 @@
+{
+ "type": "neoforge:add_features",
+ "biomes": "#minecraft:is_nether",
+ "features": [
+  "traincraft:ore_steel",
+  "traincraft:ore_steel_low"
+ ],
+ "step": "underground_ores"
+}

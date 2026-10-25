@@ -1,0 +1,12 @@
+{
+ "type": "minecraft:smelting",
+ "category": "misc",
+ "ingredient": {
+  "item": "traincraft:oresteel"
+ },
+ "result": {
+  "id": "traincraft:ingot.steel"
+ },
+ "experience": 1.2,
+ "cookingtime": 200
+}

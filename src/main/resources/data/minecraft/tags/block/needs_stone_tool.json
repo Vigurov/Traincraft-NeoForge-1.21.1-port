@@ -1,0 +1,9 @@
+{
+ "replace": false,
+ "values": [
+  "traincraft:blockcopper",
+  "traincraft:blockaluminum",
+  "traincraft:orecopper",
+  "traincraft:orealuminum"
+ ]
+}

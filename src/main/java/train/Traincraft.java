@@ -5,6 +5,7 @@ import ebf.tim.networking.PacketInteract;
 import ebf.tim.registry.TiMGenericRegistry;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.IEventBus;
@@ -35,8 +36,26 @@ public class Traincraft {
             })
             .build());
 
+    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> timCraftingTab = TABS.register("timcrafting", () -> CreativeModeTab.builder()
+            .title(Component.translatable("itemGroup.timcrafting"))
+            .icon(() -> new ItemStack(ebf.tim.registry.TiMItems.mediumDieselEngine.get()))
+            .withTabsBefore(ResourceLocation.fromNamespaceAndPath(MODID, "traincraft"))
+            .displayItems((params, output) -> {
+                for (var i : ebf.tim.registry.TiMItems.PARTS) output.accept(i.get());
+                for (var i : ebf.tim.registry.TiMOres.MATERIALS) output.accept(i.get());
+                output.accept(ebf.tim.registry.TiMItems.emptyCanister.get());
+                output.accept(ebf.tim.registry.TiMItems.dieselCanister.get());
+                for (var f : ebf.tim.registry.TiMFluids.ALL) output.accept(f.bucket.get());
+            })
+            .build());
+
     public Traincraft(IEventBus modBus) {
         TrainRegistry.register();
+        ebf.tim.registry.TiMItems.init();
+        ebf.tim.registry.TiMOres.init();
+        ebf.tim.registry.TiMFluids.init();
+        ebf.tim.registry.TiMFluids.TYPES.register(modBus);
+        ebf.tim.registry.TiMFluids.FLUIDS.register(modBus);
         TiMGenericRegistry.ENTITIES.register(modBus);
         ebf.tim.registry.TiMBlocks.BLOCKS.register(modBus);
         ebf.tim.registry.TiMBlocks.TILES.register(modBus);

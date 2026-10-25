@@ -1,0 +1,12 @@
+{
+ "type": "minecraft:blasting",
+ "category": "misc",
+ "ingredient": {
+  "item": "traincraft:orecopper"
+ },
+ "result": {
+  "id": "traincraft:ingot.copper"
+ },
+ "experience": 0.7,
+ "cookingtime": 100
+}
