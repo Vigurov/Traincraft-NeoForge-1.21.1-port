@@ -221,6 +221,19 @@ public class AutoTest {
             log("placed " + len + " " + id + " from " + pos + " along " + axis);
             return;
         }
+        if (BuiltInRegistries.ITEM.get(id) instanceof train.common.items.ItemTCRail track) {
+            //classic track piece: used on the ground block under the position, the player looking along yaw
+            float yaw = a.length > 2 ? Float.parseFloat(a[2]) : 0;
+            sp.setYRot(yaw);
+            sp.setYHeadRot(yaw);
+            net.minecraft.world.item.ItemStack stack = new net.minecraft.world.item.ItemStack(track, 64);
+            sp.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, stack);
+            level.setBlock(pos.below(), Blocks.STONE.defaultBlockState(), 3);
+            var hit = new net.minecraft.world.phys.BlockHitResult(net.minecraft.world.phys.Vec3.atCenterOf(pos.below()), net.minecraft.core.Direction.UP, pos.below(), false);
+            var result = track.useOn(new net.minecraft.world.item.context.UseOnContext(level, sp, net.minecraft.world.InteractionHand.MAIN_HAND, stack, hit));
+            log("use " + id + " at " + pos + " yaw " + yaw + " -> " + result + " " + level.getBlockState(pos).getBlock());
+            return;
+        }
         for (var type : TiMGenericRegistry.TRANSPORTS) {
             if (BuiltInRegistries.ENTITY_TYPE.getKey(type.get()).equals(id)) {
                 GenericRailTransport t = type.get().create(level);

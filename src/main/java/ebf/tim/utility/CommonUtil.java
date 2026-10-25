@@ -80,7 +80,103 @@ public class CommonUtil {
      */
     public static boolean isRailBlockAt(Level world, int x, int y, int z) {
         Block b = world.getBlockState(new BlockPos(x, y, z)).getBlock();
-        return b instanceof BaseRailBlock;
+        //classic Traincraft 4 track pieces count as rails too
+        return b instanceof BaseRailBlock || isClassicTrack(b);
+    }
+
+    /** the axis of a classic track piece like a TiM rail meta: 0 = along Z, 1 = along X (its facing, from the piece's start) */
+    public static int classicTrackAxis(Level world, int x, int y, int z) {
+        net.minecraft.world.level.block.entity.BlockEntity te = world.getBlockEntity(new BlockPos(x, y, z));
+        if (te instanceof train.common.tile.TileTCRailGag g && g.originX.size() > 0) {
+            te = world.getBlockEntity(new BlockPos(g.originX.get(0), g.originY.get(0), g.originZ.get(0)));
+        }
+        return te instanceof train.common.tile.TileTCRail rail ? (rail.getBlockMeta() & 1) : 0;
+    }
+
+    /** a classic Traincraft 4 track piece (the track block itself or one of its filler blocks) */
+    public static boolean isClassicTrack(Block b) {
+        return b instanceof train.common.blocks.BlockTCRail || b instanceof train.common.blocks.BlockTCRailGag;
+    }
+
+    // ---- helpers the classic (TC 4) track code uses, 1.7.10 style (x, y, z and metadata)
+    public static net.minecraft.world.phys.AABB createAABB(double minX, double minY, double minZ, double maxX, double maxY, double maxZ){
+        return new net.minecraft.world.phys.AABB(minX, minY, minZ, maxX, maxY, maxZ);
+    }
+
+    public static net.minecraft.world.level.block.entity.BlockEntity getTileEntity(net.minecraft.world.level.BlockGetter world, double x, double y, double z){
+        return getTileEntity(world, floorDouble(x), floorDouble(y), floorDouble(z));
+    }
+
+    public static net.minecraft.world.level.block.entity.BlockEntity getTileEntity(net.minecraft.world.level.BlockGetter world, int x, int y, int z){
+        return world.getBlockEntity(new BlockPos(x, y, z));
+    }
+
+    /** the classic tracks a block belongs to: the track itself, or every track a gag block points at */
+    public static java.util.List<net.minecraft.world.level.block.entity.BlockEntity> getTiles(Level w, int x, int y, int z){
+        java.util.List<net.minecraft.world.level.block.entity.BlockEntity> tiles = new java.util.ArrayList<>();
+        net.minecraft.world.level.block.entity.BlockEntity t = w.getBlockEntity(new BlockPos(x, y, z));
+        if (t instanceof train.common.tile.TileTCRailGag gag) {
+            for (int i = 0; i < gag.originX.size(); i++) {
+                tiles.add(w.getBlockEntity(new BlockPos(gag.originX.get(i), gag.originY.get(i), gag.originZ.get(i))));
+            }
+        } else if (t != null) {
+            tiles.add(t);
+        }
+        return tiles;
+    }
+
+    /** the 1.7.10 metadata of a block: the "meta" property of the classic track blocks */
+    private static BlockState withMeta(BlockState state, int meta) {
+        for (var p : state.getProperties()) {
+            if (p.getName().equals("meta") && p instanceof net.minecraft.world.level.block.state.properties.IntegerProperty ip) {
+                return state.setValue(ip, Math.max(0, Math.min(15, meta)));
+            }
+        }
+        return state;
+    }
+
+    public static boolean setBlock(Level w, int x, int y, int z, Block b, int meta, int flags){
+        return w.setBlock(new BlockPos(x, y, z), withMeta(b.defaultBlockState(), meta), flags);
+    }
+
+    public static boolean setBlock(Level w, int x, int y, int z, Block b, int meta){
+        return setBlock(w, x, y, z, b, meta, 3);
+    }
+
+    public static boolean setBlock(Level w, int x, int y, int z, Block b){
+        return setBlock(w, x, y, z, b, 0, 3);
+    }
+
+    public static boolean setBlockMeta(Level w, int x, int y, int z, int meta, int flags){
+        BlockPos pos = new BlockPos(x, y, z);
+        return w.setBlock(pos, withMeta(w.getBlockState(pos), meta), flags);
+    }
+
+    public static boolean setBlockMeta(Level w, int x, int y, int z, int meta){
+        return setBlockMeta(w, x, y, z, meta, 3);
+    }
+
+    /** 1.7.10 world.markBlockForUpdate: send the block (and its tile) to the clients again */
+    public static void markBlockForUpdate(Level w, int x, int y, int z){
+        if (w == null) return;
+        BlockPos pos = new BlockPos(x, y, z);
+        BlockState state = w.getBlockState(pos);
+        w.sendBlockUpdated(pos, state, state, 3);
+    }
+
+    /** the facing a block was placed with: the metadata of the classic track blocks, else a horizontal facing */
+    public static int getBlockFacing(net.minecraft.world.level.BlockGetter w, int x, int y, int z){
+        if (w == null) return 0;
+        BlockState state = w.getBlockState(new BlockPos(x,y,z));
+        for (var p : state.getProperties()) {
+            if (p.getName().equals("meta") && p instanceof net.minecraft.world.level.block.state.properties.IntegerProperty ip) {
+                return state.getValue(ip);
+            }
+        }
+        if (state.hasProperty(net.minecraft.world.level.block.state.properties.BlockStateProperties.HORIZONTAL_FACING)) {
+            return state.getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.HORIZONTAL_FACING).get3DDataValue();
+        }
+        return 0;
     }
 
     public static String translate(String text){
@@ -244,7 +340,8 @@ public class CommonUtil {
         //be sure there is a rail at the location
         if (isRailBlockAt(worldObj, posX,posY,posZ) && !worldObj.isClientSide) {
             //define the direction of the track
-            int railMeta=CommonUtil.getRailMeta(worldObj, null,posX,posY,posZ);
+            int railMeta=isClassicTrack(getBlockAt(worldObj, posX, posY, posZ)) ? classicTrackAxis(worldObj, posX, posY, posZ)
+                    : CommonUtil.getRailMeta(worldObj, null,posX,posY,posZ);
             //define the angle between the player and the track.
             // this is more reliable than player direction because player goes from -360 to 360 for no real reason.
             float rotation =atan2degreesf(posX-playerEntity.getX(), posZ-playerEntity.getZ());

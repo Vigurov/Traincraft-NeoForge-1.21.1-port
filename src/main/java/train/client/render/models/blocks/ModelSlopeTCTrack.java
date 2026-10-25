@@ -1,0 +1,149 @@
+package train.client.render.models.blocks;
+
+import ebf.tim.utility.CommonUtil;
+import net.minecraft.world.level.block.Block;
+import traincompat.IIcon;
+import net.minecraft.resources.ResourceLocation;
+import traincompat.AdvancedModelLoader;
+import traincompat.IModelCustom;
+import fexcraft.tmt.slim.GL11;
+import train.common.library.Info;
+import train.common.tile.TileTCRail;
+
+public class ModelSlopeTCTrack {
+
+	private IModelCustom	modeltrack;
+
+	private IModelCustom	modelSlopeWood;
+	private IModelCustom	modelSlopeBallast;
+	
+	public ModelSlopeTCTrack() {
+		modeltrack = AdvancedModelLoader.loadModel(fexcraft.tmt.slim.TextureManager.parse(Info.modelPrefix + "track_slope.obj"));
+		modelSlopeWood = AdvancedModelLoader.loadModel(fexcraft.tmt.slim.TextureManager.parse(Info.modelPrefix + "supports_wood.obj"));
+		modelSlopeBallast = AdvancedModelLoader.loadModel(fexcraft.tmt.slim.TextureManager.parse(Info.modelPrefix + "supports_ballast.obj"));
+	}
+	
+	public void render(String type, String ballast, int ballastColour) {
+
+
+		String[] ballastTexture = new String[2];
+		if (ballast.contains(":")) {
+			ballastTexture = ballast.split(":", 5);
+		}
+		else {
+			ballastTexture[0] = "minecraft";
+			ballastTexture[1] = ballast;
+
+		}
+
+		if (type.equals("wood")) {
+			fexcraft.tmt.slim.Tessellator
+					.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation, Info.modelTexPrefix + "track_slope.png"));
+			modelSlopeWood.renderAll();
+			fexcraft.tmt.slim.Tessellator
+					.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation, Info.modelTexPrefix + "track_normal.png"));
+			modeltrack.renderAll();
+		}
+		if (type.equals("gravel")) {
+			fexcraft.tmt.slim.Tessellator
+					.bindTexture(fexcraft.tmt.slim.TextureManager.loc("minecraft", "textures/blocks/gravel.png"));
+			modelSlopeBallast.renderAll();
+			fexcraft.tmt.slim.Tessellator
+					.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation, Info.modelTexPrefix + "track_normal.png"));
+			modeltrack.renderAll();
+		}
+
+		if (type.equals("ballast")) {
+			fexcraft.tmt.slim.Tessellator
+					.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation, "textures/blocks/ballast_test.png"));
+			modelSlopeBallast.renderAll();
+			fexcraft.tmt.slim.Tessellator
+					.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation, Info.modelTexPrefix + "track_normal.png"));
+			modeltrack.renderAll();
+		}
+		if (type.equals("snow")) {
+			fexcraft.tmt.slim.Tessellator.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation, "textures/blocks/snowgravel.png"));
+			modelSlopeBallast.renderAll();
+			fexcraft.tmt.slim.Tessellator.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation, Info.modelTexPrefix + "track_normal.png"));
+			modeltrack.renderAll();
+		}
+		if (type.equals("dynamic")) {
+			fexcraft.tmt.slim.Tessellator.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation, Info.modelTexPrefix + "track_normal.png"));
+			modeltrack.renderAll();
+			fexcraft.tmt.slim.Tessellator.bindTexture(fexcraft.tmt.slim.TextureManager.loc(ballastTexture[0],  "textures/blocks/" + ballastTexture[1] +".png"));
+
+			float r = (float)(ballastColour >> 16 & 255) / 255.0F;
+			float g = (float)(ballastColour >> 8 & 255) / 255.0F;
+			float b = (float)(ballastColour & 255) / 255.0F;
+			GL11.glColor4f(r,g,b,1);
+			modelSlopeBallast.renderAll();
+
+		}
+
+		if (type.equals("embedded_dynamic")) {
+			fexcraft.tmt.slim.Tessellator.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation, Info.modelTexPrefix + "track_embedded.png"));
+			modeltrack.renderAll();
+			fexcraft.tmt.slim.Tessellator.bindTexture(fexcraft.tmt.slim.TextureManager.loc(ballastTexture[0],  "textures/blocks/" + ballastTexture[1] +".png"));
+
+			float r = (float)(ballastColour >> 16 & 255) / 255.0F;
+			float g = (float)(ballastColour >> 8 & 255) / 255.0F;
+			float b = (float)(ballastColour & 255) / 255.0F;
+			GL11.glColor4f(r,g,b,1);
+			modelSlopeBallast.renderAll();
+
+		}
+	}
+
+
+
+
+
+
+
+	public void render(String type, TileTCRail tcRail, double x, double y, double z) {
+
+		String iconName;
+		Block block = net.minecraft.core.registries.BuiltInRegistries.BLOCK.byId(tcRail.getBallastMaterial());
+		IIcon icon = traincompat.ClientCompat.icon(block, 1, tcRail.ballastMetadata);
+		int colour = traincompat.ClientCompat.color(block, tcRail.getLevel(), tcRail.getBlockPos().getX(), tcRail.getBlockPos().getY()- 1, tcRail.getBlockPos().getZ());
+		if (icon != null) {
+			iconName = icon.getIconName();
+		}
+		else {
+			iconName = "tc:ballast_test";
+			colour = 16777215;
+		}
+		render( type, CommonUtil.getBlockFacing(tcRail.getLevel(), tcRail.getBlockPos().getX(), tcRail.getBlockPos().getY(), tcRail.getBlockPos().getZ()), x, y, z, 1, 1, 1, 1, iconName, colour);
+
+	}
+
+	public void render(String type, int facing, double x, double y, double z, float r, float g, float b, float a, String  ballastTexture, int colour)
+	{
+
+
+		// Push a blank matrix onto the stack
+		GL11.glPushMatrix();
+		
+		// Move the object into the correct position on the block (because the OBJ's origin is the
+		// center of the object)
+		GL11.glTranslatef((float) x + 0.5f, (float) y, (float) z + 0.5f);
+
+		GL11.glColor4f(r, g, b, a);
+		// GL11.glScalef(0.5f, 0.5f, 0.5f);
+
+		if (facing == 3) {
+			GL11.glRotatef(-90, 0, 1, 0);
+		}
+		if (facing == 1) {
+			GL11.glRotatef(90, 0, 1, 0);
+		}
+		if (facing == 0) {
+			GL11.glRotatef(180, 0, 1, 0);
+		}
+		// GL11.glTranslatef(0.0f, 0.0f, -1.0f);
+		render(type, ballastTexture, colour);
+		
+		// Pop this matrix from the stack.
+		GL11.glPopMatrix();
+	}
+}

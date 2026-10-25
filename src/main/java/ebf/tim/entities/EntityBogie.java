@@ -134,7 +134,25 @@ public class EntityBogie {
 
             Block block = CommonUtil.getBlockAt(getWorld(), xFloor, yFloor, zFloor);
 
+            if(CommonUtil.isClassicTrack(block)){
+                //classic Traincraft 4 pieces: follow their geometry (arcs, slopes, switches)
+                this.yOffset=0.425f;
+                moveOnTCRail(xFloor, yFloor, zFloor, block);
+                updateFloor();
+                velocity[2]=0;velocity[3]=0;
+                return;
+            }
             if(!(block instanceof BaseRailBlock)){
+                if(CommonUtil.isClassicTrack(CommonUtil.getBlockAt(getWorld(), xFloor, yFloor+1, zFloor))
+                        || CommonUtil.isClassicTrack(CommonUtil.getBlockAt(getWorld(), xFloor, yFloor-1, zFloor))) {
+                    //stepped onto a classic piece one block up or down (the end of a slope)
+                    yFloor += CommonUtil.isClassicTrack(CommonUtil.getBlockAt(getWorld(), xFloor, yFloor+1, zFloor)) ? 1 : -1;
+                    posY = yFloor;
+                    moveOnTCRail(xFloor, yFloor, zFloor, CommonUtil.getBlockAt(getWorld(), xFloor, yFloor, zFloor));
+                    updateFloor();
+                    velocity[2]=0;velocity[3]=0;
+                    return;
+                }
                 if(CommonUtil.getBlockAt(getWorld(), xFloor, yFloor+1, zFloor) instanceof BaseRailBlock) {
                     prevPosY=posY;
                     yFloor++;
@@ -158,6 +176,200 @@ public class EntityBogie {
             }
            velocity[2]=0;velocity[3]=0;
         }
+    }
+
+    /*
+     * <h1>Classic Traincraft 4 tracks</h1>
+     * ported from the TC 4.5 bogie (same velocity layout as TiM: 0/1 own motion x/z, 2/3 coupling pull x/z).
+     */
+    public train.common.tile.TileTCRail lastTrack = null;
+
+    private void updateFloor(){
+        xFloor = CommonUtil.floorDouble(this.posX);
+        yFloor = CommonUtil.floorDouble(this.posY);
+        zFloor = CommonUtil.floorDouble(this.posZ);
+        blockCurrent = CommonUtil.getBlockAt(getWorld(), xFloor, yFloor, zFloor);
+    }
+
+    private void moveOnTCRail(int i, int j, int k, Block l) {
+        prevPosX=posX;
+        prevPosY=posY;
+        prevPosZ=posZ;
+        net.minecraft.world.level.block.entity.BlockEntity te = CommonUtil.getTileEntity(getWorld(), i, j, k);
+        if(l instanceof train.common.blocks.BlockTCRail && te instanceof train.common.tile.TileTCRail) {
+            if(!train.common.items.TCRailTypes.isCrossingTrack((train.common.tile.TileTCRail) te) && !train.common.items.TCRailTypes.isDiagonalCrossingTrack((train.common.tile.TileTCRail) te)) {
+                lastTrack = (train.common.tile.TileTCRail) te;
+            }
+        } else if(l instanceof train.common.blocks.BlockTCRailGag && te instanceof train.common.tile.TileTCRailGag
+                && (lastTrack==null || !CommonUtil.getTiles(getWorld(),i,j,k).contains(lastTrack))){
+            train.common.tile.TileTCRailGag tileGag = (train.common.tile.TileTCRailGag) te;
+            if(tileGag.originX.size()>0) {
+                net.minecraft.world.level.block.entity.BlockEntity o = CommonUtil.getTileEntity(getWorld(), tileGag.originX.get(0), tileGag.originY.get(0), tileGag.originZ.get(0));
+                if (o instanceof train.common.tile.TileTCRail) {
+                    lastTrack = (train.common.tile.TileTCRail) o;
+                }
+            }
+        }
+        if (lastTrack == null || lastTrack.isRemoved()) {
+            //no piece to follow: keep going straight
+            setPositionRelative(velocity[0]+velocity[2], 0, velocity[1]+velocity[3]);
+            return;
+        }
+
+        if (train.common.items.TCRailTypes.isSwitchTrack(lastTrack)) {
+            double vx = velocity[0] + velocity[2];
+            double vz = velocity[1] + velocity[3];
+            boolean goStraight = false;
+            //going "against" the curve ignores the switch
+            switch (lastTrack.getBlockMeta()) {
+                case 0: goStraight = (vz > 0 && !lastTrack.getSwitchState()) || (vz < 0 && lastTrack.getSwitchState()); break;
+                case 2: goStraight = (vz < 0 && !lastTrack.getSwitchState()) || (vz > 0 && lastTrack.getSwitchState()); break;
+                case 1: goStraight = (vx > 0 && !lastTrack.getSwitchState()) || (vx < 0 && lastTrack.getSwitchState()); break;
+                case 3: goStraight = (vx < 0 && !lastTrack.getSwitchState()) || (vx > 0 && lastTrack.getSwitchState()); break;
+            }
+            if (goStraight) {
+                moveOnTCStraight(j, Math.abs(vx)>Math.abs(vz)?1:2);
+            } else {
+                moveOnTC90TurnRail(j, lastTrack.r, lastTrack.cx, lastTrack.cz);
+            }
+        } else if (train.common.items.TCRailTypes.isStraightTrack(lastTrack)) {
+            moveOnTCStraight(j, lastTrack.getBlockMeta());
+        } else if (train.common.items.TCRailTypes.isTurnTrack(lastTrack)) {
+            moveOnTC90TurnRail(j, lastTrack.r, lastTrack.cx, lastTrack.cz);
+        } else if (train.common.items.TCRailTypes.isCrossingTrack(lastTrack)) {
+            moveOnTCTwoWaysCrossing();
+        } else if (train.common.items.TCRailTypes.isSlopeTrack(lastTrack)) {
+            moveOnTCSlope(j, lastTrack.getBlockPos().getX(), lastTrack.getBlockPos().getZ(), lastTrack.slopeAngle, lastTrack.getBlockMeta());
+        } else if (train.common.items.TCRailTypes.isCurvedSlopeTrack(lastTrack)) {
+            moveOnTCCurvedSlope(j, lastTrack.r, lastTrack.cx, lastTrack.cz, lastTrack.getBlockPos().getX(), lastTrack.getBlockPos().getZ(), lastTrack.getBlockMeta(), lastTrack.slopeAngle);
+        } else if (train.common.items.TCRailTypes.isDiagonalTrack(lastTrack) || train.common.items.TCRailTypes.isDiagonalCrossingTrack(lastTrack)) {
+            moveOnTCDiagonal(j);
+        } else {
+            setPositionRelative(velocity[0]+velocity[2], 0, velocity[1]+velocity[3]);
+        }
+        //TiM rails treat "last rail ran along Z, this one along X" as a crossing and keep going straight:
+        //remember the axis we are really moving along, so a curve hands over to a TiM rail the right way
+        entityData.putInt("tim.lastusedrail.meta",
+                Math.abs(velocity[0]+velocity[2]) > Math.abs(velocity[1]+velocity[3]) ? 1 : 0);
+    }
+
+    private void moveOnTCDiagonal(int j) {
+        railPathX=Math.copySign(0.5,velocity[0]+velocity[2]);
+        railPathZ=Math.copySign(0.5,velocity[1]+velocity[3]);
+        motionSqrt = Math.abs(velocity[0])+Math.abs(velocity[1]);
+        velocity[0] = motionSqrt * railPathX;
+        velocity[1] = motionSqrt * railPathZ;
+        if(velocity[2]!=0 || velocity[3]!=0) {
+            motionSqrt = Math.abs(velocity[2]) + Math.abs(velocity[3]);
+            velocity[2] = motionSqrt * railPathX;
+            velocity[3] = motionSqrt * railPathZ;
+        }
+        centerDiagonal(posX-xFloor,posZ-zFloor);
+        motionSqrt = Math.abs(velocity[0])+Math.abs(velocity[1])+Math.abs(velocity[2])+Math.abs(velocity[3]);
+        posY = j;
+        setPositionRelative(railPathX*motionSqrt,0,railPathZ*motionSqrt);
+    }
+
+    private void centerDiagonal(double x, double z) {
+        railPathX2 = x - 0.5;
+        railPathZ2 = z - 0.5;
+        //the nearest 45 degree line through the block centre
+        double nearestAngleRadians = (Math.round(CommonUtil.atan2degreesf(railPathZ2, railPathX2) / 45.0) * 45.0) * CommonUtil.radianF;
+        double distance = Math.sqrt(railPathX2 * railPathX2 + railPathZ2 * railPathZ2);
+        velocity[2]+= x-(0.5 + distance * Math.cos(nearestAngleRadians));
+        velocity[3]+= z-(0.5 + distance * Math.sin(nearestAngleRadians));
+    }
+
+    private void moveOnTCStraight(int j, int meta) {
+        if(meta==2 || meta==0){
+            railPathX=0;
+            railPathZ=Math.copySign(1,velocity[1]+velocity[3]);
+            posX=xFloor+0.5;
+        } else {
+            railPathX=Math.copySign(1,velocity[0]+velocity[2]);
+            railPathZ=0;
+            posZ=zFloor+0.5;
+        }
+        motionSqrt = Math.abs(velocity[0])+Math.abs(velocity[1]);
+        velocity[0] = motionSqrt * railPathX;
+        velocity[1] = motionSqrt * railPathZ;
+        if(velocity[2]!=0 || velocity[3]!=0) {
+            motionSqrt = Math.abs(velocity[2]) + Math.abs(velocity[3]);
+            velocity[2] = motionSqrt * railPathX;
+            velocity[3] = motionSqrt * railPathZ;
+        }
+        motionSqrt = Math.abs(velocity[0])+Math.abs(velocity[1])+Math.abs(velocity[2])+Math.abs(velocity[3]);
+        posY = j;
+        setPositionRelative(railPathX*motionSqrt,0,railPathZ*motionSqrt);
+    }
+
+    /** the rise of a slope piece at the bogie's position: its angle times the distance from the low end, at most a block */
+    private double slopeRise(double slopeAngle, int tilex, int tilez, int meta){
+        railPathX = tilex - posX;
+        railPathZ = tilez - posZ;
+        if (meta == 2) {
+            railPathZ += 1;
+            railPathX += 0.5;
+        } else if (meta == 0) {
+            railPathX += 0.5;
+        } else if (meta == 1) {
+            railPathX += 1;
+            railPathZ += 0.5;
+        } else if (meta == 3) {
+            railPathZ += 0.5;
+        }
+        //TC slope angles give 0.8 of a block over the piece (0.13 x 6, 0.0666 x 12, 0.0444 x 18): scale to a whole block,
+        //so the top meets the track one block up
+        return Math.min(1, slopeAngle * Math.sqrt(railPathX * railPathX + railPathZ * railPathZ) / 0.8);
+    }
+
+    private void moveOnTCCurvedSlope(int j, double radius, double startX, double startZ, int tilex, int tilez, int meta, double slopeAngle) {
+        moveOnTC90TurnRail(j,radius,startX,startZ);
+        posY = j + slopeRise(slopeAngle, tilex, tilez, meta);
+    }
+
+    private void moveOnTCTwoWaysCrossing() {
+        double norm = Math.abs(velocity[0])+Math.abs(velocity[1])+Math.abs(velocity[2])+Math.abs(velocity[3]);
+        if (Math.abs(velocity[0]+velocity[2]) < Math.abs(velocity[1]+velocity[3])) {
+            posX = xFloor + 0.5;
+            setPositionRelative(0.0D, 0.0D, Math.copySign(norm, velocity[1]+velocity[3]));
+        } else {
+            posZ = zFloor + 0.5;
+            setPositionRelative(Math.copySign(norm, velocity[0]+velocity[2]), 0.0D, 0.0D);
+        }
+    }
+
+    private void moveOnTCSlope(int j, int tilex, int tilez, double slopeAngle, int meta) {
+        moveOnTCStraight(j, meta);
+        posY = j + slopeRise(slopeAngle, tilex, tilez, meta);
+    }
+
+    private void moveOnTC90TurnRail(int j, double radius, double startX, double startZ){
+        double controlX = posX - startX;
+        double controlZ = posZ - startZ;
+        double controlNorm = Math.sqrt(controlX * controlX + controlZ * controlZ);
+        double xMotion=velocity[0]+velocity[2];
+        double zMotion=velocity[1]+velocity[3];
+        double normCpx = controlX / controlNorm;
+        double normCpz = controlZ / controlNorm;
+        //which way along the tangent: towards where this tick's motion would take us
+        railPathX = (posX + xMotion) - startX;
+        railPathZ = (posZ + zMotion) - startZ;
+        double p2cNorm = Math.sqrt((railPathX * railPathX) + (railPathZ * railPathZ));
+        railPathX2 = (startX + ((railPathX / p2cNorm) * radius)) - posX;
+        railPathZ2 = (startZ + ((railPathZ / p2cNorm) * radius)) - posZ;
+        double tx = Math.copySign(normCpz, railPathX2);
+        double tz = Math.copySign(normCpx, railPathZ2);
+        //TiM measures speed as |x|+|z| (exact on its straight rails); keep that measure on the arc too, or every
+        //curve <-> straight joint changes the speed (wagons then ran into the locomotive)
+        double l1 = Math.abs(tx) + Math.abs(tz);
+        double step = Math.abs(xMotion) + Math.abs(zMotion);
+        motionSqrt = Math.abs(velocity[0]) + Math.abs(velocity[1]);
+        //onto the arc, then along its tangent in the direction of travel
+        setPosition(startX + (normCpx * radius), j, startZ + (normCpz * radius));
+        setPositionRelative(tx * step, 0.0D, tz * step);
+        velocity[0] = motionSqrt * tx / l1;
+        velocity[1] = motionSqrt * tz / l1;
     }
 
     private void moveOffRail(){
@@ -228,6 +440,13 @@ public class EntityBogie {
                         return;
                     }
                 }
+                //a classic piece just above or below (a classic slope): leave the height to it, the TiM stair step
+                //would drop the bogie a whole block for one tick (the train jerked at the top of a classic slope)
+                if(!(CommonUtil.getBlockAt(getWorld(), xFloor, yFloor, zFloor) instanceof BaseRailBlock)
+                        && (CommonUtil.isClassicTrack(CommonUtil.getBlockAt(getWorld(), xFloor, yFloor-1, zFloor))
+                        || CommonUtil.isClassicTrack(CommonUtil.getBlockAt(getWorld(), xFloor, yFloor+1, zFloor)))) {
+                    return;
+                }
                 //handle slope movement before other interactions
                 if(!CommonUtil.isRailBlockAt(getWorld(), xFloor, yFloor, zFloor)){
                     this.prevPosY =posY;
@@ -240,6 +459,10 @@ public class EntityBogie {
                 }
 
                 blockNext = CommonUtil.getBlockAt(getWorld(), xFloor, yFloor, zFloor);
+                //entering a classic Traincraft 4 piece: the rest of this tick's movement follows its geometry
+                if (CommonUtil.isClassicTrack(blockNext)) {
+                    return;
+                }
                 //now loop this again for the next increment of movement, if there is one
                 if (blockNext instanceof BaseRailBlock) {
                     block = (BaseRailBlock) blockNext;
@@ -320,6 +543,7 @@ public class EntityBogie {
 
     public String debugState(){
         return String.format("(%.2f,%.2f,%.2f v=%.3f,%.3f,%.3f,%.3f %s)", posX, posY, posZ, velocity[0], velocity[1], velocity[2], velocity[3],
-                CommonUtil.getBlockAt(getWorld(), xFloor, yFloor, zFloor).getClass().getSimpleName());
+                CommonUtil.getBlockAt(getWorld(), xFloor, yFloor, zFloor).getClass().getSimpleName()
+                + (lastTrack == null ? "" : " last=" + lastTrack.getTrackName() + "/" + lastTrack.getBlockMeta() + (lastTrack.isRemoved() ? " REMOVED" : "")));
     }
 }

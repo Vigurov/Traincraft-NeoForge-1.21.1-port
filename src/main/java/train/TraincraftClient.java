@@ -25,5 +25,6 @@ public class TraincraftClient {
             event.registerEntityRenderer((EntityType) type.get(), RenderWagon::new);
         }
         event.registerBlockEntityRenderer(ebf.tim.registry.TiMBlocks.RAIL_TILE.get(), ebf.tim.render.RailRenderer::new);
+        event.registerBlockEntityRenderer(train.common.ClassicTracks.TILE_RAIL, train.client.render.RenderTCRail::new);
     }
 }

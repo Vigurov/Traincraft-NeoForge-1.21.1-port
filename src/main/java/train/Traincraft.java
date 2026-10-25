@@ -26,6 +26,9 @@ public class Traincraft {
             .displayItems((params, output) -> {
                 output.accept(TiMGenericRegistry.STAKE.get());
                 ebf.tim.items.ItemRail.addCreativeVariants(output::accept);
+                for (train.common.library.ItemIDs id : train.common.library.ItemIDs.values()) {
+                    if (id.item != null) output.accept(id.item);
+                }
                 for (var item : TiMGenericRegistry.TRANSPORT_ITEMS) {
                     output.accept(item.get());
                 }
@@ -39,6 +42,7 @@ public class Traincraft {
         ebf.tim.registry.TiMBlocks.TILES.register(modBus);
         TiMGenericRegistry.ITEMS.register(modBus);
         TABS.register(modBus);
+        train.common.ClassicTracks.register(modBus);
         modBus.addListener(this::commonSetup);
         modBus.addListener(this::registerPayloads);
     }

@@ -32,8 +32,13 @@ public final class TextureManager {
      * the files are lower case and 1.21 only takes lower case
      */
     public static ResourceLocation loc(String namespace, String path) {
-        return ResourceLocation.fromNamespaceAndPath(namespace.toLowerCase(java.util.Locale.ROOT),
-                path.toLowerCase(java.util.Locale.ROOT).replace(' ', '_'));
+        namespace = namespace.toLowerCase(java.util.Locale.ROOT);
+        path = path.toLowerCase(java.util.Locale.ROOT).replace(' ', '_');
+        //vanilla's own textures moved from blocks/ and items/ to block/ and item/ (Traincraft keeps the old folders)
+        if (namespace.equals("minecraft")) {
+            path = path.replace("textures/blocks/", "textures/block/").replace("textures/items/", "textures/item/");
+        }
+        return ResourceLocation.fromNamespaceAndPath(namespace, path);
     }
 
     public static ResourceLocation parse(String location) {
