@@ -51,6 +51,7 @@ public class AutoTest {
     private static int tick = -1;
     private static BlockPos base;
     private static GenericRailTransport train;
+    private static final java.util.List<GenericRailTransport> placed = new java.util.ArrayList<>();
 
     public static void init() {
         File f = new File(Minecraft.getInstance().gameDirectory, "tctest.properties");
@@ -150,6 +151,19 @@ public class AutoTest {
                 mc.options.setCameraType(net.minecraft.client.CameraType.THIRD_PERSON_BACK);
             }
         }
+        if (tick == start - 10 && p.containsKey("couple")) {
+            //open the couplers of everything placed
+            server.execute(() -> {
+                for (GenericRailTransport t : placed) t.interact(sp, false, false, 7);
+                log("couplers open on " + placed.size());
+            });
+        }
+        if (p.containsKey("reverse") && tick == Integer.parseInt(p.getProperty("reverse")) && train instanceof EntityTrainCore) {
+            server.execute(() -> {
+                ((EntityTrainCore) train).accelerator = -((EntityTrainCore) train).accelerator;
+                log("reverse " + ((EntityTrainCore) train).accelerator);
+            });
+        }
         if (tick == start && train instanceof EntityTrainCore && p.containsKey("drive")) {
             server.execute(() -> {
                 train.interact(sp, false, false, 8); //engine
@@ -159,6 +173,14 @@ public class AutoTest {
             });
         }
         int every = i("log", 10);
+        if (train != null && base != null && tick >= 20 && tick % every == 0 && placed.size() > 1) {
+            StringBuilder b = new StringBuilder();
+            for (GenericRailTransport t : placed) {
+                b.append(String.format(" [%s x=%.2f v=%.3f f=%s b=%s c=%d]", t.getClass().getSimpleName().replace("Entity", ""),
+                        t.getX() - base.getX(), t.getVelocity(), t.frontLinkedID, t.backLinkedID, t.getConsist().size()));
+            }
+            log("consist t=" + tick + b);
+        }
         if (train != null && base != null && tick >= 20 && tick % every == 0) {
             GenericRailTransport client = (GenericRailTransport) mc.level.getEntity(train.getId());
             log(String.format("t=%d pos=(%.2f,%.2f,%.2f) yaw=%.1f pitch=%.1f v=%.3f acc=%d derail=%s front=%s back=%s client=%s",
@@ -243,7 +265,11 @@ public class AutoTest {
                 sp.teleportTo(pos.getX() + 0.5 + side, pos.getY(), pos.getZ() + 0.5 + side * 0.3);
                 boolean ok = CommonUtil.placeOnRail(t, sp, null, level, pos.getX(), pos.getY(), pos.getZ());
                 log("transport " + id + " at " + pos + " placed=" + ok + " yaw=" + t.getYRot());
-                if (ok) train = t;
+                if (ok) {
+                    placed.add(t);
+                    //the driven one: the first locomotive placed
+                    if (!(train instanceof EntityTrainCore)) train = t;
+                }
                 return;
             }
         }
