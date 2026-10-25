@@ -8,7 +8,7 @@ import com.mojang.math.Axis;
  * ignored. Models only change their import from org.lwjgl.opengl.GL11 to this class.
  */
 public final class GL11 {
-    public static final int GL_QUADS = 7, GL_TRIANGLES = 4, GL_POLYGON = 9, GL_TRIANGLE_FAN = 6, GL_LINES = 1,
+    public static final int GL_QUADS = 7, GL_QUAD_STRIP = 8, GL_TRIANGLES = 4, GL_TRIANGLE_STRIP = 5, GL_LINE_STRIP = 3, GL_POLYGON = 9, GL_TRIANGLE_FAN = 6, GL_LINES = 1,
             GL_CULL_FACE = 2884, GL_LIGHTING = 2896, GL_BLEND = 3042, GL_TEXTURE_2D = 3553, GL_ALPHA_TEST = 3008,
             GL_SRC_ALPHA = 770, GL_ONE_MINUS_SRC_ALPHA = 771, GL_COMPILE = 4864, GL_SMOOTH = 7425, GL_FLAT = 7424,
             GL_RESCALE_NORMAL = 32826, GL_NORMALIZE = 2977, GL_DEPTH_TEST = 2929, GL_COLOR_MATERIAL = 2903,
@@ -39,9 +39,15 @@ public final class GL11 {
     public static void glColor4f(float r, float g, float b, float a) { RenderContext.r = r; RenderContext.g = g; RenderContext.b = b; RenderContext.a = a; }
     public static void glColor3f(float r, float g, float b) { glColor4f(r, g, b, 1); }
 
-    // lighting switches: models turn lighting off for lamps
-    public static void glDisable(int cap) { if (cap == GL_LIGHTING) RenderContext.fullBright = true; }
-    public static void glEnable(int cap) { if (cap == GL_LIGHTING) RenderContext.fullBright = false; }
+    // lighting switches: models turn lighting off for lamps; untextured drawing uses a white texture
+    public static void glDisable(int cap) {
+        if (cap == GL_LIGHTING) RenderContext.fullBright = true;
+        if (cap == GL_TEXTURE_2D) RenderContext.untextured = true;
+    }
+    public static void glEnable(int cap) {
+        if (cap == GL_LIGHTING) RenderContext.fullBright = false;
+        if (cap == GL_TEXTURE_2D) RenderContext.untextured = false;
+    }
 
     // state that has no meaning in the 1.21 pipeline
     public static void glBlendFunc(int a, int b) {}
@@ -51,4 +57,6 @@ public final class GL11 {
     public static void glDepthMask(boolean flag) {}
     public static void glColorMaterial(int face, int mode) {}
     public static void glLineWidth(float w) {}
+    public static void glClear(int mask) {}
+    public static final int GL_COLOR_BUFFER_BIT = 16384, GL_DEPTH_BUFFER_BIT = 256;
 }

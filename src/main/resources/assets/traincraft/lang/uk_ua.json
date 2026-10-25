@@ -115,5 +115,7 @@
  "message.linking": "Зчіпка відкрита: під'їдьте до іншого вагона",
  "message.notlinking": "Зчіпка закрита",
  "message.unlinked": "Розчеплено",
- "message.nolinks": "Немає зчеплених вагонів"
+ "message.nolinks": "Немає зчеплених вагонів",
+ "item.traincraft.rail": "Рейка TiM",
+ "block.traincraft.timrail": "Рейка TiM"
 }

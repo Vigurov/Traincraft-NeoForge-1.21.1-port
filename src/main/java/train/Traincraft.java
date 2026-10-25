@@ -25,6 +25,7 @@ public class Traincraft {
             .icon(() -> TiMGenericRegistry.TRANSPORT_ITEMS.isEmpty() ? new ItemStack(TiMGenericRegistry.STAKE.get()) : new ItemStack(TiMGenericRegistry.TRANSPORT_ITEMS.get(0).get()))
             .displayItems((params, output) -> {
                 output.accept(TiMGenericRegistry.STAKE.get());
+                ebf.tim.items.ItemRail.addCreativeVariants(output::accept);
                 for (var item : TiMGenericRegistry.TRANSPORT_ITEMS) {
                     output.accept(item.get());
                 }
@@ -34,6 +35,8 @@ public class Traincraft {
     public Traincraft(IEventBus modBus) {
         TrainRegistry.register();
         TiMGenericRegistry.ENTITIES.register(modBus);
+        ebf.tim.registry.TiMBlocks.BLOCKS.register(modBus);
+        ebf.tim.registry.TiMBlocks.TILES.register(modBus);
         TiMGenericRegistry.ITEMS.register(modBus);
         TABS.register(modBus);
         modBus.addListener(this::commonSetup);

@@ -18,6 +18,7 @@ public class Tessellator {
 
     private static Float x, y, z;
     private final List<float[]> pending = new ArrayList<>();
+    private int mode = GL11.GL_POLYGON;
 
     public static Tessellator getInstance() {
         return INSTANCE;
@@ -26,11 +27,31 @@ public class Tessellator {
     /** immediate-mode style drawing: vertices are collected until draw() */
     public void startDrawing(int mode) {
         x = null; y = null; z = null;
+        this.mode = mode;
         pending.clear();
     }
 
+    /**draws what was added since startDrawing, split up like OpenGL would for the mode*/
     public void draw() {
-        if (pending.size() >= 3) emit(pending, 1f, 0, 0, 0);
+        List<float[]> p = pending;
+        switch (mode) {
+            case GL11.GL_QUADS:
+                for (int i = 0; i + 3 < p.size(); i += 4) emit(p.subList(i, i + 4), 1f, 0, 0, 0);
+                break;
+            case GL11.GL_QUAD_STRIP:
+                for (int i = 0; i + 3 < p.size(); i += 2) emit(List.of(p.get(i), p.get(i + 1), p.get(i + 3), p.get(i + 2)), 1f, 0, 0, 0);
+                break;
+            case GL11.GL_TRIANGLES:
+                for (int i = 0; i + 2 < p.size(); i += 3) emit(p.subList(i, i + 3), 1f, 0, 0, 0);
+                break;
+            case GL11.GL_TRIANGLE_STRIP:
+                for (int i = 0; i + 2 < p.size(); i++) emit(List.of(p.get(i), p.get(i + 1), p.get(i + 2)), 1f, 0, 0, 0);
+                break;
+            case GL11.GL_LINES: case GL11.GL_LINE_STRIP:
+                break;
+            default:
+                if (p.size() >= 3) emit(p, 1f, 0, 0, 0);
+        }
         pending.clear();
     }
 
@@ -70,7 +91,7 @@ public class Tessellator {
 
     /** quads as they are, triangles with the last vertex twice, larger polygons as a fan of quads */
     private static void emit(List<float[]> pts, float unused, float nx, float ny, float nz) {
-        VertexConsumer c = RenderContext.consumer;
+        VertexConsumer c = RenderContext.consumerNow();
         if (c == null) return;
         PoseStack.Pose pose = RenderContext.pose.last();
         if (nx == 0 && ny == 0 && nz == 0) {
@@ -96,9 +117,15 @@ public class Tessellator {
     }
 
     private static void put(VertexConsumer c, PoseStack.Pose pose, float[] p, float nx, float ny, float nz) {
+        float u = p[3], v = p[4];
+        if (RenderContext.untextured) {
+            var w = RenderContext.white();
+            u = (w.getU0() + w.getU1()) * 0.5f;
+            v = (w.getV0() + w.getV1()) * 0.5f;
+        }
         c.addVertex(pose, p[0], p[1], p[2])
                 .setColor(RenderContext.r, RenderContext.g, RenderContext.b, RenderContext.a)
-                .setUv(p[3], p[4])
+                .setUv(u, v)
                 .setOverlay(RenderContext.overlay)
                 .setLight(RenderContext.lightNow())
                 .setNormal(pose, nx, ny, nz);

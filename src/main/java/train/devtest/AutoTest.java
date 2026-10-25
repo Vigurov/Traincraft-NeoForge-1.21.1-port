@@ -109,37 +109,42 @@ public class AutoTest {
         if (sp == null) {
             return;
         }
+        var server = mc.getSingleplayerServer();
         if (tick == 20) {
-            level.setDayTime(6000);
-            base = BlockPos.containing(sp.getX(), sp.getY(), sp.getZ());
-            log("base " + base);
-            for (String use : p.getProperty("use", "").split(";")) {
-                if (!use.isBlank()) run(level, sp, use.trim());
-            }
-            if (p.containsKey("cam")) {
-                String[] c = p.getProperty("cam").split(",");
-                sp.getAbilities().flying = true;
-                sp.onUpdateAbilities();
-                sp.teleportTo(level, base.getX() + Double.parseDouble(c[0]), base.getY() + Double.parseDouble(c[1]), base.getZ() + Double.parseDouble(c[2]),
-                        Float.parseFloat(c[3]), Float.parseFloat(c[4]));
-            }
+            //world changes run on the server thread (off it the level hands out no block entities)
+            server.execute(() -> {
+                level.setDayTime(6000);
+                base = BlockPos.containing(sp.getX(), sp.getY(), sp.getZ());
+                log("base " + base);
+                for (String use : p.getProperty("use", "").split(";")) {
+                    if (!use.isBlank()) run(level, sp, use.trim());
+                }
+                if (p.containsKey("cam")) {
+                    String[] c = p.getProperty("cam").split(",");
+                    sp.getAbilities().flying = true;
+                    sp.onUpdateAbilities();
+                    sp.teleportTo(level, base.getX() + Double.parseDouble(c[0]), base.getY() + Double.parseDouble(c[1]), base.getZ() + Double.parseDouble(c[2]),
+                            Float.parseFloat(c[3]), Float.parseFloat(c[4]));
+                }
+            });
         }
         int start = i("start", 60);
         if (tick == start - 20 && train != null && i("seat", 0) == 1) {
-            boolean ok = sp.startRiding(train);
-            log("seat " + ok);
+            server.execute(() -> log("seat " + sp.startRiding(train)));
             if (i("view", 1) == 3) {
                 mc.options.setCameraType(net.minecraft.client.CameraType.THIRD_PERSON_BACK);
             }
         }
         if (tick == start && train instanceof EntityTrainCore && p.containsKey("drive")) {
-            train.interact(sp, false, false, 8); //engine
-            int acc = i("drive", 0);
-            ((EntityTrainCore) train).accelerator = acc;
-            log("drive " + acc + " running=" + train.getBoolean(GenericRailTransport.boolValues.RUNNING));
+            server.execute(() -> {
+                train.interact(sp, false, false, 8); //engine
+                int acc = i("drive", 0);
+                ((EntityTrainCore) train).accelerator = acc;
+                log("drive " + acc + " running=" + train.getBoolean(GenericRailTransport.boolValues.RUNNING));
+            });
         }
         int every = i("log", 10);
-        if (train != null && tick >= 20 && tick % every == 0) {
+        if (train != null && base != null && tick >= 20 && tick % every == 0) {
             GenericRailTransport client = (GenericRailTransport) mc.level.getEntity(train.getId());
             log(String.format("t=%d pos=(%.2f,%.2f,%.2f) yaw=%.1f pitch=%.1f v=%.3f acc=%d derail=%s front=%s back=%s client=%s",
                     tick, train.getX() - base.getX(), train.getY() - base.getY(), train.getZ() - base.getZ(), train.getYRot(), train.getXRot(),
@@ -166,6 +171,29 @@ public class AutoTest {
         String[] xyz = a[1].split(",");
         BlockPos pos = base.offset(Integer.parseInt(xyz[0]), Integer.parseInt(xyz[1]), Integer.parseInt(xyz[2]));
         ResourceLocation id = ResourceLocation.parse(a[0]);
+        if (id.equals(ResourceLocation.fromNamespaceAndPath("traincraft", "rail"))) {
+            //TiM rail: iron, gravel ballast, oak ties
+            int len = a.length > 2 ? Integer.parseInt(a[2]) : 1;
+            String axis = a.length > 3 ? a[3] : "x";
+            for (int n = 0; n < len; n++) {
+                BlockPos at = axis.equals("x") ? pos.offset(n, 0, 0) : pos.offset(0, 0, n);
+                level.setBlock(at.below(), Blocks.STONE.defaultBlockState(), 3);
+                net.minecraft.world.item.ItemStack stack = ebf.tim.items.ItemRail.setStackData(
+                        new net.minecraft.world.item.ItemStack(ebf.tim.registry.TiMBlocks.railItem()),
+                        new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.IRON_INGOT),
+                        new net.minecraft.world.item.ItemStack(Blocks.GRAVEL), new net.minecraft.world.item.ItemStack(Blocks.OAK_LOG), null);
+                ((ebf.tim.items.ItemRail) ebf.tim.registry.TiMBlocks.railItem()).placeTrack(stack, level, at.getX(), at.getY(), at.getZ(), null);
+            }
+            StringBuilder dump = new StringBuilder();
+            for (int n = 0; n < len; n++) {
+                BlockPos at = axis.equals("x") ? pos.offset(n, 0, 0) : pos.offset(0, 0, n);
+                var be = level.getBlockEntity(at);
+                dump.append(level.getBlockState(at).getBlock() == ebf.tim.registry.TiMBlocks.RAIL.get() ? "R" : "-")
+                        .append(be instanceof ebf.tim.blocks.RailTileEntity r ? r.getMeta() + (r.getData().isEmpty() ? "e" : "") : (be == null ? "null" : be.getClass().getSimpleName())).append(' ');
+            }
+            log("placed " + len + " TiM rails from " + pos + " along " + axis + ": " + dump);
+            return;
+        }
         if (BuiltInRegistries.BLOCK.containsKey(id)) {
             Block b = BuiltInRegistries.BLOCK.get(id);
             int len = a.length > 2 ? Integer.parseInt(a[2]) : 1;

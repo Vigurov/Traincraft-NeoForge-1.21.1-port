@@ -20,6 +20,9 @@ public final class RenderContext {
     public static ResourceLocation texture;
     public static int light = LightTexture.FULL_BRIGHT, overlay = OverlayTexture.NO_OVERLAY;
     public static boolean fullBright;
+    /**GL_TEXTURE_2D disabled: draw with the vertex colour on a white part of the block atlas*/
+    public static boolean untextured;
+    private static ResourceLocation boundBeforeUntextured;
     public static float r = 1, g = 1, b = 1, a = 1;
 
     private RenderContext() {}
@@ -30,6 +33,7 @@ public final class RenderContext {
         light = packedLight;
         overlay = OverlayTexture.NO_OVERLAY;
         fullBright = false;
+        untextured = false;
         r = g = b = a = 1;
         bind(tex);
     }
@@ -42,7 +46,33 @@ public final class RenderContext {
     /** switch texture: a new buffer of the entity render type for it */
     public static void bind(ResourceLocation tex) {
         texture = tex;
+        boundBeforeUntextured = null;
         if (buffers != null && tex != null) consumer = buffers.getBuffer(RenderType.entityCutoutNoCull(tex));
+    }
+
+    private static final ResourceLocation WHITE = ResourceLocation.fromNamespaceAndPath("trainsinmotion", "block/white");
+    private static net.minecraft.client.renderer.texture.TextureAtlasSprite white;
+
+    /**the white sprite in the block atlas, for untextured drawing*/
+    static net.minecraft.client.renderer.texture.TextureAtlasSprite white() {
+        if (white == null || white.atlasLocation() == null) {
+            white = net.minecraft.client.Minecraft.getInstance().getTextureAtlas(net.minecraft.world.inventory.InventoryMenu.BLOCK_ATLAS).apply(WHITE);
+        }
+        return white;
+    }
+
+    /**the consumer for the next polygon: the block atlas while untextured*/
+    static VertexConsumer consumerNow() {
+        if (untextured && !net.minecraft.world.inventory.InventoryMenu.BLOCK_ATLAS.equals(texture)) {
+            ResourceLocation before = texture;
+            bind(net.minecraft.world.inventory.InventoryMenu.BLOCK_ATLAS);
+            boundBeforeUntextured = before;
+        } else if (!untextured && boundBeforeUntextured != null) {
+            ResourceLocation before = boundBeforeUntextured;
+            boundBeforeUntextured = null;
+            bind(before);
+        }
+        return consumer;
     }
 
     static int lightNow() {

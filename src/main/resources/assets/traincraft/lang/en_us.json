@@ -1087,5 +1087,7 @@
  "entity.zeppelin big.name": "Zeppelin",
  "item.traincraft.stake": "Stake",
  "itemGroup.traincraft": "Traincraft",
- "key.categories.Trains in Motion": "Trains in Motion"
+ "key.categories.Trains in Motion": "Trains in Motion",
+ "item.traincraft.rail": "TiM Rail",
+ "block.traincraft.timrail": "TiM Rail"
 }

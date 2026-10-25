@@ -24,5 +24,6 @@ public class TraincraftClient {
         for (var type : TiMGenericRegistry.TRANSPORTS) {
             event.registerEntityRenderer((EntityType) type.get(), RenderWagon::new);
         }
+        event.registerBlockEntityRenderer(ebf.tim.registry.TiMBlocks.RAIL_TILE.get(), ebf.tim.render.RailRenderer::new);
     }
 }
