@@ -1,0 +1,104 @@
+package train.entity.trains;
+
+import ebf.tim.entities.GenericRailTransport;
+import ebf.tim.TrainsInMotion;
+import ebf.tim.api.SkinRegistry;
+import ebf.tim.api.TransportSkin;
+import ebf.tim.entities.EntityTrainCore;
+import ebf.tim.utility.ItemStackSlot;
+import fexcraft.tmt.slim.ModelBase;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.entity.EntityType;
+import train.library.Info;
+
+import java.util.List;
+
+public class EntityLocoSteamKingClass extends EntityTrainCore {
+
+    public EntityLocoSteamKingClass(EntityType<? extends GenericRailTransport> type, Level worldObj) {
+        super(type, worldObj);
+    }
+
+
+
+
+
+    //main stats
+    @Override
+    public String transportName(){return "Loco King Class";}
+    @Override
+    public String transportcountry(){return "uk";}
+    @Override
+    public String transportYear(){return "1927-1936";}
+    @Override
+    public boolean isFictional(){return false;}
+    @Override
+    public int getInventoryRows(){return 1;}
+    @Override
+    public List<TrainsInMotion.transportTypes> getTypes(){
+        return TrainsInMotion.transportTypes.STEAM.singleton();
+    }
+    @Override
+    public float weightKg(){return 90446f;}
+
+    //Model stuff
+    @Override
+    public ModelBase[] getModel(){return new ModelBase[]{new train.render.models.ModelKingClass()};}
+    @Override
+    public float[][] modelOffsets(){return new float[][]{{0.9f, 0f, 0}};}
+    @Override
+    public float[][] modelRotations(){return new float[][]{{0.0f, 0.0f, 0.0f}};}
+    @Override
+    public void registerSkins(){
+        SkinRegistry.addSkin(this.getClass(),
+            new TransportSkin(Info.modID,"textures/trains/King_Class_Locomotive_Green.png","Green", "description.King.Class.Locomotive.Green"));
+        SkinRegistry.addSkin(this.getClass(),
+            new TransportSkin(Info.modID,"textures/trains/King_Class_Locomotive_Blue.png","Blue", "description.King.Class.Locomotive.Blue"));
+        SkinRegistry.addSkin(this.getClass(),
+            new TransportSkin(Info.modID,"textures/trains/King_Class_Locomotive_Lime.png","Lime", "description.King.Class.Locomotive.Lime"));
+    }
+    @Override
+    public String getDefaultSkin(){
+        return Info.modID+":"+"Green";
+    }
+
+
+    //recipe
+
+
+    //these are separated for being fiddly.
+    @Override
+    public float[][] getRiderOffsets(){return new float[][]{{2.8f,1.45f, 0.3f}};}
+    @Override
+    public float[] getHitboxSize(){return new float[]{6.15f,2.3f,1.4f};}
+    @Override
+    public float[] rotationPoints() {return new float[]{1.9f, -1.7f};}
+    //Train specific stuff
+    @Override
+    public String transportFuelType(){return "steam";}
+    @Override
+    public float transportMetricHorsePower(){return 1613;}
+    @Override
+    public float transportTractiveEffort(){return 40300;}
+    @Override
+    public float transportTopSpeed(){return 174;}
+    @Override
+    public ItemStackSlot fuelSlot(){
+        return super.fuelSlot();
+    }
+    @Override
+    public int[] getTankCapacity(){return new int[]{18170, 1000};}
+
+
+
+    //these only change in very specific use cases.
+    @Override
+    public boolean shouldRiderSit(){
+        return false;
+    }
+    @Override
+    public float getMaxFuel(){return 1;}
+
+}

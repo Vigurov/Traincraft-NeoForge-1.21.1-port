@@ -119,6 +119,21 @@ public class AutoTest {
                 for (String use : p.getProperty("use", "").split(";")) {
                     if (!use.isBlank()) run(level, sp, use.trim());
                 }
+                if (p.containsKey("gallery")) {
+                    //transports from..to of the registry, each on its own 24 block line, 5 blocks apart
+                    String[] g = p.getProperty("gallery").split(",");
+                    int from = Integer.parseInt(g[0]), to = Math.min(Integer.parseInt(g[1]), TiMGenericRegistry.TRANSPORTS.size() - 1);
+                    int placed = 0;
+                    for (int n = from; n <= to; n++) {
+                        int z = (n - from) * 5;
+                        run(level, sp, "minecraft:rail@0,0," + z + "@24@x");
+                        var id = BuiltInRegistries.ENTITY_TYPE.getKey(TiMGenericRegistry.TRANSPORTS.get(n).get());
+                        GenericRailTransport before = train;
+                        run(level, sp, id + "@12,0," + z + "@-4");
+                        if (train != before) placed++;
+                    }
+                    log("gallery placed " + placed + " of " + (to - from + 1));
+                }
                 if (p.containsKey("cam")) {
                     String[] c = p.getProperty("cam").split(",");
                     sp.getAbilities().flying = true;

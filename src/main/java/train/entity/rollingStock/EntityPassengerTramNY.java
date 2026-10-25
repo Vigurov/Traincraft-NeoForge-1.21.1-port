@@ -1,0 +1,83 @@
+package train.entity.rollingStock;
+
+import ebf.tim.TrainsInMotion;
+import ebf.tim.api.SkinRegistry;
+import ebf.tim.api.TransportSkin;
+import ebf.tim.entities.GenericRailTransport;
+import fexcraft.tmt.slim.ModelBase;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.entity.EntityType;
+import train.library.Info;
+
+import java.util.List;
+
+public class EntityPassengerTramNY extends GenericRailTransport {
+
+    public EntityPassengerTramNY(EntityType<? extends GenericRailTransport> type, Level worldObj) {
+        super(type, worldObj);
+    }
+
+
+
+
+
+    //main stats
+    @Override
+    public String transportName(){return "Passenger Tram NY";}
+    @Override
+    public String transportcountry(){return "Us";}
+    @Override
+    public String transportYear(){return "1986-2011";}
+    @Override
+    public boolean isFictional(){return false;}
+    @Override
+    public int getInventoryRows(){return 0;}
+    @Override
+    public List<TrainsInMotion.transportTypes> getTypes(){
+        return TrainsInMotion.transportTypes.PASSENGER.singleton();
+    }
+    @Override//NOTE: this is actually from the PA5, but the design and materials are very similar
+    public float weightKg(){return 29029.9f;}
+
+    //Model stuff
+    @Override
+    public ModelBase[] getModel(){return new ModelBase[]{new train.render.models.ModelTramNY()};}
+    @Override
+    public float[][] modelOffsets(){return new float[][]{{0.0f, 0.63f, 0.0f}};}
+@Override
+    public float[][] modelRotations(){return new float[][]{{0f,180f,180f}};}
+    @Override
+    public void registerSkins(){
+        SkinRegistry.addSkin(this.getClass(),
+            new TransportSkin(Info.modID,"textures/trains/locoTramNY.png","locoTramNY", "description.locoTramNY"));
+    }
+    @Override
+    public String getDefaultSkin(){
+        return Info.modID+":"+"locoTramNY";
+    }
+
+
+    //recipe
+
+
+    //these are separated for being fiddly.
+    @Override
+    public float[][] getRiderOffsets(){return new float[][]{{0.9f,1.2f, 0.3f},{-0.7f,1.2f, -0.3f}};}
+    @Override
+    public float[] getHitboxSize(){return new float[]{4.475f,2.175f,1.5f};}
+    @Override
+    public float[] rotationPoints() {return new float[]{1.25f, -1.25f};}
+
+
+
+    //these only change in very specific use cases.
+    @Override
+    public boolean shouldRiderSit(){
+        return true;
+    }
+    @Override
+    public float getMaxFuel(){return 1;}
+
+}

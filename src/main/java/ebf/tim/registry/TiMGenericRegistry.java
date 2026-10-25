@@ -34,7 +34,12 @@ public class TiMGenericRegistry {
 
     public static <T extends GenericRailTransport> DeferredHolder<EntityType<?>, EntityType<T>> registerTransport(
             Class<T> clazz, EntityType.EntityFactory<T> factory) {
-        String name = clazz.getSimpleName().replaceFirst("^Entity", "").toLowerCase();
+        return registerTransport(clazz.getSimpleName().replaceFirst("^Entity", "").toLowerCase(), clazz, factory);
+    }
+
+    /**name: the 1.12 item name (transportName without spaces), lower case*/
+    public static <T extends GenericRailTransport> DeferredHolder<EntityType<?>, EntityType<T>> registerTransport(
+            String name, Class<T> clazz, EntityType.EntityFactory<T> factory) {
         DeferredHolder<EntityType<?>, EntityType<T>> type = ENTITIES.register(name, () ->
                 EntityType.Builder.of(factory, MobCategory.MISC)
                         .sized(0.75f, 3f)

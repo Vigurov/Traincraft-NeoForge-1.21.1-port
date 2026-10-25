@@ -746,7 +746,7 @@ public class ModelE10DB extends ModelConverter
 	{
 		super.render(entity, f, f1, f2, f3, f4, f5);
 
-		Tessellator.bindTexture(ResourceLocation.fromNamespaceAndPath(Info.resourceLocation, "textures/trains/e10_Bogie.png"));
+		Tessellator.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation, "textures/trains/e10_Bogie.png"));
 		GL11.glPushMatrix();
 		GL11.glTranslated(-1.6,0.15,-0.375);
 		trucks.render(entity,f,f1,f2,f3,f4,f5);

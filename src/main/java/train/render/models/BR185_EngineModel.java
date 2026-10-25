@@ -721,7 +721,7 @@ public class BR185_EngineModel extends ModelBase
 	public void render(Entity entity, float f, float f1, float f2, float f3, float f4, float f5)
 	{
 		super.render(entity, f, f1, f2, f3, f4, f5);
-		Tessellator.bindTexture(ResourceLocation.fromNamespaceAndPath(Info.resourceLocation, "textures/trains/BR185_Bogie.png"));
+		Tessellator.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation, "textures/trains/BR185_Bogie.png"));
 		GL11.glPushMatrix();
 		GL11.glTranslated(-1.5,0.27,0);
 		GL11.glScalef(0.9f,0.9f,0.8f);

@@ -626,9 +626,9 @@ public class ModelGS4Tavern extends ModelBase
 		super.render(entity, f, f1, f2, f3, f4, f5);
 		//todo: this should be handled by TiM's skin system
 		if(entity instanceof GenericRailTransport && ((GenericRailTransport) entity).getCurrentSkin().name.equals("Red")){
-			Tessellator.bindTexture(ResourceLocation.fromNamespaceAndPath(Info.resourceLocation, "textures/trains/GS4_bogie_Red.png"));
+			Tessellator.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation, "textures/trains/GS4_bogie_Red.png"));
 		} else {
-			Tessellator.bindTexture(ResourceLocation.fromNamespaceAndPath(Info.resourceLocation, "textures/trains/GS4_bogie.png"));
+			Tessellator.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation, "textures/trains/GS4_bogie.png"));
 		}
 
 		GL11.glPushMatrix();

@@ -442,13 +442,13 @@ public class ModelEMDF7B extends ModelBase
     {
         super.render(entity, f, f1, f2, f3, f4, f5);
         GL11.glPushMatrix();
-        Tessellator.bindTexture(ResourceLocation.fromNamespaceAndPath(Info.modID, "textures/trains/Blomberg_b_trucks.png"));
+        Tessellator.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.modID, "textures/trains/Blomberg_b_trucks.png"));
         GL11.glTranslated(-1.8,0,0);
         GL11.glScalef(0.9F, 0.9F, 0.9F);
         fronttrucks.render(entity,f,f1,f2,f3,f4,f5);
         GL11.glPopMatrix();
         GL11.glPushMatrix();
-        Tessellator.bindTexture(ResourceLocation.fromNamespaceAndPath(Info.modID, "textures/trains/Blomberg_b_trucks.png"));
+        Tessellator.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.modID, "textures/trains/Blomberg_b_trucks.png"));
         GL11.glTranslated(1.8,0,0);
         GL11.glScalef(0.9F, 0.9F, 0.9F);
         backtrucks.render(entity,f,f1,f2,f3,f4,f5);

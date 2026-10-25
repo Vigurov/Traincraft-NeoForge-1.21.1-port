@@ -1,0 +1,114 @@
+package train.entity.rollingStock;
+
+import ebf.tim.TrainsInMotion;
+import ebf.tim.api.SkinRegistry;
+import ebf.tim.api.TransportSkin;
+import ebf.tim.entities.GenericRailTransport;
+import fexcraft.tmt.slim.ModelBase;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.entity.EntityType;
+import train.library.Info;
+
+import java.util.List;
+
+public class EntityFreightBamboo extends GenericRailTransport {
+
+    public EntityFreightBamboo(EntityType<? extends GenericRailTransport> type, Level worldObj) {
+        super(type, worldObj);
+    }
+
+
+
+
+
+    //main stats
+    @Override
+    public String transportName(){return "Bamboo Flatcar Freight";}
+    @Override
+    public String transportcountry(){return "Undefined";}
+    @Override
+    public String transportYear(){return "Undefined";}
+    @Override
+    public boolean isFictional(){return false;}
+    @Override
+    public int getInventoryRows(){return getInventoryRowCount();}
+    @Override
+    public List<TrainsInMotion.transportTypes> getTypes(){
+        return TrainsInMotion.transportTypes.FREIGHT.singleton();
+    }
+    @Override
+    public float weightKg(){return 10f;}
+
+    //Model stuff
+    @Override
+    public ModelBase[] getModel(){return new ModelBase[]{new train.render.models.ModelBambooTrainCargo()};}
+    @Override
+    public float[][] modelOffsets(){return new float[][]{{0.1f, 0.13f, 0.0f}};}
+    @Override
+    public float[][] modelRotations(){return new float[][]{{0.0f, 0.0f, 0.0f}};}
+    @Override
+    public void registerSkins(){
+        SkinRegistry.addSkin(this.getClass(),
+            new TransportSkin(Info.modID,"textures/trains/bamboo_freight_Red.png","Red", "description.bamboo.freight.Red"));
+        SkinRegistry.addSkin(this.getClass(),
+            new TransportSkin(Info.modID,"textures/trains/bamboo_freight_Blue.png","Blue", "description.bamboo.freight.Blue"));
+        SkinRegistry.addSkin(this.getClass(),
+            new TransportSkin(Info.modID,"textures/trains/bamboo_freight_Black.png","Black", "description.bamboo.freight.Black"));
+        SkinRegistry.addSkin(this.getClass(),
+            new TransportSkin(Info.modID,"textures/trains/bamboo_freight_Yellow.png","Yellow", "description.bamboo.freight.Yellow"));
+        SkinRegistry.addSkin(this.getClass(),
+            new TransportSkin(Info.modID,"textures/trains/bamboo_freight_Magenta.png","Magenta", "description.bamboo.freight.Magenta"));
+        SkinRegistry.addSkin(this.getClass(),
+            new TransportSkin(Info.modID,"textures/trains/bamboo_freight_Cyan.png","Cyan", "description.bamboo.freight.Cyan"));
+        SkinRegistry.addSkin(this.getClass(),
+            new TransportSkin(Info.modID,"textures/trains/bamboo_freight_Pink.png","Pink", "description.bamboo.freight.Pink"));
+        SkinRegistry.addSkin(this.getClass(),
+            new TransportSkin(Info.modID,"textures/trains/bamboo_freight_LightGray.png","LightGrey", "description.bamboo.freight.LightGrey"));
+        SkinRegistry.addSkin(this.getClass(),
+            new TransportSkin(Info.modID,"textures/trains/bamboo_freight_Green.png","Green", "description.bamboo.freight.Green"));
+        SkinRegistry.addSkin(this.getClass(),
+            new TransportSkin(Info.modID,"textures/trains/bamboo_freight_White.png","White", "description.bamboo.freight.White"));
+        SkinRegistry.addSkin(this.getClass(),
+            new TransportSkin(Info.modID,"textures/trains/bamboo_freight_LightBlue.png","LightBlue", "description.bamboo.freight.LightBlue"));
+        SkinRegistry.addSkin(this.getClass(),
+            new TransportSkin(Info.modID,"textures/trains/bamboo_freight_Lime.png","Lime", "description.bamboo.freight.Lime"));
+        SkinRegistry.addSkin(this.getClass(),
+            new TransportSkin(Info.modID,"textures/trains/bamboo_freight_Brown.png","Brown", "description.bamboo.freight.Brown"));
+        SkinRegistry.addSkin(this.getClass(),
+            new TransportSkin(Info.modID,"textures/trains/bamboo_freight_Purple.png","Purple", "description.bamboo.freight.Purple"));
+        SkinRegistry.addSkin(this.getClass(),
+            new TransportSkin(Info.modID,"textures/trains/bamboo_freight_Orange.png","Orange", "description.bamboo.freight.Orange"));
+        SkinRegistry.addSkin(this.getClass(),
+            new TransportSkin(Info.modID,"textures/trains/bamboo_freight_Gray.png","Grey", "description.bamboo.freight.Grey"));
+    }
+    @Override
+    public String getDefaultSkin(){
+        return Info.modID+":"+"Red";
+    }
+
+
+    //recipe
+
+
+    //these are separated for being fiddly.
+    @Override
+    public float[][] getRiderOffsets(){return null;}
+    @Override
+    public float[] getHitboxSize(){return new float[]{3.3f,1.3f,1.65f};}
+    @Override
+    public float[] rotationPoints() {return new float[]{1.05f, -0.875f};}
+
+
+
+    //these only change in very specific use cases.
+    @Override
+    public boolean shouldRiderSit(){
+        return false;
+    }
+    @Override
+    public float getMaxFuel(){return 1;}
+
+}

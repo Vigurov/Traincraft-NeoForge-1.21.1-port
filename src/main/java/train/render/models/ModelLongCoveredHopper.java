@@ -261,7 +261,7 @@ public class ModelLongCoveredHopper extends ModelBase
 	{
 		super.render(entity, f, f1, f2, f3, f4, f5);
 
-		Tessellator.bindTexture(ResourceLocation.fromNamespaceAndPath(Info.resourceLocation, "textures/trains/AmericanFreightTrucks.png"));
+		Tessellator.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation, "textures/trains/AmericanFreightTrucks.png"));
 
 		GL11.glPushMatrix();
 		GL11.glScalef(1,1,0.9f);

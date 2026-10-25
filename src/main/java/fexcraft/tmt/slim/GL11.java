@@ -16,8 +16,8 @@ public final class GL11 {
 
     private GL11() {}
 
-    public static void glPushMatrix() { RenderContext.pose.pushPose(); }
-    public static void glPopMatrix() { RenderContext.pose.popPose(); }
+    public static void glPushMatrix() { RenderContext.pose.pushPose(); RenderContext.depth++; }
+    public static void glPopMatrix() { RenderContext.pose.popPose(); RenderContext.depth--; }
     public static void glTranslatef(float x, float y, float z) { RenderContext.pose.translate(x, y, z); }
     public static void glTranslated(double x, double y, double z) { RenderContext.pose.translate(x, y, z); }
     public static void glScalef(float x, float y, float z) { RenderContext.pose.scale(x, y, z); }

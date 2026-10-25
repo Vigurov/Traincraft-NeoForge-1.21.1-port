@@ -875,7 +875,7 @@ public class ModelPRRX31Wagon extends ModelBase
     {
 		super.render(entity, f, f1, f2, f3, f4, f5);
 
-        Tessellator.bindTexture(ResourceLocation.fromNamespaceAndPath(Info.modID, "textures/trains/Bettendorf_trucks.png"));
+        Tessellator.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.modID, "textures/trains/Bettendorf_trucks.png"));
         GL11.glPushMatrix();
 		GL11.glTranslated(1.75, 0.1, 0);
         fronttrucks.render(entity,f,f1,f2,f3,f4,f5);

@@ -400,7 +400,7 @@ public class ModelMILW_H1044 extends ModelBase
     {
         super.render(entity, f, f1, f2, f3, f4, f5);
 
-        Tessellator.bindTexture(ResourceLocation.fromNamespaceAndPath(Info.resourceLocation, "textures/trains/MILW_H1044_bogie.png"));
+        Tessellator.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation, "textures/trains/MILW_H1044_bogie.png"));
 
         GL11.glPushMatrix();
         GL11.glTranslated(-3.6,0.425,0);

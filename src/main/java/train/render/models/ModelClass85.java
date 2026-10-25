@@ -852,7 +852,7 @@ public class ModelClass85 extends ModelBase
 			}
 		}*/
 
-		Tessellator.bindTexture(ResourceLocation.fromNamespaceAndPath(Info.resourceLocation, "textures/trains/Class85_Bogie.png"));
+		Tessellator.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation, "textures/trains/Class85_Bogie.png"));
 		GL11.glPushMatrix();
 		GL11.glTranslated(0,0.1,-1.8);
 		GL11.glScalef(0.8f,1f,1f);

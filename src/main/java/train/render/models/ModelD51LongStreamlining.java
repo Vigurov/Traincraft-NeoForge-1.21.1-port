@@ -40,11 +40,11 @@ public class ModelD51LongStreamlining extends ModelConverter //Same as Filename
 	@Override
 	public void render(Entity entity, float f0, float f1, float f2, float f3, float f4, float scale){
 		super.render(entity, f0, f1, f2, f3, f4, scale);
-		Tessellator.bindTexture(ResourceLocation.fromNamespaceAndPath(Info.resourceLocation,Info.trainsPrefix +"d51_front_bogie.png"));
+		Tessellator.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation,Info.trainsPrefix +"d51_front_bogie.png"));
 		GL11.glPushMatrix();
 		GL11.glTranslatef(0f,0f,0);
 		frontBogie.render();
-		Tessellator.bindTexture(ResourceLocation.fromNamespaceAndPath(Info.resourceLocation,Info.trainsPrefix +"d51_rear_bogie.png"));
+		Tessellator.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation,Info.trainsPrefix +"d51_rear_bogie.png"));
 		GL11.glTranslatef(0f,-0.05f,0);
 		rearBogie.render();
 		GL11.glPopMatrix();

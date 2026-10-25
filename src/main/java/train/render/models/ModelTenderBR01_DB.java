@@ -368,7 +368,7 @@ public class ModelTenderBR01_DB extends ModelBase {
 	public void render(Entity entity, float f, float f1, float f2, float f3, float f4, float f5) {
 		
 		if (ClientProxy.isHoliday()) {
-			fexcraft.tmt.slim.TextureManager.bindTexture(ResourceLocation.fromNamespaceAndPath(Info.resourceLocation, "textures/trains/tenderBR01_DB_winter.png"));
+			fexcraft.tmt.slim.TextureManager.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation, "textures/trains/tenderBR01_DB_winter.png"));
 		}
 		
 		int cargo = 0;

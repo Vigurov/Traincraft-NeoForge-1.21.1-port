@@ -62,7 +62,7 @@ public class TransportSkin {
     }
 
     public ResourceLocation getTexture(int id){
-        return ResourceLocation.fromNamespaceAndPath(modid,id>=texture.length?texture[0]:texture[id]);
+        return fexcraft.tmt.slim.TextureManager.loc(modid,id>=texture.length?texture[0]:texture[id]);
     }
 
     public TransportSkin setBogieTextures(String texture){
@@ -80,7 +80,7 @@ public class TransportSkin {
         if(bogieTextures!=null) {
             for (int i = 0; i < textures.length; i++) {
                 if (!bogieTextures[i].getPath().contains(".")) {
-                    bogieTextures[i] = ResourceLocation.fromNamespaceAndPath(bogieTextures[i].getNamespace(), bogieTextures[i].getPath() + ".png");
+                    bogieTextures[i] = fexcraft.tmt.slim.TextureManager.loc(bogieTextures[i].getNamespace(), bogieTextures[i].getPath() + ".png");
                 }
             }
         }
@@ -97,7 +97,7 @@ public class TransportSkin {
         if(subBogieTextures!=null) {
             for (int i = 0; i < textures.length; i++) {
                 if (!subBogieTextures[i].getPath().contains(".")) {
-                    subBogieTextures[i] = ResourceLocation.fromNamespaceAndPath(subBogieTextures[i].getNamespace(), subBogieTextures[i].getPath() + ".png");
+                    subBogieTextures[i] = fexcraft.tmt.slim.TextureManager.loc(subBogieTextures[i].getNamespace(), subBogieTextures[i].getPath() + ".png");
                 }
             }
         }
@@ -152,9 +152,9 @@ public class TransportSkin {
                 URIs[i]+=".png";
             }
             if(URIs[i].contains(":")){
-                value[i] = ResourceLocation.parse(URIs[i]);
+                value[i] = fexcraft.tmt.slim.TextureManager.parse(URIs[i]);
             } else {
-                value[i] = ResourceLocation.fromNamespaceAndPath(modid, URIs[i]);
+                value[i] = fexcraft.tmt.slim.TextureManager.loc(modid, URIs[i]);
             }
         }
         return value;

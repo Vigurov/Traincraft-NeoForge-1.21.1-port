@@ -29,7 +29,7 @@ private ModelRendererTurbo ring;
 		//GL11.glEnable(GL11.GL_LIGHTING);
 		GL11.glPushMatrix();
 		GL11.glColor4f(1, 1, 1, 1);
-		fexcraft.tmt.slim.TextureManager.bindTexture(ResourceLocation.fromNamespaceAndPath(Info.resourceLocation, Info.modelTexPrefix + "ring.png"));
+		fexcraft.tmt.slim.TextureManager.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation, Info.modelTexPrefix + "ring.png"));
 		render();
 		GL11.glPopMatrix();
 	}

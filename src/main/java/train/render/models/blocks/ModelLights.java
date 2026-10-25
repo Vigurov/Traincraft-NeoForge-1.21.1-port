@@ -34,13 +34,13 @@ public class ModelLights extends ModelBase {
 		//GL11.glEnable(GL11.GL_LIGHTING);
 		GL11.glPushMatrix();
 		GL11.glRotatef(90f, 0, 1, 0);
-		TextureManager.bindTexture(ResourceLocation.fromNamespaceAndPath(Info.resourceLocation,Info.modelTexPrefix + "lights3.png"));
+		TextureManager.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation,Info.modelTexPrefix + "lights3.png"));
 		branch.render();
 		if(world!=null) {
 			fexcraft.tmt.slim.RenderContext.fullBright = true;
 		}
 		GL11.glEnable(GL11.GL_BLEND);
-		TextureManager.bindTexture(ResourceLocation.fromNamespaceAndPath(Info.resourceLocation,Info.modelTexPrefix + "lights.png"));
+		TextureManager.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation,Info.modelTexPrefix + "lights.png"));
 		bulb.render();
 		GL11.glColor4f(1.0f, 1.0f, 1.0f, 0.3f);
 		plane.render();

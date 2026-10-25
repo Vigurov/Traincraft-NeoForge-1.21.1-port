@@ -422,9 +422,9 @@ public class ModelGS4Baggage extends ModelBase
 
 		//todo: this should be handled by TiM's skin system
 		if(entity instanceof GenericRailTransport && ((GenericRailTransport) entity).getCurrentSkin().name.equals("Red")){
-			Tessellator.bindTexture(ResourceLocation.fromNamespaceAndPath(Info.resourceLocation, "textures/trains/GS4_bogie_Red.png"));
+			Tessellator.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation, "textures/trains/GS4_bogie_Red.png"));
 		} else {
-			Tessellator.bindTexture(ResourceLocation.fromNamespaceAndPath(Info.resourceLocation, "textures/trains/GS4_bogie.png"));
+			Tessellator.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation, "textures/trains/GS4_bogie.png"));
 		}
 		GL11.glPushMatrix();
 		GL11.glTranslated(-3.1,0,0);

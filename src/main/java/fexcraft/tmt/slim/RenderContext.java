@@ -24,6 +24,8 @@ public final class RenderContext {
     public static boolean untextured;
     private static ResourceLocation boundBeforeUntextured;
     public static float r = 1, g = 1, b = 1, a = 1;
+    /**GL11.glPushMatrix depth, to unwind after a model fails*/
+    public static int depth;
 
     private RenderContext() {}
 

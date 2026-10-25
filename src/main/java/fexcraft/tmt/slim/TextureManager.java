@@ -27,6 +27,19 @@ public final class TextureManager {
 
     private TextureManager() {}
 
+    /**
+     * a texture location from 1.12 code: those used mixed case names (Windows and old Minecraft didn't mind),
+     * the files are lower case and 1.21 only takes lower case
+     */
+    public static ResourceLocation loc(String namespace, String path) {
+        return ResourceLocation.fromNamespaceAndPath(namespace.toLowerCase(java.util.Locale.ROOT),
+                path.toLowerCase(java.util.Locale.ROOT).replace(' ', '_'));
+    }
+
+    public static ResourceLocation parse(String location) {
+        return ResourceLocation.parse(location.toLowerCase(java.util.Locale.ROOT).replace(' ', '_'));
+    }
+
     public static int bindTexture(ResourceLocation textureURI) {
         RenderContext.bind(textureURI);
         return 0;

@@ -794,9 +794,9 @@ public class ModelFOL_M1 extends ModelBase
 
 		//todo: this should be handled by TiM's skin system
 		if(entity instanceof GenericRailTransport && ((GenericRailTransport) entity).getCurrentSkin().name.equals("Grey")){
-			Tessellator.bindTexture(ResourceLocation.fromNamespaceAndPath(Info.resourceLocation, "textures/trains/FOL_M1_Bogie_grey.png"));
+			Tessellator.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation, "textures/trains/FOL_M1_Bogie_grey.png"));
 		} else {
-			Tessellator.bindTexture(ResourceLocation.fromNamespaceAndPath(Info.resourceLocation, "textures/trains/FOL_M1_Bogie.png"));
+			Tessellator.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation, "textures/trains/FOL_M1_Bogie.png"));
 		}
 
 		GL11.glPushMatrix();

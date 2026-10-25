@@ -44,9 +44,9 @@ def port(s):
             k += 1
         args.append(cur)
         if len(args) == 2:
-            out.append('ResourceLocation.fromNamespaceAndPath(%s,%s)' % (args[0], args[1]))
+            out.append('fexcraft.tmt.slim.TextureManager.loc(%s,%s)' % (args[0], args[1]))
         else:
-            out.append('ResourceLocation.parse(%s)' % args[0])
+            out.append('fexcraft.tmt.slim.TextureManager.parse(%s)' % args[0])
         i = k + 1
     s = ''.join(out)
     s = re.sub(r'\bentity\.world\b', 'entity.level()', s)

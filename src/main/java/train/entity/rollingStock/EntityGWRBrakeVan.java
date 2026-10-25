@@ -1,0 +1,84 @@
+package train.entity.rollingStock;
+
+import ebf.tim.TrainsInMotion;
+import ebf.tim.api.SkinRegistry;
+import ebf.tim.api.TransportSkin;
+import ebf.tim.entities.GenericRailTransport;
+import fexcraft.tmt.slim.ModelBase;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.entity.EntityType;
+import train.library.Info;
+
+import java.util.List;
+
+public class EntityGWRBrakeVan extends GenericRailTransport {
+
+    public EntityGWRBrakeVan(EntityType<? extends GenericRailTransport> type, Level worldObj) {
+        super(type, worldObj);
+    }
+
+
+
+
+
+    //main stats
+    @Override
+    public String transportName(){return "GWR Toad Brake Van";}
+    @Override
+    public String transportcountry(){return "Uk";}
+    @Override
+    public String transportYear(){return "1894-1947";}
+    @Override
+    public boolean isFictional(){return false;}
+    @Override
+    public int getInventoryRows(){return 0;}
+    @Override
+    public List<TrainsInMotion.transportTypes> getTypes(){
+        return TrainsInMotion.transportTypes.WORKCAR.singleton();
+    }
+    @Override
+    public float weightKg(){return 18143.7f;}
+
+    //Model stuff
+    @Override
+    public ModelBase[] getModel(){return new ModelBase[]{new train.render.models.ModelGWRBrakeVan()};}
+    @Override
+    public float[][] modelOffsets(){return new float[][]{{0.0f, 0.0025f, 0.0f}};}
+    @Override
+    public float[][] modelRotations(){return new float[][]{{0.0f, 0.0f, 0.0f}};}
+    @Override
+    public void registerSkins(){
+        SkinRegistry.addSkin(this.getClass(),
+            new TransportSkin(Info.modID,"textures/trains/GWRBrakeVan.png","GWRBrakeVan", "description.GWRBrakeVan"));
+    }
+    @Override
+    public String getDefaultSkin(){
+        return Info.modID+":"+"GWRBrakeVan";
+    }
+
+
+    //recipe
+
+
+    //these are separated for being fiddly.
+    @Override
+    public float[][] getRiderOffsets(){return new float[][]{{0,1.6f, -0.2f}};}
+    @Override
+    public float[] getHitboxSize(){return new float[]{6.85f,2.45f,1.5f};}
+    @Override
+    public float[] rotationPoints() {return new float[]{2.01f, -2.06f};}
+
+
+
+    //these only change in very specific use cases.
+    @Override
+    public boolean shouldRiderSit(){
+        return true;
+    }
+    @Override
+    public float getMaxFuel(){return 1;}
+
+}

@@ -102,7 +102,7 @@ public class ModelStopper extends ModelBase {
 		GL11.glPushMatrix();
 		GL11.glTranslatef(0, 0, 0);
 		GL11.glRotatef(90, 0, 1, 0);
-		fexcraft.tmt.slim.TextureManager.bindTexture(ResourceLocation.fromNamespaceAndPath(Info.resourceLocation, Info.modelTexPrefix + "track_normal.png"));
+		fexcraft.tmt.slim.TextureManager.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation, Info.modelTexPrefix + "track_normal.png"));
 		GL11.glColor4f(1, 1, 1, 1);
 		track.render(1);
 		GL11.glPopMatrix();
@@ -119,7 +119,7 @@ public class ModelStopper extends ModelBase {
 		// box4.render(f5);
 		box5.render(f5);
 		GL11.glRotatef(90, 0, 1, 0);
-		fexcraft.tmt.slim.TextureManager.bindTexture(ResourceLocation.fromNamespaceAndPath(Info.resourceLocation, Info.modelTexPrefix + "track_normal.png"));
+		fexcraft.tmt.slim.TextureManager.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation, Info.modelTexPrefix + "track_normal.png"));
 		GL11.glColor4f(1, 1, 1, 1);
 		track.render();
 	}

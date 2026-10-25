@@ -1,23 +1,29 @@
 package train.entity.trains;
 
+import ebf.tim.entities.GenericRailTransport;
 import ebf.tim.TrainsInMotion;
 import ebf.tim.api.SkinRegistry;
 import ebf.tim.api.TransportSkin;
 import ebf.tim.entities.EntityTrainCore;
-import ebf.tim.entities.GenericRailTransport;
 import ebf.tim.utility.ItemStackSlot;
 import fexcraft.tmt.slim.ModelBase;
-import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.entity.EntityType;
 import train.library.Info;
 
 import java.util.List;
 
 public class EntityLocoDieselChME3 extends EntityTrainCore {
 
-    public EntityLocoDieselChME3(EntityType<? extends GenericRailTransport> type, Level world) {
-        super(type, world);
+    public EntityLocoDieselChME3(EntityType<? extends GenericRailTransport> type, Level worldObj) {
+        super(type, worldObj);
     }
+
+
+
+
 
     //main stats
     @Override
@@ -42,7 +48,7 @@ public class EntityLocoDieselChME3 extends EntityTrainCore {
     public ModelBase[] getModel(){return new ModelBase[]{new train.render.models.ModelChME3()};}
     @Override
     public float[][] modelOffsets(){return new float[][]{{0.0f, 0.62f, 0.0f}};}
-    @Override
+@Override
     public float[][] modelRotations(){return new float[][]{{0f,180f,180f}};}
     @Override
     public void registerSkins(){
@@ -53,6 +59,10 @@ public class EntityLocoDieselChME3 extends EntityTrainCore {
     public String getDefaultSkin(){
         return Info.modID+":"+"chme3";
     }
+
+
+    //recipe
+
 
     //these are separated for being fiddly.
     @Override
@@ -78,6 +88,8 @@ public class EntityLocoDieselChME3 extends EntityTrainCore {
     public String[] setParticles(){return new String[]{
             "smoke ,0,-0.15,1.55,0,0,0,0"
     };}
+
+
 
     //these only change in very specific use cases.
     @Override

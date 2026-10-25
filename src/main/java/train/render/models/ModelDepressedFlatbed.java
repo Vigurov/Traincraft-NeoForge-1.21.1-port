@@ -44,7 +44,7 @@ public class ModelDepressedFlatbed extends ModelConverter //Same as Filename
 	{
 		super.render(entity, f, f1, f2, f3, f4, f5);
 
-		Tessellator.bindTexture(ResourceLocation.fromNamespaceAndPath(Info.resourceLocation, "textures/trains/freighttruckm.png"));
+		Tessellator.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation, "textures/trains/freighttruckm.png"));
 		GL11.glPushMatrix();
 		GL11.glTranslated(-3.15,0,-0.25);
 		trucks.render(entity,f,f1,f2,f3,f4,f5);
@@ -54,20 +54,20 @@ public class ModelDepressedFlatbed extends ModelConverter //Same as Filename
 
 		//todo:this shuld be handled by TiM's skin system
 		/*if( entity instanceof AbstractTrains && ((AbstractTrains) entity).getColor()==7) {
-			Tessellator.bindTexture(ResourceLocation.fromNamespaceAndPath(Info.resourceLocation, "textures/trains/CharB1.png"));
+			Tessellator.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation, "textures/trains/CharB1.png"));
 			GL11.glPushMatrix();
 			GL11.glTranslated(0.9, 0.14, -0.0425);
 			GL11.glScalef(0.55f, 0.55f, 0.55f);
 			tank1.render(entity, f, f1, f2, f3, f4, f5);
 			GL11.glPopMatrix();
 		} else if( entity instanceof AbstractTrains && ((AbstractTrains) entity).getColor()==0) {
-			Tessellator.bindTexture(ResourceLocation.fromNamespaceAndPath(Info.resourceLocation, "textures/trains/PanzerI.png"));
+			Tessellator.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation, "textures/trains/PanzerI.png"));
 			GL11.glPushMatrix();
 			GL11.glTranslated(0.45,0.025,-0.11);
 			GL11.glScalef(0.55f,0.55f,0.55f);
 			tank3.render(entity,f,f1,f2,f3,f4,f5);
 			GL11.glPopMatrix();
-		} else {     Tessellator.bindTexture(ResourceLocation.fromNamespaceAndPath(Info.resourceLocation, "textures/trains/FT17.png"));
+		} else {     Tessellator.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation, "textures/trains/FT17.png"));
 			GL11.glPushMatrix();
 			GL11.glTranslated(0.5,0.04,-0.0425);
 			GL11.glScalef(0.55f,0.55f,0.55f);

@@ -552,10 +552,10 @@ public class ModelBuilder extends ModelBase {
 		lastframe = now;
 
 		if (((GenericRailTransport)entity).getBoolean(GenericRailTransport.boolValues.RUNNING)) {
-			fexcraft.tmt.slim.TextureManager.bindTexture(ResourceLocation.fromNamespaceAndPath(Info.resourceLocation,Info.trainsPrefix + "builder2.png"));
+			fexcraft.tmt.slim.TextureManager.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation,Info.trainsPrefix + "builder2.png"));
 		}
 		else {
-			fexcraft.tmt.slim.TextureManager.bindTexture(ResourceLocation.fromNamespaceAndPath(Info.resourceLocation,Info.trainsPrefix + "builder.png"));
+			fexcraft.tmt.slim.TextureManager.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation,Info.trainsPrefix + "builder.png"));
 		}
 
 		box.render(f5);
@@ -652,7 +652,7 @@ public class ModelBuilder extends ModelBase {
 		box90.render(f5);
 		box91.render(f5);
 
-		fexcraft.tmt.slim.TextureManager.bindTexture(ResourceLocation.fromNamespaceAndPath(Info.resourceLocation,Info.trainsPrefix + "builder_rotor.png"));
+		fexcraft.tmt.slim.TextureManager.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation,Info.trainsPrefix + "builder_rotor.png"));
 
 		rotor1.render(f5);
 		rotor2.render(f5);

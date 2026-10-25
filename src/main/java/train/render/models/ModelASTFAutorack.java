@@ -629,7 +629,7 @@ public class ModelASTFAutorack extends ModelBase
 	public void render(Entity entity, float f, float f1, float f2, float f3, float f4, float f5)
 	{
 		super.render(entity, f, f1, f2, f3, f4, f5);
-		Tessellator.bindTexture(ResourceLocation.fromNamespaceAndPath(Info.resourceLocation, "textures/trains/AmericanFreightTrucks.png"));
+		Tessellator.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation, "textures/trains/AmericanFreightTrucks.png"));
 		GL11.glPushMatrix();
 		GL11.glTranslatef(-2.65f,0.6f,-0.35f);
 		bogie.render(entity, f, f1, f2, f3, f4, f5);

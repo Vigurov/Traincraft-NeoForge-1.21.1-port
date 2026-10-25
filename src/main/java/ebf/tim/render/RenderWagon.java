@@ -54,12 +54,21 @@ public class RenderWagon extends EntityRenderer<GenericRailTransport> {
         float yaw = Mth.rotLerp(partialTick, entity.yRotO, entity.getYRot());
         float pitch = Mth.lerp(partialTick, entity.xRotO, entity.getXRot());
         RenderContext.begin(pose, buffers, packedLight, null);
+        int depth = RenderContext.depth;
         try {
             doRender(entity, yaw, pitch, entity.backBogie != null ? entity.backBogie.yOffset : 0, false, null);
+        } catch (RuntimeException e) {
+            //one broken model should not take the game down: report it once and skip it
+            if (FAILED.add(entity.getClass())) {
+                org.slf4j.LoggerFactory.getLogger("traincraft").error("could not render " + entity.getClass().getSimpleName(), e);
+            }
+            while (RenderContext.depth > depth) fexcraft.tmt.slim.GL11.glPopMatrix();
         } finally {
             RenderContext.end();
         }
     }
+
+    private static final java.util.Set<Class<?>> FAILED = new java.util.HashSet<>();
 
     /**
      * <h3>Actually render</h3>

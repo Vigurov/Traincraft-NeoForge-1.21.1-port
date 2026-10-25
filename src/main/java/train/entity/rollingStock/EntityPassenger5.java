@@ -1,0 +1,85 @@
+package train.entity.rollingStock;
+
+import ebf.tim.TrainsInMotion;
+import ebf.tim.api.SkinRegistry;
+import ebf.tim.api.TransportSkin;
+import ebf.tim.entities.GenericRailTransport;
+import fexcraft.tmt.slim.ModelBase;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.entity.EntityType;
+import train.library.Info;
+
+import java.util.List;
+
+public class EntityPassenger5 extends GenericRailTransport {
+
+    public EntityPassenger5(EntityType<? extends GenericRailTransport> type, Level worldObj) {
+        super(type, worldObj);
+    }
+
+
+
+
+
+    //main stats
+    @Override
+    public String transportName(){return "Passenger Green Long";}
+    @Override
+    public String transportcountry(){return "Us";}
+    @Override
+    public String transportYear(){return "1914-1960";}
+    @Override
+    public boolean isFictional(){return false;}
+    @Override
+    public int getInventoryRows(){return 0;}
+    @Override
+    public List<TrainsInMotion.transportTypes> getTypes(){
+        return TrainsInMotion.transportTypes.PASSENGER.singleton();
+    }
+    @Override
+    public float weightKg(){return 58967f;}
+
+    //Model stuff
+    @Override
+    public ModelBase[] getModel(){return new ModelBase[]{new train.render.models.ModelPassenger5()};}
+    @Override
+    public float[][] modelOffsets(){return new float[][]{{0.0f, 0.57f, 0.0f}};}
+@Override
+    public float[][] modelRotations(){return new float[][]{{0f,180f,180f}};}
+    @Override
+    public void registerSkins(){
+        SkinRegistry.addSkin(this.getClass(),
+            new TransportSkin(Info.modID,"textures/trains/passenger5_Green.png","Green", "description.passenger5.Green"));
+        SkinRegistry.addSkin(this.getClass(),
+            new TransportSkin(Info.modID,"textures/trains/passenger5_Yellow.png","Yellow", "description.passenger5.Yellow"));
+    }
+    @Override
+    public String getDefaultSkin(){
+        return Info.modID+":"+"Green";
+    }
+
+
+    //recipe
+
+
+    //these are separated for being fiddly.
+    @Override
+    public float[][] getRiderOffsets(){return new float[][]{{0,1.2f, 0f}};}
+    @Override
+    public float[] getHitboxSize(){return new float[]{level()==null?3.75f:3.55f,2.3f,1.4f};}
+    @Override
+    public float[] rotationPoints() {return new float[]{0.76f, -0.85f};}
+
+
+
+    //these only change in very specific use cases.
+    @Override
+    public boolean shouldRiderSit(){
+        return false;
+    }
+    @Override
+    public float getMaxFuel(){return 1;}
+
+}

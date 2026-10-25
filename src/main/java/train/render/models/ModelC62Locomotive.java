@@ -41,12 +41,12 @@ public class ModelC62Locomotive extends ModelConverter //Same as Filename
 	public void render(Entity entity, float f0, float f1, float f2, float f3, float f4, float scale){
 		super.render(entity, f0, f1, f2, f3, f4, scale);
 		//todo: this should be handled by TiM's skin system.
-		Tessellator.bindTexture(ResourceLocation.fromNamespaceAndPath(Info.resourceLocation,Info.trainsPrefix +"c62_front_"+((GenericRailTransport)entity).getCurrentSkin().name + ".png"));
+		Tessellator.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation,Info.trainsPrefix +"c62_front_"+((GenericRailTransport)entity).getCurrentSkin().name + ".png"));
 		GL11.glPushMatrix();
 		GL11.glTranslatef(-5.75f,-0.15f,0);
 		frontBogie.render();
 		//todo: this should be handled by TiM's skin system.
-		Tessellator.bindTexture(ResourceLocation.fromNamespaceAndPath(Info.resourceLocation,Info.trainsPrefix +"c62_back_"+((GenericRailTransport)entity).getCurrentSkin().name + ".png"));
+		Tessellator.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation,Info.trainsPrefix +"c62_back_"+((GenericRailTransport)entity).getCurrentSkin().name + ".png"));
 		GL11.glTranslatef(5.75f,0.15f,0);
 		rearBogie.render();
 		GL11.glPopMatrix();
