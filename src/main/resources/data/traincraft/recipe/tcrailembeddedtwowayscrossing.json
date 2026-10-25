@@ -1,0 +1,18 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "misc",
+ "pattern": [
+  " S ",
+  "SSS",
+  " S "
+ ],
+ "key": {
+  "S": {
+   "item": "traincraft:tcrailembeddedsmallstraight"
+  }
+ },
+ "result": {
+  "id": "traincraft:tcrailembeddedtwowayscrossing",
+  "count": 1
+ }
+}

@@ -105,6 +105,9 @@ public class WavefrontObject implements IModelCustom {
         fexcraft.tmt.slim.Tessellator t = fexcraft.tmt.slim.Tessellator.getInstance();
         for (Face f : g.faces) {
             t.startDrawing(f.v.length == 4 ? fexcraft.tmt.slim.GL11.GL_QUADS : fexcraft.tmt.slim.GL11.GL_TRIANGLES);
+            //the file's normal where it has one (1.12 passed them per vertex), else the face's
+            float[] fn = f.n[0] != null ? f.n[0] : faceNormal(f);
+            t.setNormal(fn[0], fn[1], fn[2]);
             for (int i = 0; i < f.v.length; i++) {
                 float u = f.t[i] != null ? f.t[i][0] : 0, v = f.t[i] != null ? f.t[i][1] : 0;
                 t.addVertexWithUV(f.v[i][0], f.v[i][1], f.v[i][2], u, v);

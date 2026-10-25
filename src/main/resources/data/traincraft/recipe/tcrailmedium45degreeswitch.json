@@ -1,0 +1,24 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "misc",
+ "pattern": [
+  "G D",
+  "GH ",
+  "G  "
+ ],
+ "key": {
+  "G": {
+   "item": "traincraft:tcrailsmallstraight"
+  },
+  "H": {
+   "item": "traincraft:tcrailmedium45degreeturn"
+  },
+  "D": {
+   "item": "traincraft:tcrailsmalldiagonalstraight"
+  }
+ },
+ "result": {
+  "id": "traincraft:tcrailmedium45degreeswitch",
+  "count": 1
+ }
+}

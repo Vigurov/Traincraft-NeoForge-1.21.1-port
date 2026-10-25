@@ -1,0 +1,18 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "misc",
+ "pattern": [
+  " S",
+  "SS",
+  "S "
+ ],
+ "key": {
+  "S": {
+   "item": "traincraft:tcrailembeddedsmallparallelcurve"
+  }
+ },
+ "result": {
+  "id": "traincraft:tcrailembeddedmediumparallelcurve",
+  "count": 1
+ }
+}

@@ -1,0 +1,21 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "misc",
+ "pattern": [
+  " TS",
+  "TSS",
+  "SSS"
+ ],
+ "key": {
+  "T": {
+   "item": "traincraft:tcrailmediumstraight"
+  },
+  "S": {
+   "item": "minecraft:snow_block"
+  }
+ },
+ "result": {
+  "id": "traincraft:tcrailslopesnowgravel",
+  "count": 1
+ }
+}

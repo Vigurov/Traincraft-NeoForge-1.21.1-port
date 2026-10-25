@@ -1,0 +1,19 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "misc",
+ "pattern": [
+  "SRS"
+ ],
+ "key": {
+  "S": {
+   "item": "minecraft:black_terracotta"
+  },
+  "R": {
+   "item": "minecraft:rail"
+  }
+ },
+ "result": {
+  "id": "traincraft:tcrailsmallroadcrossing",
+  "count": 1
+ }
+}

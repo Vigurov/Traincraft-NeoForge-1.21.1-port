@@ -1,0 +1,21 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "misc",
+ "pattern": [
+  " TP",
+  "TPP",
+  "PPP"
+ ],
+ "key": {
+  "T": {
+   "item": "traincraft:tcrailmediumstraight"
+  },
+  "P": {
+   "tag": "minecraft:planks"
+  }
+ },
+ "result": {
+  "id": "traincraft:tcrailslopewood",
+  "count": 1
+ }
+}

@@ -1,0 +1,18 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "misc",
+ "pattern": [
+  "  T",
+  " T ",
+  "T  "
+ ],
+ "key": {
+  "T": {
+   "item": "traincraft:tcrailslopedynamic"
+  }
+ },
+ "result": {
+  "id": "traincraft:tcrailverylargeslopedynamic",
+  "count": 1
+ }
+}

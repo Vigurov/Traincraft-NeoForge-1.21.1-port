@@ -1,0 +1,13 @@
+{
+ "type": "minecraft:crafting_shapeless",
+ "category": "misc",
+ "ingredients": [
+  {
+   "item": "traincraft:tcraillargeturn"
+  }
+ ],
+ "result": {
+  "id": "traincraft:tcraillarge45degreeturn",
+  "count": 2
+ }
+}

@@ -19,6 +19,12 @@ public class Tessellator {
     private static Float x, y, z;
     private final List<float[]> pending = new ArrayList<>();
     private int mode = GL11.GL_POLYGON;
+    /**a normal for the next draw() (OBJ models know theirs), else it is worked out from each polygon*/
+    private float[] nextNormal;
+
+    public void setNormal(float x, float y, float z) {
+        nextNormal = new float[]{x, y, z};
+    }
 
     public static Tessellator getInstance() {
         return INSTANCE;
@@ -34,6 +40,17 @@ public class Tessellator {
     /**draws what was added since startDrawing, split up like OpenGL would for the mode*/
     public void draw() {
         List<float[]> p = pending;
+        float[] n = nextNormal;
+        nextNormal = null;
+        if (n != null) {
+            //the normal applies to the whole draw: one polygon per call in the OBJ loader
+            if (p.size() >= 3) {
+                if (mode == GL11.GL_QUADS || p.size() == 4 || p.size() == 3) emit(p, 1f, n[0], n[1], n[2]);
+                else for (int i = 1; i + 1 < p.size(); i++) emit(List.of(p.get(0), p.get(i), p.get(i + 1)), 1f, n[0], n[1], n[2]);
+            }
+            pending.clear();
+            return;
+        }
         switch (mode) {
             case GL11.GL_QUADS:
                 for (int i = 0; i + 3 < p.size(); i += 4) emit(p.subList(i, i + 4), 1f, 0, 0, 0);

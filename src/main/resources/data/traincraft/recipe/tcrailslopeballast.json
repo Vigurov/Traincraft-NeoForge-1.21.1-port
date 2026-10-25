@@ -1,0 +1,21 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "misc",
+ "pattern": [
+  " TG",
+  "TGG",
+  "GGG"
+ ],
+ "key": {
+  "T": {
+   "item": "traincraft:tcrailmediumstraight"
+  },
+  "G": {
+   "item": "minecraft:gravel"
+  }
+ },
+ "result": {
+  "id": "traincraft:tcrailslopeballast",
+  "count": 1
+ }
+}

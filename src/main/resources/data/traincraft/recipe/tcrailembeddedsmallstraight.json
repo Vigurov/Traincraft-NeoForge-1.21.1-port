@@ -1,0 +1,21 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "misc",
+ "pattern": [
+  "I I",
+  "B B",
+  "I I"
+ ],
+ "key": {
+  "I": {
+   "item": "minecraft:iron_ingot"
+  },
+  "B": {
+   "item": "minecraft:iron_nugget"
+  }
+ },
+ "result": {
+  "id": "traincraft:tcrailembeddedsmallstraight",
+  "count": 16
+ }
+}

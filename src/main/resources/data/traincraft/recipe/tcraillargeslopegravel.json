@@ -1,0 +1,17 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "misc",
+ "pattern": [
+  " S",
+  "S "
+ ],
+ "key": {
+  "S": {
+   "item": "traincraft:tcrailslopegravel"
+  }
+ },
+ "result": {
+  "id": "traincraft:tcraillargeslopegravel",
+  "count": 1
+ }
+}

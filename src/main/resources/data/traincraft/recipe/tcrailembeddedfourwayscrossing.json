@@ -1,0 +1,21 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "misc",
+ "pattern": [
+  "DSD",
+  "SDS",
+  "DSD"
+ ],
+ "key": {
+  "S": {
+   "item": "traincraft:tcrailembeddedsmallstraight"
+  },
+  "D": {
+   "item": "traincraft:tcrailembeddedsmalldiagonalstraight"
+  }
+ },
+ "result": {
+  "id": "traincraft:tcrailembeddedfourwayscrossing",
+  "count": 1
+ }
+}

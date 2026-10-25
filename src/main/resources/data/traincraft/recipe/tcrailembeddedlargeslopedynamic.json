@@ -1,0 +1,17 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "misc",
+ "pattern": [
+  " S",
+  "S "
+ ],
+ "key": {
+  "S": {
+   "item": "traincraft:tcrailembeddedslopedynamic"
+  }
+ },
+ "result": {
+  "id": "traincraft:tcrailembeddedlargeslopedynamic",
+  "count": 1
+ }
+}

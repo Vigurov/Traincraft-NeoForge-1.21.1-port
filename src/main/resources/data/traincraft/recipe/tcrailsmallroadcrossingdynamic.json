@@ -1,0 +1,19 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "misc",
+ "pattern": [
+  "SRS"
+ ],
+ "key": {
+  "S": {
+   "item": "minecraft:white_wool"
+  },
+  "R": {
+   "item": "minecraft:rail"
+  }
+ },
+ "result": {
+  "id": "traincraft:tcrailsmallroadcrossingdynamic",
+  "count": 1
+ }
+}

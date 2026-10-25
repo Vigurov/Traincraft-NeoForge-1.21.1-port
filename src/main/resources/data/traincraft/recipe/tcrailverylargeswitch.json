@@ -1,0 +1,24 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "misc",
+ "pattern": [
+  "H  ",
+  "HIG",
+  "H  "
+ ],
+ "key": {
+  "G": {
+   "item": "traincraft:tcrailsmallstraight"
+  },
+  "H": {
+   "item": "traincraft:tcrailmediumstraight"
+  },
+  "I": {
+   "item": "traincraft:tcrailverylargeturn"
+  }
+ },
+ "result": {
+  "id": "traincraft:tcrailverylargeswitch",
+  "count": 1
+ }
+}

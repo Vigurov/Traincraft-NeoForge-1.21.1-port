@@ -1,0 +1,21 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "misc",
+ "pattern": [
+  "G  ",
+  "GHG",
+  "G  "
+ ],
+ "key": {
+  "G": {
+   "item": "traincraft:tcrailsmallstraight"
+  },
+  "H": {
+   "item": "traincraft:tcrailmediumturn"
+  }
+ },
+ "result": {
+  "id": "traincraft:tcrailmediumswitch",
+  "count": 1
+ }
+}

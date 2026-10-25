@@ -1,0 +1,21 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "misc",
+ "pattern": [
+  " TG",
+  "TGG",
+  "GGG"
+ ],
+ "key": {
+  "T": {
+   "item": "traincraft:tcrailembeddedmediumstraight"
+  },
+  "G": {
+   "item": "minecraft:red_dye"
+  }
+ },
+ "result": {
+  "id": "traincraft:tcrailembeddedslopedynamic",
+  "count": 1
+ }
+}

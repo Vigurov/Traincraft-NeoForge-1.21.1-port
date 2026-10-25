@@ -1,0 +1,17 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "misc",
+ "pattern": [
+  "GG",
+  "G "
+ ],
+ "key": {
+  "G": {
+   "item": "traincraft:tcrail1x1turn"
+  }
+ },
+ "result": {
+  "id": "traincraft:tcrailmediumturn",
+  "count": 1
+ }
+}

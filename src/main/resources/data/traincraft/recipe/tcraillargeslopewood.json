@@ -1,0 +1,17 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "misc",
+ "pattern": [
+  " T",
+  "T "
+ ],
+ "key": {
+  "T": {
+   "item": "traincraft:tcrailslopewood"
+  }
+ },
+ "result": {
+  "id": "traincraft:tcraillargeslopewood",
+  "count": 1
+ }
+}
