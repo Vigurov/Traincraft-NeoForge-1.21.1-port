@@ -38,3 +38,6 @@ run/
 **/src/generated/**/.cache/
 repo/
 !**/src/**/repo/
+
+# dev client run directory (worlds, logs, screenshots, autotest settings)
+run/

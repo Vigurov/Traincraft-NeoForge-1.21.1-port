@@ -1,0 +1,196 @@
+package train.devtest;
+
+import com.mojang.blaze3d.platform.NativeImage;
+import ebf.tim.entities.EntityTrainCore;
+import ebf.tim.entities.GenericRailTransport;
+import ebf.tim.registry.TiMGenericRegistry;
+import ebf.tim.utility.CommonUtil;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.Screenshot;
+import net.minecraft.client.gui.screens.TitleScreen;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.Difficulty;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.level.GameRules;
+import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.LevelSettings;
+import net.minecraft.world.level.WorldDataConfiguration;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.levelgen.WorldOptions;
+import net.minecraft.world.level.levelgen.presets.WorldPresets;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.common.NeoForge;
+
+import java.io.File;
+import java.io.FileReader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Comparator;
+import java.util.Properties;
+
+/**
+ * Dev autotest, the 1.21 version of the 1.12 one: active when the game directory has a tctest.properties
+ * (gradle's daemon keeps its environment, so the settings come from a file). It makes a flat creative world, runs
+ * "use" lines that place blocks and transports, can seat the player and drive, logs the transports and takes
+ * screenshots, then quits.
+ *
+ * keys: use=block_or_item@x,y,z[@yaw];... (positions relative to the spawn ground), cam=dx,dy,dz,yaw,pitch,
+ * seat=1, drive=accelerator (TiM: negative is forwards), start=ticks before driving, ticks=total,
+ * shots=from,to,every, log=every
+ */
+public class AutoTest {
+    private static Properties p;
+    private static boolean started;
+    private static int tick = -1;
+    private static BlockPos base;
+    private static GenericRailTransport train;
+
+    public static void init() {
+        File f = new File(Minecraft.getInstance().gameDirectory, "tctest.properties");
+        if (!f.exists()) {
+            return;
+        }
+        p = new Properties();
+        try (FileReader r = new FileReader(f)) {
+            p.load(r);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        NeoForge.EVENT_BUS.addListener(AutoTest::onTick);
+        log("autotest on: " + p);
+    }
+
+    private static int i(String key, int def) {
+        return p.containsKey(key) ? Integer.parseInt(p.getProperty(key).trim()) : def;
+    }
+
+    private static void log(String s) {
+        System.out.println("[TCTEST] " + s);
+    }
+
+    private static void onTick(ClientTickEvent.Post event) {
+        Minecraft mc = Minecraft.getInstance();
+        if (!started && mc.screen instanceof TitleScreen) {
+            started = true;
+            String name = "tctest";
+            try {
+                Path dir = mc.gameDirectory.toPath().resolve("saves").resolve(name);
+                if (Files.exists(dir)) {
+                    try (var walk = Files.walk(dir)) {
+                        walk.sorted(Comparator.reverseOrder()).forEach(x -> x.toFile().delete());
+                    }
+                }
+            } catch (Exception e) {
+                log("could not delete old world " + e);
+            }
+            GameRules rules = new GameRules();
+            rules.getRule(GameRules.RULE_DAYLIGHT).set(false, null);
+            rules.getRule(GameRules.RULE_WEATHER_CYCLE).set(false, null);
+            rules.getRule(GameRules.RULE_DOMOBSPAWNING).set(false, null);
+            LevelSettings settings = new LevelSettings(name, GameType.CREATIVE, false, Difficulty.PEACEFUL, true, rules, WorldDataConfiguration.DEFAULT);
+            mc.createWorldOpenFlows().createFreshLevel(name, settings, new WorldOptions(1234L, false, false),
+                    reg -> reg.registryOrThrow(Registries.WORLD_PRESET).getHolderOrThrow(WorldPresets.FLAT).value().createWorldDimensions(),
+                    mc.screen);
+            return;
+        }
+        if (mc.player == null || mc.getSingleplayerServer() == null) {
+            return;
+        }
+        tick++;
+        ServerLevel level = mc.getSingleplayerServer().overworld();
+        ServerPlayer sp = mc.getSingleplayerServer().getPlayerList().getPlayer(mc.player.getUUID());
+        if (sp == null) {
+            return;
+        }
+        if (tick == 20) {
+            level.setDayTime(6000);
+            base = BlockPos.containing(sp.getX(), sp.getY(), sp.getZ());
+            log("base " + base);
+            for (String use : p.getProperty("use", "").split(";")) {
+                if (!use.isBlank()) run(level, sp, use.trim());
+            }
+            if (p.containsKey("cam")) {
+                String[] c = p.getProperty("cam").split(",");
+                sp.getAbilities().flying = true;
+                sp.onUpdateAbilities();
+                sp.teleportTo(level, base.getX() + Double.parseDouble(c[0]), base.getY() + Double.parseDouble(c[1]), base.getZ() + Double.parseDouble(c[2]),
+                        Float.parseFloat(c[3]), Float.parseFloat(c[4]));
+            }
+        }
+        int start = i("start", 60);
+        if (tick == start - 20 && train != null && i("seat", 0) == 1) {
+            boolean ok = sp.startRiding(train);
+            log("seat " + ok);
+            if (i("view", 1) == 3) {
+                mc.options.setCameraType(net.minecraft.client.CameraType.THIRD_PERSON_BACK);
+            }
+        }
+        if (tick == start && train instanceof EntityTrainCore && p.containsKey("drive")) {
+            train.interact(sp, false, false, 8); //engine
+            int acc = i("drive", 0);
+            ((EntityTrainCore) train).accelerator = acc;
+            log("drive " + acc + " running=" + train.getBoolean(GenericRailTransport.boolValues.RUNNING));
+        }
+        int every = i("log", 10);
+        if (train != null && tick >= 20 && tick % every == 0) {
+            GenericRailTransport client = (GenericRailTransport) mc.level.getEntity(train.getId());
+            log(String.format("t=%d pos=(%.2f,%.2f,%.2f) yaw=%.1f pitch=%.1f v=%.3f acc=%d derail=%s front=%s back=%s client=%s",
+                    tick, train.getX() - base.getX(), train.getY() - base.getY(), train.getZ() - base.getZ(), train.getYRot(), train.getXRot(),
+                    train.getVelocity(), train.getAccelerator(), train.getBoolean(GenericRailTransport.boolValues.DERAILED),
+                    train.frontBogie == null ? "-" : train.frontBogie.debugState(), train.backBogie == null ? "-" : train.backBogie.debugState(),
+                    client == null ? "none" : String.format("(%.2f,%.2f,%.2f yaw=%.1f)", client.getX() - base.getX(), client.getY() - base.getY(), client.getZ() - base.getZ(), client.getYRot())));
+        }
+        if (p.containsKey("shots")) {
+            String[] s = p.getProperty("shots").split(",");
+            int from = Integer.parseInt(s[0]), to = Integer.parseInt(s[1]), step = Integer.parseInt(s[2]);
+            if (tick >= from && tick <= to && (tick - from) % step == 0) {
+                Screenshot.grab(mc.gameDirectory, "tc-" + tick + ".png", mc.getMainRenderTarget(), c -> log("shot " + tick));
+            }
+        }
+        if (tick == i("ticks", 200)) {
+            log("done");
+            mc.stop();
+        }
+    }
+
+    /** block@x,y,z  or  rail line: block@x,y,z@len@axis  or  transport item@x,y,z@playerSide */
+    private static void run(ServerLevel level, ServerPlayer sp, String use) {
+        String[] a = use.split("@");
+        String[] xyz = a[1].split(",");
+        BlockPos pos = base.offset(Integer.parseInt(xyz[0]), Integer.parseInt(xyz[1]), Integer.parseInt(xyz[2]));
+        ResourceLocation id = ResourceLocation.parse(a[0]);
+        if (BuiltInRegistries.BLOCK.containsKey(id)) {
+            Block b = BuiltInRegistries.BLOCK.get(id);
+            int len = a.length > 2 ? Integer.parseInt(a[2]) : 1;
+            String axis = a.length > 3 ? a[3] : "x";
+            for (int n = 0; n < len; n++) {
+                BlockPos at = axis.equals("x") ? pos.offset(n, 0, 0) : pos.offset(0, 0, n);
+                level.setBlock(at.below(), Blocks.STONE.defaultBlockState(), 3);
+                level.setBlock(at, b.defaultBlockState(), 3);
+            }
+            log("placed " + len + " " + id + " from " + pos + " along " + axis);
+            return;
+        }
+        for (var type : TiMGenericRegistry.TRANSPORTS) {
+            if (BuiltInRegistries.ENTITY_TYPE.getKey(type.get()).equals(id)) {
+                GenericRailTransport t = type.get().create(level);
+                t.setOwner(sp.getUUID());
+                //the placement code picks the direction from where the player stands
+                double side = a.length > 2 ? Double.parseDouble(a[2]) : -5;
+                sp.teleportTo(pos.getX() + 0.5 + side, pos.getY(), pos.getZ() + 0.5 + side * 0.3);
+                boolean ok = CommonUtil.placeOnRail(t, sp, null, level, pos.getX(), pos.getY(), pos.getZ());
+                log("transport " + id + " at " + pos + " placed=" + ok + " yaw=" + t.getYRot());
+                if (ok) train = t;
+                return;
+            }
+        }
+        log("unknown " + use);
+    }
+}
