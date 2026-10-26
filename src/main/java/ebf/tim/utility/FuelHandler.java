@@ -301,9 +301,9 @@ public class FuelHandler{
 				if(i==1){continue;}
 				BlockPos pos = BlockPos.containing(train.getX(), train.getY() + i, train.getZ());
 				IEnergyStorage te = train.level().getCapability(Capabilities.EnergyStorage.BLOCK, pos, null);
-				if (te != null && te.extractEnergy(100, true) == 100) {
-					te.extractEnergy(100, false);
-					train.fill(new FluidStack(TiMFluids.fluidRedstone, 100), true);
+				//as much as the block gives in a tick, up to 100 (Traincraft's generators give at most 80 at a time)
+				if (te != null && te.extractEnergy(100, true) > 0) {
+					train.fill(new FluidStack(TiMFluids.fluidRedstone, te.extractEnergy(100, false)), true);
 					break;
 				}
 			}

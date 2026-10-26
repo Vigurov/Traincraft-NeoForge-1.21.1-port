@@ -114,7 +114,8 @@ public class MachineBlock extends HorizontalDirectionalBlock implements EntityBl
     /** smoke from a working machine */
     @Override
     public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
-        if (state.getValue(LIT) && hasScreen()) {
+        //no smoke through whatever stands on it (a generator under the track smoked through the rails)
+        if (state.getValue(LIT) && hasScreen() && level.isEmptyBlock(pos.above())) {
             double x = pos.getX() + 0.5, y = pos.getY() + 1.0, z = pos.getZ() + 0.5;
             level.addParticle(ParticleTypes.SMOKE, x + (random.nextDouble() - 0.5) * 0.4, y, z + (random.nextDouble() - 0.5) * 0.4, 0, 0.02, 0);
         }

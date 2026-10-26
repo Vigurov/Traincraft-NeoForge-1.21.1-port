@@ -206,19 +206,25 @@ public class AutoTest {
             //machine=kind|slot:item:count,...|gui   places the machine, fills its slots, logs it every 100 ticks
             server.execute(() -> {
                 String[] a = p.getProperty("machine").split("\\|");
+                //kind[@x,y,z]: the position defaults to beside the spawn
                 BlockPos at = base.offset(-3, 0, 2);
+                if (a[0].contains("@")) {
+                    String[] xyz = a[0].split("@")[1].split(",");
+                    at = base.offset(Integer.parseInt(xyz[0]), Integer.parseInt(xyz[1]), Integer.parseInt(xyz[2]));
+                    a[0] = a[0].split("@")[0];
+                }
                 level.setBlock(at, BuiltInRegistries.BLOCK.get(ResourceLocation.parse("traincraft:block." + a[0])).defaultBlockState(), 3);
                 var te = (MachineTile) level.getBlockEntity(at);
                 if (a.length > 1) for (String gv : a[1].split(",")) {
                     String[] g = gv.split(":");
                     te.slot(Integer.parseInt(g[0])).setStack(new net.minecraft.world.item.ItemStack(BuiltInRegistries.ITEM.get(ResourceLocation.parse(g[1] + ":" + g[2])), Integer.parseInt(g[3])));
                 }
-                if (a.length > 2 && a[2].equals("power")) level.setBlock(at.above(), Blocks.REDSTONE_BLOCK.defaultBlockState(), 3);
+                if (a.length > 2 && a[2].equals("power")) level.setBlock(level.getBlockState(at.above()).isAir() ? at.above() : at.below(), Blocks.REDSTONE_BLOCK.defaultBlockState(), 3);
                 if (a.length > 2 && a[2].equals("power")) te.powered = true;
                 machineAt = at;
                 if (p.containsKey("machinegui")) {
                     sp.openMenu(new net.minecraft.world.SimpleMenuProvider((id, inv, pl) -> new MachineMenu(id, inv, te), level.getBlockState(at).getBlock().getName()),
-                            buf -> { buf.writeBlockPos(at); buf.writeUtf(te.kind); });
+                            buf -> { buf.writeBlockPos(te.getBlockPos()); buf.writeUtf(te.kind); });
                 }
             });
         }

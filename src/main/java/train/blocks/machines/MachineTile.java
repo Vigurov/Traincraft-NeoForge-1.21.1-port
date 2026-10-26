@@ -334,10 +334,15 @@ public class MachineTile extends BlockEntity implements ItemStackSlot.Host {
     private void tickGenerator() {
         if (!empty(400)) {
             FluidStack f = FluidStack.contained(slot(400).getStackOrEmpty());
+            ItemStack empty = slot(400).getStackOrEmpty().getCraftingRemainingItem();
+            //the TiM diesel canister holds no fluid as such: 1000 mB of diesel, like the diesel locomotives take it
+            if (f == null && slot(400).getItem() == TiMItems.dieselCanister.get()) {
+                f = new FluidStack(ebf.tim.registry.TiMFluids.fluidDiesel, 1000);
+                empty = new ItemStack(TiMItems.emptyCanister.get());
+            }
             if (f != null && f.amount > 0 && (tank == null || tank.amount == 0 || tank.getFluid() == f.getFluid())
                     && tankAmount() + f.amount < tankCapacity()) {
                 ItemStackSlot out = slot(401);
-                ItemStack empty = slot(400).getStackOrEmpty().getCraftingRemainingItem();
                 if (!out.getHasStack() || (out.getItem() == empty.getItem() && out.getStackSize() < out.getStackOrEmpty().getMaxStackSize())) {
                     if (!out.getHasStack()) out.setStack(empty);
                     else out.getStackOrEmpty().grow(1);
