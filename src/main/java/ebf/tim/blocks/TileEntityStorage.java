@@ -34,8 +34,13 @@ public class TileEntityStorage extends BlockEntity implements ItemStackSlot.Host
     private boolean updating = false;
 
     public TileEntityStorage(BlockPos pos, BlockState state) {
+        this(pos, state, state.getBlock() instanceof BlockDynamic b ? b.table : "traintable");
+    }
+
+    /** a table of the given kind (the client makes one when the screen opens before the block has arrived) */
+    public TileEntityStorage(BlockPos pos, BlockState state, String table) {
         super(TiMBlocks.TABLE_TILE.get(), pos, state);
-        this.table = state.getBlock() instanceof BlockDynamic b ? b.table : "traintable";
+        this.table = table;
         initInventory();
     }
 

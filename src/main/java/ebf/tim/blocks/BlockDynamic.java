@@ -57,7 +57,7 @@ public class BlockDynamic extends HorizontalDirectionalBlock implements EntityBl
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
         if (!level.isClientSide && player instanceof ServerPlayer sp && level.getBlockEntity(pos) instanceof TileEntityStorage te) {
             te.markDirty();
-            sp.openMenu(new SimpleMenuProvider((id, inv, p) -> new TableMenu(id, inv, te), getName()), buf -> buf.writeBlockPos(pos));
+            sp.openMenu(new SimpleMenuProvider((id, inv, p) -> new TableMenu(id, inv, te), getName()), buf -> { buf.writeBlockPos(pos); buf.writeUtf(te.table); });
         }
         return InteractionResult.sidedSuccess(level.isClientSide);
     }

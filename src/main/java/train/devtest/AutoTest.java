@@ -175,6 +175,11 @@ public class AutoTest {
                     te.markDirty();
                     log("outputs " + te.inventory.stream().filter(ebf.tim.utility.ItemStackSlot::isCraftingOutput).map(s2 -> s2.getStackOrEmpty().toString()).toList());
                     var out = te.inventory.stream().filter(s2 -> s2.isCraftingOutput() && s2.getHasStack()).findFirst();
+                    if (p.containsKey("tablegui") && x[0].equals(p.getProperty("tablegui"))) {
+                        //show it with the inputs back in place
+                        sp.openMenu(new net.minecraft.world.SimpleMenuProvider((id, inv, pl) -> new ebf.tim.gui.TableMenu(id, inv, te), block.getName()), buf -> { buf.writeBlockPos(at); buf.writeUtf(te.table); });
+                        continue;
+                    }
                     if (out.isPresent()) {
                         var taken = out.get().getStackOrEmpty().copy();
                         out.get().setStack(net.minecraft.world.item.ItemStack.EMPTY);

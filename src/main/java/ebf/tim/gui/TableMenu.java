@@ -22,14 +22,20 @@ public class TableMenu extends AbstractContainerMenu {
     public final int tableSlots;
 
     public static TableMenu fromNetwork(int id, Inventory inv, RegistryFriendlyByteBuf buf) {
-        return new TableMenu(id, inv, (TileEntityStorage) inv.player.level().getBlockEntity(buf.readBlockPos()));
+        net.minecraft.core.BlockPos pos = buf.readBlockPos();
+        String kind = buf.readUtf();
+        //the menu can arrive before the block does
+        TileEntityStorage te = inv.player.level().getBlockEntity(pos) instanceof TileEntityStorage t ? t
+                : new TileEntityStorage(pos, net.minecraft.core.registries.BuiltInRegistries.BLOCK.get(
+                        net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("traincraft", "block." + kind)).defaultBlockState(), kind);
+        return new TableMenu(id, inv, te);
     }
 
     public TableMenu(int id, Inventory playerInv, TileEntityStorage table) {
         super(TiMMenus.TABLE.get(), id);
         this.table = table;
         Container c = new SlotsContainer(table.inventory, table,
-                p -> !table.isRemoved() && p.distanceToSqr(table.getBlockPos().getCenter()) < 64);
+                p -> p.distanceToSqr(table.getBlockPos().getCenter()) < 64);
         int i = 0;
         for (ItemStackSlot s : table.inventory) {
             if (s.isCraftingOutput()) {
@@ -99,6 +105,6 @@ public class TableMenu extends AbstractContainerMenu {
 
     @Override
     public boolean stillValid(Player player) {
-        return !table.isRemoved() && player.distanceToSqr(table.getBlockPos().getCenter()) < 64;
+        return (player.level().isClientSide || !table.isRemoved()) && player.distanceToSqr(table.getBlockPos().getCenter()) < 64;
     }
 }
