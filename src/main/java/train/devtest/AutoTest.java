@@ -41,6 +41,7 @@ import net.minecraft.util.Mth;
 import train.client.RoofRideClient;
 import train.blocks.TCBlocks;
 import train.blocks.catenary.CatenaryMastBlock;
+import train.blocks.catenary.CatenaryMastTile;
 import java.io.FileReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -474,7 +475,8 @@ public class AutoTest {
                         put(t, 401, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.WATER_BUCKET));
                     } else if (types.contains(ebf.tim.TrainsInMotion.transportTypes.DIESEL)) {
                         put(t, 400, new net.minecraft.world.item.ItemStack(ebf.tim.registry.TiMItems.dieselCanister.get(), 16));
-                    } else if (types.contains(ebf.tim.TrainsInMotion.transportTypes.ELECTRIC)) {
+                    } else if (types.contains(ebf.tim.TrainsInMotion.transportTypes.ELECTRIC) && !p.containsKey("nocharge")) {
+                        //nocharge=1  electrics get nothing: they run on what the wire gives them
                         put(t, 400, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.REDSTONE_BLOCK, 16));
                     }
                     fleetStart.put(t, t.position());
@@ -870,6 +872,29 @@ public class AutoTest {
                 }
             });
         }
+        if (p.containsKey("feedmast") && base != null) {
+            //feedmast=x,y,z,fe  that mast gets fe every tick, a big generator beside it
+            String[] f = p.getProperty("feedmast").split(",");
+            server.execute(() -> {
+                BlockPos at = base.offset(Integer.parseInt(f[0]), Integer.parseInt(f[1]), Integer.parseInt(f[2]));
+                var cap = level.getCapability(net.neoforged.neoforge.capabilities.Capabilities.EnergyStorage.BLOCK, at, null);
+                if (cap != null) cap.receiveEnergy(Integer.parseInt(f[3]), false);
+            });
+        }
+        if (p.containsKey("catlog") && base != null && tick % 20 == 0) {
+            //catlog=1  the energy at each mast (by x), and each placed transport's tank and engine
+            server.execute(() -> {
+                StringBuilder b = new StringBuilder();
+                CatenaryMastTile.loaded(level).stream().sorted(Comparator.comparingInt(t -> t.getBlockPos().getX()))
+                        .forEach(t -> b.append(String.format(" mast%d=%d", t.getBlockPos().getX() - base.getX(), t.energy.getEnergyStored())));
+                for (GenericRailTransport t : placed) {
+                    b.append(String.format(" | %s x=%.1f run=%s tank=%s", t.getClass().getSimpleName().replace("Entity", ""), t.getX() - base.getX(),
+                            t.getBoolean(GenericRailTransport.boolValues.RUNNING), t.getTankInfo() == null ? "-" : java.util.Arrays.stream(t.getTankInfo())
+                                    .map(x -> x == null || x.fluid == null ? "0" : String.valueOf(x.fluid.amount)).toList()));
+                }
+                log("cat t=" + tick + b);
+            });
+        }
         if (p.containsKey("statedump") && base != null) {
             //statedump=tick[,tick...]  every placed transport: where, which way, coupled to which (by uuid), engine,
             //fuel, derailed
@@ -1250,7 +1275,12 @@ public class AutoTest {
             for (int n = 0; n < len; n++) {
                 BlockPos at = axis.equals("x") ? pos.offset(n, 0, 0) : pos.offset(0, 0, n);
                 level.setBlock(at.below(), Blocks.STONE.defaultBlockState(), 3);
-                level.setBlock(at, b.defaultBlockState(), 3);
+                var st = b.defaultBlockState();
+                //block@x,y,z@len@axis@facing
+                if (a.length > 4 && st.hasProperty(net.minecraft.world.level.block.state.properties.BlockStateProperties.HORIZONTAL_FACING)) {
+                    st = st.setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.HORIZONTAL_FACING, net.minecraft.core.Direction.byName(a[4]));
+                }
+                level.setBlock(at, st, 3);
             }
             log("placed " + len + " " + id + " from " + pos + " along " + axis);
             return;

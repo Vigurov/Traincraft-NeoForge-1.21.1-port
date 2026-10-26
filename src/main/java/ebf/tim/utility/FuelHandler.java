@@ -1,5 +1,6 @@
 package ebf.tim.utility;
 
+import train.blocks.catenary.CatenaryMastTile;
 import ebf.tim.TrainsInMotion;
 import ebf.tim.entities.EntityTrainCore;
 import ebf.tim.entities.GenericRailTransport;
@@ -294,6 +295,12 @@ public class FuelHandler{
 					}
 				}
 			}
+		}
+		//the catenary over the train: up to 500 a second, enough to run on at full power
+		int room = train.fill(new FluidStack(TiMFluids.fluidRedstone, 500), false);
+		if (room > 0) {
+			int got = CatenaryMastTile.feed(train.level(), train.getX(), train.getY(), train.getZ(), room);
+			if (got > 0) train.fill(new FluidStack(TiMFluids.fluidRedstone, got), true);
 		}
 		//fill from overhead wires/3rd rail/under rail: any energy block from 2 below to 4 above the train
 		if (train.fill(new FluidStack(TiMFluids.fluidRedstone, 100), false) == 100) {

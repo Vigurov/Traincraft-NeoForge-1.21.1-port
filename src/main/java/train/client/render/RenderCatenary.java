@@ -30,8 +30,7 @@ import train.blocks.catenary.CatenaryMastTile;
 public class RenderCatenary implements BlockEntityRenderer<CatenaryMastTile> {
     private static final ResourceLocation TEX = ResourceLocation.fromNamespaceAndPath("traincraft", "textures/models/catenary_mast.png");
     private static final int TW = 512, TH = 128;
-    /** the cantilever's reach (to the middle of the track beside the mast) and wire heights, in blocks */
-    public static final double REACH = 1.0, CONTACT_Y = 3.03, MESSENGER_Y = 59.4 / 16;
+    private static final double CONTACT_Y = train.blocks.catenary.CatenaryGeometry.CONTACT_Y, MESSENGER_Y = train.blocks.catenary.CatenaryGeometry.MESSENGER_Y;
     private static ModelRendererTurbo[] parts, glass;
 
     public RenderCatenary(BlockEntityRendererProvider.Context c) {}
@@ -144,10 +143,8 @@ public class RenderCatenary implements BlockEntityRenderer<CatenaryMastTile> {
         };
     }
 
-    /** where a mast holds its wires, in the world */
-    public static Vec3 anchor(BlockPos pos, BlockState state, double height) {
-        Direction d = state.hasProperty(CatenaryMastBlock.FACING) ? state.getValue(CatenaryMastBlock.FACING) : Direction.EAST;
-        return new Vec3(pos.getX() + 0.5 + d.getStepX() * REACH, pos.getY() + height, pos.getZ() + 0.5 + d.getStepZ() * REACH);
+    private static Vec3 anchor(BlockPos pos, BlockState state, double height) {
+        return train.blocks.catenary.CatenaryGeometry.anchor(pos, state, height);
     }
 
     @Override

@@ -64,22 +64,27 @@ public class RenderGeneratorDiesel implements BlockEntityRenderer<MachineTile> {
         RenderContext.begin(pose, buffers, light, WHEEL_TEX);
         try {
             if (tile.kind.equals("windmill")) {
-                float yaw = switch (facing) { case 1 -> 180; case 0 -> -90; case 2 -> 90; default -> 0; };
+                //the model lies along its own axis: stood up the one way it stands upright, then turned to its facing
+                //about the world's vertical (1.12 turned it about the model's own axis after standing it up, and
+                //every facing but one had the tower tipped over or lying on the ground)
+                float turn = switch (facing) { case 1 -> 270; case 2 -> 180; case 3 -> 90; default -> 0; } + WINDMILL_TURN;
                 GL11.glPushMatrix();
                 GL11.glTranslated(0.5, 0.5, 0.5);
+                GL11.glRotatef(turn, 0, 1, 0);
                 GL11.glRotatef(90, 0, 0, 1);
                 color(0x331D14);
                 GL11.glScalef(0.5f, 0.5f, 0.5f);
-                GL11.glRotatef(yaw, 0, 1, 0);
+                GL11.glRotatef(-90, 0, 1, 0);
                 windMill.render(1);
                 GL11.glPopMatrix();
 
                 GL11.glPushMatrix();
                 GL11.glTranslated(0.5, 1.5, 0.5);
+                GL11.glRotatef(turn, 0, 1, 0);
                 GL11.glRotatef(90, 0, 0, 1);
                 color(0x7A7674);
                 GL11.glScalef(0.45f, 0.45f, 0.45f);
-                GL11.glRotatef(yaw, 0, 1, 0);
+                GL11.glRotatef(-90, 0, 1, 0);
                 //1.12 turned about 40 degrees a second, faster in rain and thunder
                 float speed = tile.getLevel() != null && tile.getLevel().isThundering() ? 7.5f : tile.getLevel() != null && tile.getLevel().isRaining() ? 4.5f : 1;
                 GL11.glRotatef(time * 2f * speed, 0F, 1F, 0F);
@@ -108,6 +113,9 @@ public class RenderGeneratorDiesel implements BlockEntityRenderer<MachineTile> {
             RenderContext.end();
         }
     }
+
+    /** turns the wheel to face the way the windmill was placed facing */
+    private static final float WINDMILL_TURN = 90;
 
     @Override
     public boolean shouldRenderOffScreen(MachineTile tile) {

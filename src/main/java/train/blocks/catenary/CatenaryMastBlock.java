@@ -11,6 +11,8 @@ import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.phys.shapes.CollisionContext;
@@ -57,6 +59,13 @@ public class CatenaryMastBlock extends HorizontalDirectionalBlock implements Ent
     @Override
     public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
         return new CatenaryMastTile(pos, state);
+    }
+
+    @Override
+    public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
+        return level.isClientSide ? null : (l, p, s, be) -> {
+            if (be instanceof CatenaryMastTile t) t.tickServer();
+        };
     }
 
     @Override
