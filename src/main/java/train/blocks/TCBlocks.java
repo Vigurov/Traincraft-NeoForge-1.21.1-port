@@ -68,6 +68,9 @@ public class TCBlocks {
     /** a traction substation and the feeder cable from it to a mast */
     public static final DeferredBlock<train.blocks.catenary.SubstationBlock> SUBSTATION = block("substation", () -> new train.blocks.catenary.SubstationBlock(
             BlockBehaviour.Properties.of().mapColor(MapColor.METAL).strength(4.0F, 8.0F).sound(SoundType.METAL).noOcclusion().requiresCorrectToolForDrops()));
+    public static final DeferredBlock<train.blocks.catenary.SubstationPartBlock> SUBSTATION_PART = TiMBlocks.BLOCKS.register("substation_part",
+            () -> new train.blocks.catenary.SubstationPartBlock(BlockBehaviour.Properties.of().mapColor(MapColor.METAL).strength(4.0F, 8.0F)
+                    .sound(SoundType.METAL).noOcclusion().noLootTable()));
     public static final DeferredItem<train.blocks.catenary.FeederCableItem> FEEDER_CABLE = TiMGenericRegistry.ITEMS.register("feeder_cable",
             () -> new train.blocks.catenary.FeederCableItem(new Item.Properties()));
 

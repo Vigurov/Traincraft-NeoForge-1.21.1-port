@@ -254,10 +254,11 @@
  "message.traincraft.catenary.already": "Эти опоры уже соединены",
  "message.traincraft.catenary.strung": "Провод натянут",
  "block.traincraft.substation": "Тяговая подстанция",
- "item.traincraft.feeder_cable": "Фидерный кабель",
+ "item.traincraft.feeder_cable": "Силовой кабель",
  "message.traincraft.feeder.start": "Кабель тянется: нажми на опору (или подстанцию)",
- "message.traincraft.feeder.ends": "Фидер соединяет подстанцию с опорой",
+ "message.traincraft.feeder.ends": "Кабель соединяет подстанцию с опорой или генератор с подстанцией",
  "message.traincraft.feeder.toofar": "Слишком далеко: фидер не длиннее 24 блоков",
  "message.traincraft.feeder.taken": "К этой опоре уже подведён фидер",
- "message.traincraft.feeder.strung": "Фидер натянут"
+ "message.traincraft.feeder.strung": "Фидер натянут",
+ "message.traincraft.feeder.full": "Все три ввода подстанции уже заняты (или этот генератор уже подключён)"
 }

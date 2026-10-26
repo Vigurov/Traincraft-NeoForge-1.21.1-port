@@ -1327,10 +1327,11 @@
  "message.traincraft.catenary.already": "These masts are already joined",
  "message.traincraft.catenary.strung": "Wire strung",
  "block.traincraft.substation": "Traction Substation",
- "item.traincraft.feeder_cable": "Feeder Cable",
+ "item.traincraft.feeder_cable": "Power Cable",
  "message.traincraft.feeder.start": "Cable held: right click the mast (or substation) to feed",
- "message.traincraft.feeder.ends": "A feeder goes from a substation to a mast",
+ "message.traincraft.feeder.ends": "A power cable joins a substation to a mast, or a generator to a substation",
  "message.traincraft.feeder.toofar": "Too far: a feeder is at most 24 blocks long",
  "message.traincraft.feeder.taken": "This mast already has a feeder",
- "message.traincraft.feeder.strung": "Feeder strung"
+ "message.traincraft.feeder.strung": "Feeder strung",
+ "message.traincraft.feeder.full": "All three of the substation's bushings have a line already (or this one is joined)"
 }

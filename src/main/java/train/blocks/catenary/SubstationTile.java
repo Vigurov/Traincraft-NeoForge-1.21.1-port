@@ -26,6 +26,10 @@ public class SubstationTile extends BlockEntity {
     public static final int CAPACITY = 20000, INTAKE = 2000;
 
     public final Set<BlockPos> feeders = new LinkedHashSet<>();
+    /** the generators (any block giving energy) its power cables come from */
+    public final Set<BlockPos> inputs = new LinkedHashSet<>();
+    /** the most power cables in: one to each of its three high voltage bushings */
+    public static final int MAX_INPUTS = 3;
     public final Buffer energy = new Buffer();
 
     public final class Buffer extends EnergyStorage {
@@ -65,6 +69,15 @@ public class SubstationTile extends BlockEntity {
         int e = energy.getEnergyStored();
         if (e > 0) energy.set(e - Math.max(1, e / 20));
         if (energy.getEnergyStored() >= CAPACITY) return;
+        //along its power cables
+        for (BlockPos in : inputs) {
+            if (!level.isLoaded(in)) continue;
+            IEnergyStorage src = level.getCapability(Capabilities.EnergyStorage.BLOCK, in, null);
+            if (src == null || !src.canExtract()) continue;
+            int got = src.extractEnergy(Math.min(INTAKE, CAPACITY - energy.getEnergyStored()), false);
+            if (got > 0) energy.set(energy.getEnergyStored() + got);
+            if (energy.getEnergyStored() >= CAPACITY) return;
+        }
         for (Direction d : Direction.values()) {
             IEnergyStorage near = level.getCapability(Capabilities.EnergyStorage.BLOCK, worldPosition.relative(d), d.getOpposite());
             if (near == null || near == energy || !near.canExtract()) continue;
@@ -97,11 +110,47 @@ public class SubstationTile extends BlockEntity {
                     new ItemStack(TCBlocks.FEEDER_CABLE.get()));
         }
         feeders.clear();
+        for (BlockPos ignored : inputs) {
+            Containers.dropItemStack(level, worldPosition.getX() + 0.5, worldPosition.getY() + 1, worldPosition.getZ() + 0.5,
+                    new ItemStack(TCBlocks.FEEDER_CABLE.get()));
+        }
+        inputs.clear();
     }
 
-    /** where the feeders leave it: the top of its outgoing bushing */
+    /** a point of its model (pixels from its middle, turned with its facing as it is drawn) in the world */
+    private Vec3 modelPoint(float px, float py, float pz) {
+        double a = Math.toRadians(switch (getBlockState().getValue(SubstationBlock.FACING)) {
+            case NORTH -> 90;
+            case WEST -> 180;
+            case SOUTH -> 270;
+            default -> 0;
+        });
+        double x = px / 16.0, z = pz / 16.0;
+        //as GL's turn about y by a
+        double wx = x * Math.cos(a) + z * Math.sin(a), wz = -x * Math.sin(a) + z * Math.cos(a);
+        return new Vec3(worldPosition.getX() + 1 + wx, worldPosition.getY() + py / 16.0, worldPosition.getZ() + 1 + wz);
+    }
+
+    /** where the feeders leave it: under the glass string on top of its gantry */
     public Vec3 feederPoint() {
-        return new Vec3(worldPosition.getX() + 0.5, worldPosition.getY() + 1.55, worldPosition.getZ() + 0.5);
+        return modelPoint(FEEDER_X, FEEDER_Y, FEEDER_Z);
+    }
+
+    /** where the i-th power cable comes in: the top of a high voltage bushing */
+    public Vec3 inputPoint(int i) {
+        return modelPoint(BUSHING_X[Math.floorMod(i, 3)], BUSHING_TOP, BUSHING_Z);
+    }
+
+    /** the model's points (pixels, from its middle; RenderSubstation draws them there) */
+    public static final float FEEDER_X = 0, FEEDER_Y = 30.8f, FEEDER_Z = 13.5f, BUSHING_TOP = 31.5f, BUSHING_Z = -6;
+    public static final float[] BUSHING_X = {-6, 0, 6};
+
+    public void addInput(BlockPos p) {
+        if (inputs.add(p.immutable())) changed();
+    }
+
+    public void removeInput(BlockPos p) {
+        if (inputs.remove(p)) changed();
     }
 
     private void changed() {
@@ -113,6 +162,7 @@ public class SubstationTile extends BlockEntity {
     protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.saveAdditional(tag, registries);
         tag.putLongArray("feeders", feeders.stream().mapToLong(BlockPos::asLong).toArray());
+        tag.putLongArray("inputs", inputs.stream().mapToLong(BlockPos::asLong).toArray());
         tag.putInt("energy", energy.getEnergyStored());
     }
 
@@ -121,6 +171,8 @@ public class SubstationTile extends BlockEntity {
         super.loadAdditional(tag, registries);
         feeders.clear();
         for (long l : tag.getLongArray("feeders")) feeders.add(BlockPos.of(l));
+        inputs.clear();
+        for (long l : tag.getLongArray("inputs")) inputs.add(BlockPos.of(l));
         energy.set(tag.getInt("energy"));
     }
 
@@ -128,6 +180,7 @@ public class SubstationTile extends BlockEntity {
     public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
         CompoundTag t = new CompoundTag();
         t.putLongArray("feeders", feeders.stream().mapToLong(BlockPos::asLong).toArray());
+        t.putLongArray("inputs", inputs.stream().mapToLong(BlockPos::asLong).toArray());
         return t;
     }
 

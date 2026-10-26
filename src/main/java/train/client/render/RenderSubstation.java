@@ -26,8 +26,9 @@ import train.blocks.catenary.SubstationTile;
  */
 public class RenderSubstation implements BlockEntityRenderer<SubstationTile> {
     private static final ResourceLocation TEX = ResourceLocation.fromNamespaceAndPath("traincraft", "textures/models/substation.png");
-    private static final int TW = 256, TH = 128, CONCRETE = 0, TANK = 64, FINS = 128, PORCELAIN = 160, STEEL = 192, DARK = 224;
-    private static ModelRendererTurbo[] parts;
+    private static final int TW = 512, TH = 128, CONCRETE = 0, TANK = 128, FINS = 192, PORCELAIN = 224, STEEL = 256, DARK = 384, GLASS = 416;
+    private static ModelRendererTurbo[] parts, glass;
+    private static final java.util.List<ModelRendererTurbo> GLASS_PARTS = new java.util.ArrayList<>();
 
     public RenderSubstation(BlockEntityRendererProvider.Context c) {}
 
@@ -37,36 +38,58 @@ public class RenderSubstation implements BlockEntityRenderer<SubstationTile> {
         return m;
     }
 
-    /** in pixels, y up from the block's bottom */
+    /**
+     * in pixels, y up from the ground, from the middle of its 2 x 2 blocks: a concrete pad; the transformer with its
+     * radiator fins, lid and conservator; three tall high voltage bushings for the power lines in, three low ones
+     * out; a cabinet; and the steel gantry at the front the feeders leave from, on a string of glass discs
+     */
     private static ModelRendererTurbo[] build() {
         java.util.List<ModelRendererTurbo> l = new java.util.ArrayList<>();
-        l.add(box(CONCRETE, 0, -8, 0, -8, 16, 2, 16));
-        //the tank and its lid
-        l.add(box(TANK, 0, -5, 2, -3.5f, 10, 9, 7));
-        l.add(box(TANK, 20, -5.5f, 11, -4, 11, 1, 8));
-        //radiator fins on both long sides
-        for (int i = 0; i < 5; i++) {
-            float x = -4.2f + i * 2;
-            l.add(box(FINS, 0, x, 3, 3.5f, 0.8f, 7.5f, 3));
-            l.add(box(FINS, 12, x, 3, -6.5f, 0.8f, 7.5f, 3));
+        GLASS_PARTS.clear();
+        for (int x = -16; x < 16; x += 16) for (int z = -16; z < 16; z += 16) l.add(box(CONCRETE, 0, x, 0, z, 16, 2, 16));
+        //transformer
+        l.add(box(TANK, 0, -8, 2, -9, 16, 14, 10));
+        l.add(box(TANK, 0, -8.5f, 16, -9.5f, 17, 1, 11));
+        for (int i = 0; i < 6; i++) {
+            float z = -8 + i * 1.6f;
+            l.add(box(FINS, 0, -11.5f, 3.5f, z, 3.5f, 11, 0.8f));
+            l.add(box(FINS, 0, 8, 3.5f, z, 3.5f, 11, 0.8f));
         }
-        //conservator tank on its legs
-        l.add(box(TANK, 40, -4.5f, 14, -1.3f, 9, 2.6f, 2.6f));
-        l.add(box(STEEL, 0, -3.5f, 12, -0.5f, 1, 2, 1));
-        l.add(box(STEEL, 0, 2.5f, 12, -0.5f, 1, 2, 1));
-        //three high voltage bushings in, and the tall one out to the feeders
-        for (int i = -1; i <= 1; i++) bushing(l, i * 3, -2.2f, 12, 17);
-        bushing(l, 0, 2.2f, 12, 23.5f);
-        l.add(box(DARK, 0, -0.6f, 23.5f, 1.6f, 1.2f, 1.6f, 1.2f));
-        //cabinet
-        l.add(box(STEEL, 10, 5.5f, 2, -2, 2.2f, 6, 4));
+        l.add(box(TANK, 0, -6, 19.5f, -1.5f, 12, 3, 3));
+        l.add(box(STEEL, 0, -5, 17, -0.6f, 1, 2.5f, 1));
+        l.add(box(STEEL, 0, 4, 17, -0.6f, 1, 2.5f, 1));
+        //high voltage bushings in
+        for (float x : SubstationTile.BUSHING_X) bushing(l, x, SubstationTile.BUSHING_Z, 17, SubstationTile.BUSHING_TOP - 0.8f);
+        //low voltage bushings out, and the cabinet
+        for (int x = -4; x <= 4; x += 4) bushing(l, x, -1.5f, 17, 22);
+        l.add(box(STEEL, 0, 9, 2, 6, 6, 8, 6));
+        //the gantry at the front, the feeder string hung under its beam
+        float gz = SubstationTile.FEEDER_Z;
+        l.add(box(STEEL, 0, -10.8f, 2, gz - 0.8f, 1.6f, 34, 1.6f));
+        l.add(box(STEEL, 0, 9.2f, 2, gz - 0.8f, 1.6f, 34, 1.6f));
+        l.add(box(STEEL, 0, -10.8f, 34, gz - 0.8f, 21.6f, 1.6f, 1.6f));
+        l.add(box(STEEL, 0, -10.8f, 22, gz - 0.6f, 21.6f, 1.2f, 1.2f));
+        float top = 34, bottom = SubstationTile.FEEDER_Y;
+        float[] lens = {0.7f, 0.9f, 0.7f, 0.9f, 0.7f};
+        float total = 0;
+        for (float f : lens) total += f;
+        float at = top;
+        for (int i = 0; i < lens.length; i++) {
+            float h = lens[i] * (top - bottom) / total;
+            boolean disc = i % 2 == 1;
+            ModelRendererTurbo m = disc ? box(GLASS, 0, -1.9f, at - h, gz - 1.9f, 3.8f, h, 3.8f) : box(DARK, 0, -0.55f, at - h, gz - 0.55f, 1.1f, h, 1.1f);
+            (disc ? GLASS_PARTS : l).add(m);
+            at -= h;
+        }
+        l.add(box(DARK, 0, -0.7f, bottom - 0.6f, gz - 0.7f, 1.4f, 0.8f, 1.4f));
         return l.toArray(new ModelRendererTurbo[0]);
     }
 
     /** a porcelain bushing: a core with sheds up it */
     private static void bushing(java.util.List<ModelRendererTurbo> l, float x, float z, float from, float to) {
-        l.add(box(PORCELAIN, 0, x - 0.5f, from, z - 0.5f, 1, to - from, 1));
-        for (float y = from + 1; y < to - 0.6f; y += 1.5f) l.add(box(PORCELAIN, 8, x - 1.1f, y, z - 1.1f, 2.2f, 0.6f, 2.2f));
+        l.add(box(PORCELAIN, 0, x - 0.6f, from, z - 0.6f, 1.2f, to - from, 1.2f));
+        for (float y = from + 1; y < to - 0.6f; y += 1.6f) l.add(box(PORCELAIN, 8, x - 1.3f, y, z - 1.3f, 2.6f, 0.7f, 2.6f));
+        l.add(box(DARK, 0, x - 0.6f, to, z - 0.6f, 1.2f, 0.8f, 1.2f));
     }
 
     private static float yaw(Direction d) {
@@ -80,13 +103,22 @@ public class RenderSubstation implements BlockEntityRenderer<SubstationTile> {
 
     @Override
     public void render(SubstationTile tile, float partialTick, PoseStack pose, MultiBufferSource buffers, int light, int overlay) {
-        if (parts == null) parts = build();
+        if (parts == null) {
+            parts = build();
+            glass = GLASS_PARTS.toArray(new ModelRendererTurbo[0]);
+        }
         RenderContext.begin(pose, buffers, light, TEX);
         try {
             GL11.glPushMatrix();
-            GL11.glTranslatef(0.5f, 0, 0.5f);
+            GL11.glTranslatef(1, 0, 1);
             GL11.glRotatef(yaw(tile.getBlockState().getValue(SubstationBlock.FACING)), 0, 1, 0);
             for (ModelRendererTurbo p : parts) {
+                GL11.glPushMatrix();
+                p.render(0.0625f);
+                GL11.glPopMatrix();
+            }
+            RenderContext.consumer = buffers.getBuffer(RenderType.entityTranslucent(TEX));
+            for (ModelRendererTurbo p : glass) {
                 GL11.glPushMatrix();
                 p.render(0.0625f);
                 GL11.glPopMatrix();
@@ -98,6 +130,13 @@ public class RenderSubstation implements BlockEntityRenderer<SubstationTile> {
         if (tile.getLevel() == null) return;
         VertexConsumer vc = buffers.getBuffer(RenderType.entityCutoutNoCull(RenderCatenary.TEXTURE));
         BlockPos pos = tile.getBlockPos();
+        //the power lines in, from the generators to the bushings
+        int i = 0;
+        for (BlockPos g : tile.inputs) {
+            Vec3 from = generatorPoint(tile, g);
+            int lg = LevelRenderer.getLightColor(tile.getLevel(), g.above());
+            RenderCatenary.cable(pose, vc, Vec3.atLowerCornerOf(pos), from, tile.inputPoint(i++), 0.045, lg, light);
+        }
         for (BlockPos m : tile.feeders) {
             if (!(tile.getLevel().getBlockEntity(m) instanceof CatenaryMastTile mast)) continue;
             Vec3 a = tile.feederPoint(), b = mast.feederPoint();
@@ -106,9 +145,16 @@ public class RenderSubstation implements BlockEntityRenderer<SubstationTile> {
         }
     }
 
+    /** where a power line leaves a generator: a windmill's tower under its wheel, anything else its top */
+    private static Vec3 generatorPoint(SubstationTile tile, BlockPos g) {
+        boolean windmill = tile.getLevel().getBlockEntity(g) instanceof train.blocks.machines.MachineTile m && m.kind.equals("windmill");
+        return new Vec3(g.getX() + 0.5, g.getY() + (windmill ? 1.25 : 1.0), g.getZ() + 0.5);
+    }
+
     @Override
     public AABB getRenderBoundingBox(SubstationTile tile) {
-        AABB box = new AABB(tile.getBlockPos()).expandTowards(0, 1, 0);
+        AABB box = new AABB(tile.getBlockPos()).expandTowards(1, 2.3, 1);
+        for (BlockPos g : tile.inputs) box = box.minmax(new AABB(g).expandTowards(0, 1, 0));
         for (BlockPos m : tile.feeders) box = box.minmax(new AABB(m).expandTowards(0, 4.5, 0));
         return box;
     }
