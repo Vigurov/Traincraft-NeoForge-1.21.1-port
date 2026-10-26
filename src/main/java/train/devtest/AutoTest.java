@@ -143,19 +143,34 @@ public class AutoTest {
                     if (!use.isBlank()) run(level, sp, use.trim());
                 }
                 if (p.containsKey("gallery")) {
-                    //transports from..to of the registry, each on its own 24 block line, 5 blocks apart
+                    //gallery=from,to[,length]  transports from..to of the registry, each in the middle of its own line
+                    //(24 blocks unless given), 5 blocks apart
                     String[] g = p.getProperty("gallery").split(",");
                     int from = Integer.parseInt(g[0]), to = Math.min(Integer.parseInt(g[1]), TiMGenericRegistry.TRANSPORTS.size() - 1);
+                    int len = g.length > 2 ? Integer.parseInt(g[2]) : 24;
                     int placed = 0;
                     for (int n = from; n <= to; n++) {
                         int z = (n - from) * 5;
-                        run(level, sp, "minecraft:rail@0,0," + z + "@24@x");
+                        run(level, sp, "minecraft:rail@0,0," + z + "@" + len + "@x");
                         var id = BuiltInRegistries.ENTITY_TYPE.getKey(TiMGenericRegistry.TRANSPORTS.get(n).get());
-                        GenericRailTransport before = train;
-                        run(level, sp, id + "@12,0," + z + "@-4");
-                        if (train != before) placed++;
+                        int had = AutoTest.placed.size();
+                        run(level, sp, id + "@" + (len / 2) + ",0," + z + "@-4");
+                        if (AutoTest.placed.size() > had) placed++;
                     }
                     log("gallery placed " + placed + " of " + (to - from + 1));
+                }
+                if (p.containsKey("row")) {
+                    //row=from,to,spacing  transports from..to of the registry one after another on one TiM rail line
+                    String[] g = p.getProperty("row").split(",");
+                    int from = Integer.parseInt(g[0]), to = Math.min(Integer.parseInt(g[1]), TiMGenericRegistry.TRANSPORTS.size() - 1), sp2 = Integer.parseInt(g[2]);
+                    run(level, sp, "traincraft:rail@0,0,0@" + ((to - from + 1) * sp2 + 10) + "@x");
+                    for (int n = from; n <= to; n++) {
+                        var id = BuiltInRegistries.ENTITY_TYPE.getKey(TiMGenericRegistry.TRANSPORTS.get(n).get());
+                        int x = 5 + (n - from) * sp2;
+                        run(level, sp, id + "@" + x + ",0,0@-4");
+                        rowNames.add(id.getPath());
+                        rowX.add(x);
+                    }
                 }
                 if (p.containsKey("cam")) {
                     String[] c = p.getProperty("cam").split(",");
@@ -312,6 +327,62 @@ public class AutoTest {
             if (tick % 40 == 0 && mc.level.getEntity(jb.getId()) instanceof EntityJukeBoxCart cj) {
                 log("jukebox t=" + tick + " playing=" + cj.isPlaying() + " url=" + cj.getStreamURL() + " " + JukeboxClient.status(cj));
             }
+        }
+        if (p.containsKey("fleet") && base != null) {
+            //fleet=accel,startTick  every locomotive placed (gallery) gets its fuel at 30, starts at 40 and drives
+            //from startTick on; logs at the end what each did
+            String[] f = p.getProperty("fleet").split(",");
+            int accel = Integer.parseInt(f[0]), go = Integer.parseInt(f[1]);
+            if (tick == 30) server.execute(() -> {
+                for (GenericRailTransport t : placed) {
+                    if (!(t instanceof EntityTrainCore)) continue;
+                    var types = t.getTypes();
+                    if (types.contains(ebf.tim.TrainsInMotion.transportTypes.STEAM)) {
+                        put(t, 400, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.COAL, 64));
+                        put(t, 401, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.WATER_BUCKET));
+                    } else if (types.contains(ebf.tim.TrainsInMotion.transportTypes.DIESEL)) {
+                        put(t, 400, new net.minecraft.world.item.ItemStack(ebf.tim.registry.TiMItems.dieselCanister.get(), 16));
+                    } else if (types.contains(ebf.tim.TrainsInMotion.transportTypes.ELECTRIC)) {
+                        put(t, 400, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.REDSTONE_BLOCK, 16));
+                    }
+                    fleetStart.put(t, t.position());
+                }
+            });
+            if (tick == 40) server.execute(() -> {
+                for (GenericRailTransport t : placed) if (t instanceof EntityTrainCore) t.interact(sp, false, false, 8);
+            });
+            if (tick >= go && (tick - go) % 40 == 0) server.execute(() -> {
+                //steam ones only run once the boiler is hot: ask again until they do
+                for (GenericRailTransport t : placed) {
+                    if (t instanceof EntityTrainCore c && c.getBoolean(GenericRailTransport.boolValues.RUNNING)) c.accelerator = accel;
+                    else if (t instanceof EntityTrainCore) t.interact(sp, false, false, 8);
+                }
+            });
+            //water as it is used up (steam), one bucket at a time like a player would
+            if (tick % 40 == 0) server.execute(() -> {
+                for (GenericRailTransport t : placed) {
+                    if (t.getTypes().contains(ebf.tim.TrainsInMotion.transportTypes.STEAM)) {
+                        var slot = t.getSlotIndexByID(401);
+                        if (slot != null && !slot.getHasStack()) slot.setStack(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.WATER_BUCKET));
+                    }
+                }
+            });
+            if (tick == i("ticks", 200) - 2) server.execute(() -> {
+                int moved = 0, total = 0;
+                for (GenericRailTransport t : placed) {
+                    if (!(t instanceof EntityTrainCore c)) continue;
+                    total++;
+                    var from = fleetStart.get(t);
+                    double d = from == null ? 0 : from.distanceTo(t.position());
+                    if (d > 1) moved++;
+                    log(String.format("fleet %-28s ticks=%d entityTicking=%s moved=%5.1f running=%s derailed=%s v=%.3f boiler=%d tank=%s removed=%s",
+                            BuiltInRegistries.ENTITY_TYPE.getKey(t.getType()).getPath(), t.tickCount, level.isPositionEntityTicking(t.blockPosition()), d, c.getBoolean(GenericRailTransport.boolValues.RUNNING),
+                            c.getBoolean(GenericRailTransport.boolValues.DERAILED), c.getVelocity(), c.entityData().get(GenericRailTransport.BOILER_HEAT) / 100,
+                            java.util.Arrays.stream(c.getTankInfo() == null ? new GenericRailTransport.FluidTankInfo[0] : c.getTankInfo())
+                                    .map(x -> x == null || x.fluid == null ? "-" : x.fluid.getName() + "=" + x.fluid.amount).toList(), c.isRemoved()));
+                }
+                log("fleet moved " + moved + " of " + total);
+            });
         }
         if (tick == 30 && p.containsKey("recipeaudit")) {
             server.execute(() -> recipeAudit(level));
@@ -470,7 +541,26 @@ public class AutoTest {
                     tick, train.getX() - base.getX(), train.getY() - base.getY(), train.getZ() - base.getZ(), train.getYRot(), train.getXRot(),
                     train.getVelocity(), train.getAccelerator(), train.getBoolean(GenericRailTransport.boolValues.DERAILED),
                     train.frontBogie == null ? "-" : train.frontBogie.debugState(), train.backBogie == null ? "-" : train.backBogie.debugState(),
-                    client == null ? "none" : String.format("(%.2f,%.2f,%.2f yaw=%.1f)", client.getX() - base.getX(), client.getY() - base.getY(), client.getZ() - base.getZ(), client.getYRot())));
+                    client == null ? "none" : String.format("(%.2f,%.2f,%.2f yaw=%.1f yOff=%s)", client.getX() - base.getX(), client.getY() - base.getY(), client.getZ() - base.getZ(), client.getYRot(),
+                            client.backBogie == null ? "-" : String.format("%.4f", client.backBogie.yOffset))));
+        }
+        if (p.containsKey("row") && p.containsKey("rowshots") && !rowNames.isEmpty()) {
+            //rowshots=every  the camera goes from one transport of the row to the next, a picture of each from the side
+            int rowEvery = Integer.parseInt(p.getProperty("rowshots")), k = (tick - 40) / rowEvery, phase = (tick - 40) % rowEvery;
+            if (tick >= 40 && k < rowNames.size()) {
+                if (phase == 0) {
+                    int x = rowX.get(k);
+                    server.execute(() -> {
+                        sp.getAbilities().flying = true;
+                        sp.onUpdateAbilities();
+                        sp.teleportTo(level, base.getX() + x + 0.5, base.getY(), base.getZ() - 6.5, 0, 6);
+                    });
+                }
+                if (phase == rowEvery - 3) {
+                    String name = rowNames.get(k);
+                    Screenshot.grab(mc.gameDirectory, "row-" + name + ".png", mc.getMainRenderTarget(), c -> {});
+                }
+            }
         }
         if (p.containsKey("shots")) {
             String[] s = p.getProperty("shots").split(",");
@@ -486,6 +576,14 @@ public class AutoTest {
     }
 
     private static BlockPos machineAt;
+    private static final java.util.List<String> rowNames = new java.util.ArrayList<>();
+    private static final java.util.List<Integer> rowX = new java.util.ArrayList<>();
+    private static final java.util.Map<GenericRailTransport, net.minecraft.world.phys.Vec3> fleetStart = new java.util.HashMap<>();
+
+    private static void put(GenericRailTransport t, int slotId, net.minecraft.world.item.ItemStack stack) {
+        var slot = t.getSlotIndexByID(slotId);
+        if (slot != null) slot.setStack(stack);
+    }
 
     /**
      * recipeaudit=1: which Traincraft items survival can't get. Starts from the vanilla items, what the mod's

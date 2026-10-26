@@ -55,6 +55,11 @@ public class EntityBogie {
     public double[] velocity = new double[]{0,0,0,0,0,0};
     /**normally this variable exists already in 1.7, this additional declaration of it is support for 1.8.9+*/
     public float yOffset=0.425f;
+    /**
+     * the render heights of the rails (the renderer lifts the model by these). 1.12 used 0.425 for TiM and classic
+     * track, which left the wheels a little above the railheads (0.04 and 0.07 blocks); these put them on top
+     */
+    public static final float TIM_RAIL_Y = 0.405f, CLASSIC_TRACK_Y = 0.3425f, VANILLA_RAIL_Y = 0.3425f;
     /**what 1.12 kept in the minecart's entity data: the TiM rails read the last used rail shape from here*/
     public final CompoundTag entityData = new CompoundTag();
 
@@ -136,7 +141,7 @@ public class EntityBogie {
 
             if(CommonUtil.isClassicTrack(block)){
                 //classic Traincraft 4 pieces: follow their geometry (arcs, slopes, switches)
-                this.yOffset=0.425f;
+                this.yOffset=CLASSIC_TRACK_Y;
                 moveOnTCRail(xFloor, yFloor, zFloor, block);
                 updateFloor();
                 velocity[2]=0;velocity[3]=0;
@@ -171,7 +176,7 @@ public class EntityBogie {
 
             //update on normal rails
             if (block instanceof BaseRailBlock) {
-                this.yOffset=(block instanceof BlockRailCore?0.425f:0.3425f);
+                this.yOffset=(block instanceof BlockRailCore?TIM_RAIL_Y:VANILLA_RAIL_Y);
                 loopVanilla(host, Math.abs(velocity[0])+Math.abs(velocity[1])+Math.abs(velocity[2])+Math.abs(velocity[3]), (BaseRailBlock) block);
             }
            velocity[2]=0;velocity[3]=0;
@@ -542,7 +547,7 @@ public class EntityBogie {
     }
 
     public String debugState(){
-        return String.format("(%.2f,%.2f,%.2f v=%.3f,%.3f,%.3f,%.3f %s)", posX, posY, posZ, velocity[0], velocity[1], velocity[2], velocity[3],
+        return String.format("(%.2f,%.2f,%.2f yOff=%.4f v=%.3f,%.3f,%.3f,%.3f %s)", posX, posY, posZ, yOffset, velocity[0], velocity[1], velocity[2], velocity[3],
                 CommonUtil.getBlockAt(getWorld(), xFloor, yFloor, zFloor).getClass().getSimpleName()
                 + (lastTrack == null ? "" : " last=" + lastTrack.getTrackName() + "/" + lastTrack.getBlockMeta() + (lastTrack.isRemoved() ? " REMOVED" : "")));
     }
