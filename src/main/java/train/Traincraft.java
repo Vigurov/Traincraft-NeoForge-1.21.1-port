@@ -86,6 +86,7 @@ public class Traincraft {
 
     private void registerPayloads(RegisterPayloadHandlersEvent event) {
         event.registrar("1").playToServer(PacketInteract.TYPE, PacketInteract.CODEC, PacketInteract::handle)
-                .playToServer(train.blocks.lantern.PacketLantern.TYPE, train.blocks.lantern.PacketLantern.CODEC, train.blocks.lantern.PacketLantern::handle);
+                .playToServer(train.blocks.lantern.PacketLantern.TYPE, train.blocks.lantern.PacketLantern.CODEC, train.blocks.lantern.PacketLantern::handle)
+                .playToServer(train.core.network.PacketSetJukeboxStreamingUrl.TYPE, train.core.network.PacketSetJukeboxStreamingUrl.CODEC, train.core.network.PacketSetJukeboxStreamingUrl::handle);
     }
 }

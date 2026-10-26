@@ -191,6 +191,7 @@ public class TrainRegistry {
         TiMGenericRegistry.registerTransport("propagandausa", EntityPropagandaUS.class, EntityPropagandaUS::new);
         TiMGenericRegistry.registerTransport("propagandaussr", EntityPropagandaUSSR.class, EntityPropagandaUSSR::new);
         TiMGenericRegistry.registerTransport("stockcart", EntityStockCar.class, EntityStockCar::new);
+        TiMGenericRegistry.registerTransport("jukeboxcart", EntityJukeBoxCart.class, EntityJukeBoxCart::new);
         TiMGenericRegistry.registerTransport("drwgstockcart", EntityStockCarDRWG.class, EntityStockCarDRWG::new);
     }
 }

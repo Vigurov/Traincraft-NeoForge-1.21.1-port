@@ -2,6 +2,8 @@ package train.devtest;
 
 import train.blocks.TCBlocks;
 import train.core.handlers.ConfigHandler;
+import train.client.JukeboxClient;
+import train.entity.rollingStock.EntityJukeBoxCart;
 import train.blocks.bench.BlockTrainWorkbench;
 import train.blocks.bench.TrainWorkbenchMenu;
 import train.blocks.machines.MachineMenu;
@@ -298,6 +300,17 @@ public class AutoTest {
             //horn=tick[,tick...]
             for (String h : p.getProperty("horn").split(",")) {
                 if (tick == Integer.parseInt(h.trim())) server.execute(() -> train.interact(sp, false, false, 9));
+            }
+        }
+        if (p.containsKey("jukebox") && train instanceof EntityJukeBoxCart jb) {
+            //jukebox=url  plays it from tick 40; logs the client player every 40 ticks
+            if (tick == 40) server.execute(() -> jb.recievePacket(p.getProperty("jukebox"), true));
+            if (p.containsKey("jukeboxgui") && tick == Integer.parseInt(p.getProperty("jukeboxgui"))
+                    && mc.level.getEntity(jb.getId()) instanceof EntityJukeBoxCart cj) {
+                EntityJukeBoxCart.openScreen.accept(cj);
+            }
+            if (tick % 40 == 0 && mc.level.getEntity(jb.getId()) instanceof EntityJukeBoxCart cj) {
+                log("jukebox t=" + tick + " playing=" + cj.isPlaying() + " url=" + cj.getStreamURL() + " " + JukeboxClient.status(cj));
             }
         }
         if (p.containsKey("bell") && tick == Integer.parseInt(p.getProperty("bell")) && train != null) {

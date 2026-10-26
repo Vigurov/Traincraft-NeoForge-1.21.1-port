@@ -261,5 +261,7 @@
  "item.traincraft.boots_suit_paintable": "Чоботи композитного костюма (фарбуються)",
  "item.traincraft.jacket_suit_paintable": "Нагрудник композитного костюма (фарбується)",
  "block.traincraft.block.highstar": "Стрілочний перевідник",
- "block.traincraft.block.signal": "Світлофор"
+ "block.traincraft.block.signal": "Світлофор",
+ "item.traincraft.jukeboxcart": "Вагон-музичний автомат",
+ "description.jukebox.default": "Грає інтернет-радіо MP3 за посиланнями .m3u/.pls, як-от Shoutcast"
 }

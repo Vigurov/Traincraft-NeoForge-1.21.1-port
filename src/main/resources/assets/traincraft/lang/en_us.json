@@ -137,7 +137,7 @@
  "item.TankWagonYellow.item.name": "Tank Wagon (SU)",
  "item.traincraft.tankwagonyellow": "Tank Wagon (SU)",
  "item.JukeBoxCart.item.name": "Jukebox",
- "item.traincraft.jukeboxcart": "Jukebox",
+ "item.traincraft.jukeboxcart": "JukeBox Cart",
  "item.StockCart.item.name": "Stock Car",
  "item.traincraft.stockcart": "Stock Car",
  "item.WorkCaboose.item.name": "Work Caboose",
@@ -1314,5 +1314,6 @@
  "item.traincraft.boots_suit_paintable": "Composite Suit's Boots (Paintable)",
  "item.traincraft.jacket_suit_paintable": "Composite Suit's Chest (Paintable)",
  "block.traincraft.block.highstar": "High Star Switch Stand",
- "block.traincraft.block.signal": "Signal"
+ "block.traincraft.block.signal": "Signal",
+ "description.jukebox.default": "Plays MP3 internet radio from .m3u/.pls links, like Shoutcast"
 }
