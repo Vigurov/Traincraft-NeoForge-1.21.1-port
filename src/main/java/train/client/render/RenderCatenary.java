@@ -29,12 +29,15 @@ import train.blocks.catenary.CatenaryMastTile;
  */
 public class RenderCatenary implements BlockEntityRenderer<CatenaryMastTile> {
     private static final ResourceLocation TEX = ResourceLocation.fromNamespaceAndPath("traincraft", "textures/models/catenary_mast.png");
-    private static final int TW = 256, TH = 128;
+    private static final int TW = 512, TH = 128;
     /** the cantilever's reach (to the middle of the track beside the mast) and wire heights, in blocks */
-    public static final double REACH = 1.0, CONTACT_Y = 3.03, MESSENGER_Y = 3.9;
+    public static final double REACH = 1.0, CONTACT_Y = 3.03, MESSENGER_Y = 3.98;
     private static ModelRendererTurbo[] parts;
 
     public RenderCatenary(BlockEntityRendererProvider.Context c) {}
+
+    /** texture columns: steel, concrete, insulator, copper, dark steel, plate */
+    private static final int STEEL = 0, CONCRETE = 256, INSULATOR = 288, COPPER = 320, DARK = 352, PLATE = 384;
 
     private static ModelRendererTurbo box(int u, int v, float x, float y, float z, float w, float h, float d) {
         ModelRendererTurbo m = new ModelRendererTurbo("", u, v, TW, TH);
@@ -42,29 +45,68 @@ public class RenderCatenary implements BlockEntityRenderer<CatenaryMastTile> {
         return m;
     }
 
-    /** in pixels, y up from the block's bottom, the cantilever along +x */
+    /** a bar of square section t from a to b (pixels), turned to lie along the line between them */
+    private static ModelRendererTurbo bar(int u, int v, float ax, float ay, float az, float bx, float by, float bz, float t) {
+        float dx = bx - ax, dy = by - ay, dz = bz - az;
+        float hl = (float) Math.sqrt(dx * dx + dz * dz), len = (float) Math.sqrt(hl * hl + dy * dy);
+        ModelRendererTurbo m = new ModelRendererTurbo("", u, v, TW, TH);
+        m.addBox(0, -t / 2, -t / 2, len, t, t);
+        m.rotationPointX = ax;
+        m.rotationPointY = ay;
+        m.rotationPointZ = az;
+        m.rotateAngleY = (float) Math.toDegrees(Math.atan2(-dz, dx));
+        m.rotateAngleZ = (float) Math.toDegrees(Math.atan2(dy, hl));
+        return m;
+    }
+
+    /** half the lattice mast's width at a height (pixels): it narrows towards the top, like a pylon */
+    private static float half(float y) {
+        return 4.5f - 2.3f * (y - 3) / 64f;
+    }
+
+    /**
+     * in pixels, y up from the block's bottom, the cantilever along +x. The mast is a lattice of steel angles (four
+     * corner posts, struts and zig-zag bracing on every face, as the old Soviet line masts); the cantilever a
+     * triangle of a top tube and a strut, insulated at the mast, with the registration arm for the contact wire
+     */
     private static ModelRendererTurbo[] build() {
-        return new ModelRendererTurbo[]{
-                box(64, 0, -4, 0, -4, 8, 3, 8),          //concrete foundation
-                box(0, 0, -2, 3, -2, 4, 64, 4),          //mast
-                box(0, 72, -3, 67, -3, 6, 2, 6),         //cap
-                box(16, 0, -2.5f, 3, -2.5f, 5, 1, 5),    //base flange
-                //upper cantilever (the messenger wire's): insulator, then the tube out over the track
-                box(96, 0, 2, 59.5f, -1.5f, 5, 3, 3),
-                box(0, 82, 7, 60, -1, 13, 2, 2),
-                //lower cantilever (the contact wire's registration arm): insulator and tube
-                box(96, 12, 2, 46.5f, -1.5f, 5, 3, 3),
-                box(0, 88, 7, 47, -1, 13, 2, 2),
-                //the stay between them at the far end, and the clamps that hold the wires over the track
-                box(160, 0, 18, 49, -0.5f, 1, 11, 1),
-                box(160, 16, 15.5f, 62, -1, 1, 1, 2),
-                box(160, 20, 15.5f, 45.5f, -1, 1, 1.5f, 2),
-                //brackets where the insulators meet the mast
-                box(160, 24, 1.5f, 58.5f, -2, 1, 5, 4),
-                box(160, 34, 1.5f, 45.5f, -2, 1, 5, 4),
-                //number plate
-                box(64, 16, 2, 20, -1.5f, 0.5f, 4, 3),
-        };
+        java.util.List<ModelRendererTurbo> l = new java.util.ArrayList<>();
+        l.add(box(CONCRETE, 0, -6, 0, -6, 12, 3, 12));
+        float y0 = 3, y1 = 67;
+        int[][] corners = {{1, 1}, {1, -1}, {-1, -1}, {-1, 1}};
+        for (int[] c : corners) {
+            l.add(bar(STEEL, 0, c[0] * half(y0), y0, c[1] * half(y0), c[0] * half(y1), y1, c[1] * half(y1), 1.3f));
+        }
+        //struts and bracing, panel by panel up the four faces
+        int panels = 8;
+        for (int k = 0; k <= panels; k++) {
+            float y = y0 + (y1 - y0) * k / panels, h = half(y);
+            for (int f = 0; f < 4; f++) {
+                int[] c0 = corners[f], c1 = corners[(f + 1) % 4];
+                l.add(bar(STEEL, 4, c0[0] * h, y, c0[1] * h, c1[0] * h, y, c1[1] * h, 0.7f));
+                if (k == panels) continue;
+                float yn = y0 + (y1 - y0) * (k + 1) / panels, hn = half(yn);
+                boolean flip = (k + f) % 2 == 0;
+                int[] from = flip ? c0 : c1, to = flip ? c1 : c0;
+                l.add(bar(STEEL, 8, from[0] * h, y, from[1] * h, to[0] * hn, yn, to[1] * hn, 0.6f));
+            }
+        }
+        l.add(box(STEEL, 12, -2.8f, y1, -2.8f, 5.6f, 1.2f, 5.6f));
+        //cantilever: insulators at the mast, the top tube out over the track, the strut up to its far end
+        float ty = 61.5f, sy = 51.5f, mx = half(ty);
+        l.add(bar(INSULATOR, 0, mx, ty, 0, mx + 4.5f, ty, 0, 2.6f));
+        l.add(bar(STEEL, 16, mx + 4.5f, ty, 0, 19.5f, ty, 0, 1.4f));
+        l.add(bar(INSULATOR, 4, half(sy), sy, 0, half(sy) + 3.6f, sy + 2.2f, 0, 2.4f));
+        l.add(bar(STEEL, 20, half(sy) + 3.6f, sy + 2.2f, 0, 17.5f, ty - 0.5f, 0, 1.2f));
+        //the messenger's saddle on the tube, over the middle of the track
+        l.add(box(DARK, 0, 15, ty + 0.6f, -1, 2, 1.2f, 2));
+        //registration arm: from the strut down and out to the contact wire, with its own small insulator
+        l.add(bar(INSULATOR, 8, 9, 55.5f, 0, 11, 53.5f, 0, 1.8f));
+        l.add(bar(DARK, 4, 11, 53.5f, 0, 16, 48.8f, 0, 0.7f));
+        l.add(box(DARK, 8, 15.4f, 47.8f, -0.6f, 1.2f, 1.4f, 1.2f));
+        //number plate on the mast, facing the track
+        l.add(box(PLATE, 0, half(24) + 0.1f, 22, -1.5f, 0.4f, 4, 3));
+        return l.toArray(new ModelRendererTurbo[0]);
     }
 
     private static float yaw(Direction d) {
@@ -92,7 +134,12 @@ public class RenderCatenary implements BlockEntityRenderer<CatenaryMastTile> {
             GL11.glPushMatrix();
             GL11.glTranslatef(0.5f, 0, 0.5f);
             GL11.glRotatef(yaw(facing), 0, 1, 0);
-            for (ModelRendererTurbo p : parts) p.render(0.0625f);
+            for (ModelRendererTurbo p : parts) {
+                //TMT leaves a part's rotation on the matrix: each part in its own
+                GL11.glPushMatrix();
+                p.render(0.0625f);
+                GL11.glPopMatrix();
+            }
             GL11.glPopMatrix();
         } finally {
             RenderContext.end();
@@ -128,11 +175,11 @@ public class RenderCatenary implements BlockEntityRenderer<CatenaryMastTile> {
             Vec3 c = new Vec3(x + sx * st, y0 + CONTACT_Y, z + sz * st).subtract(base);
             int l = t < 0.5 ? la : lb;
             if (prevM != null) {
-                wire(pose, vc, prevM, m, 0.035, 160, l);
-                wire(pose, vc, prevC, c, 0.04, 128, l);
+                wire(pose, vc, prevM, m, 0.035, DARK, l);
+                wire(pose, vc, prevC, c, 0.04, COPPER, l);
             }
             //droppers between them, not right at the masts
-            if (i > 0 && i < n && i % 2 == 0) wire(pose, vc, c, m, 0.02, 160, l);
+            if (i > 0 && i < n && i % 2 == 0) wire(pose, vc, c, m, 0.02, DARK, l);
             prevM = m;
             prevC = c;
         }
