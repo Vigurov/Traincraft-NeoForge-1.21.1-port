@@ -38,6 +38,8 @@ public class RenderCatenary implements BlockEntityRenderer<CatenaryMastTile> {
 
     /** texture columns: steel, concrete, insulator, copper, dark steel */
     private static final int STEEL = 0, CONCRETE = 256, INSULATOR = 320, COPPER = 352, DARK = 384, GLASS = 432;
+    /** the steel-cored aluminium of feeders and power lines (bare, as overhead lines are) */
+    public static final int ALUMINIUM = 416;
 
     private static ModelRendererTurbo box(int u, int v, float x, float y, float z, float w, float h, float d) {
         ModelRendererTurbo m = new ModelRendererTurbo("", u, v, TW, TH);
@@ -151,6 +153,10 @@ public class RenderCatenary implements BlockEntityRenderer<CatenaryMastTile> {
 
     /** a cable sagging from a to b (world), drawn relative to origin */
     public static void cable(PoseStack pose, VertexConsumer vc, Vec3 origin, Vec3 a, Vec3 b, double w, int la, int lb) {
+        cable(pose, vc, origin, a, b, w, la, lb, DARK);
+    }
+
+    public static void cable(PoseStack pose, VertexConsumer vc, Vec3 origin, Vec3 a, Vec3 b, double w, int la, int lb, int u) {
         double len = a.distanceTo(b);
         int n = Math.max(4, (int) Math.ceil(len * 2));
         double sag = Math.min(0.6, 0.015 * len * len / 4 + 0.1);
@@ -158,7 +164,7 @@ public class RenderCatenary implements BlockEntityRenderer<CatenaryMastTile> {
         for (int i = 0; i <= n; i++) {
             double t = i / (double) n;
             Vec3 p = a.add(b.subtract(a).scale(t)).add(0, -4 * sag * t * (1 - t), 0).subtract(origin);
-            if (prev != null) wire(pose, vc, prev, p, w, DARK, t < 0.5 ? la : lb);
+            if (prev != null) wire(pose, vc, prev, p, w, u, t < 0.5 ? la : lb);
             prev = p;
         }
     }

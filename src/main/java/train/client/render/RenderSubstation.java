@@ -171,19 +171,19 @@ public class RenderSubstation implements BlockEntityRenderer<SubstationTile> {
         VertexConsumer vc = buffers.getBuffer(RenderType.entityCutoutNoCull(RenderCatenary.TEXTURE));
         BlockPos pos = tile.getBlockPos();
         //from the rectifier hall up to the outgoing gantry's string
-        RenderCatenary.cable(pose, vc, Vec3.atLowerCornerOf(pos), tile.hallPoint(), tile.feederPoint(), 0.045, light, light);
+        RenderCatenary.cable(pose, vc, Vec3.atLowerCornerOf(pos), tile.hallPoint(), tile.feederPoint(), 0.045, light, light, RenderCatenary.ALUMINIUM);
         //the power lines in, from the generators to their bays on the incoming gantry
         int i = 0;
         for (BlockPos g : tile.inputs) {
             Vec3 from = generatorPoint(tile, g);
             int lg = LevelRenderer.getLightColor(tile.getLevel(), g.above());
-            RenderCatenary.cable(pose, vc, Vec3.atLowerCornerOf(pos), from, tile.inputPoint(i++, tile.inputs.size()), 0.045, lg, light);
+            RenderCatenary.cable(pose, vc, Vec3.atLowerCornerOf(pos), from, tile.inputPoint(i++, tile.inputs.size()), 0.045, lg, light, RenderCatenary.ALUMINIUM);
         }
         for (BlockPos m : tile.feeders) {
             if (!(tile.getLevel().getBlockEntity(m) instanceof CatenaryMastTile mast)) continue;
             Vec3 a = tile.feederPoint(), b = mast.feederPoint();
             int lb = LevelRenderer.getLightColor(tile.getLevel(), m.above(4));
-            RenderCatenary.cable(pose, vc, Vec3.atLowerCornerOf(pos), a, b, 0.05, light, lb);
+            RenderCatenary.cable(pose, vc, Vec3.atLowerCornerOf(pos), a, b, 0.05, light, lb, RenderCatenary.ALUMINIUM);
         }
     }
 
