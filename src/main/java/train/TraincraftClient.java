@@ -24,6 +24,9 @@ public class TraincraftClient {
             e.register(train.blocks.TCBlocks.WORKBENCH_MENU.get(), train.client.gui.GuiTrainCraftingBlock::new);
         });
         modBus.addListener(this::armourColours);
+        modBus.addListener((net.neoforged.neoforge.client.event.RegisterGuiLayersEvent e) -> e.registerAbove(
+                net.neoforged.neoforge.client.gui.VanillaGuiLayers.HOTBAR, net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(Traincraft.MODID, "loco_hud"),
+                train.client.gui.HUDloco::render));
         modBus.addListener(this::armourExtensions);
         modBus.addListener((net.neoforged.fml.event.lifecycle.FMLClientSetupEvent e) -> bookPages());
         modBus.addListener((net.neoforged.fml.event.lifecycle.FMLClientSetupEvent e) -> train.devtest.AutoTest.init());
