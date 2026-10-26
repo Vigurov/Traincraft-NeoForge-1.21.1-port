@@ -245,38 +245,12 @@ public class CommonUtil {
      * @return angle in radians
      */
     public static float atan2f(double x, double z) {
-        if (z < 0.0d) {
-            if (x < 0.0d) {
-                //0.03225806451 is (1.0D / (ATAN2_SQRT - 1))
-                double invDiv = 1.0D / (((-z < -x) ? -x : -z) * 0.03225806451);
-                return (atan2[(int)(-x * invDiv) * ATAN2_SQRT + (int)(-z * invDiv)] - 3.141592653f);
-            } else {
-                double invDiv = 1.0D / (((-z < x) ? x : -z) * 0.03225806451);
-                return (atan2[(int)(x * invDiv) * ATAN2_SQRT + (int)(-z * invDiv)] - 3.141592653f)*-1;
-            }
-        } else {
-            if (x < 0.0d) {
-                double invDiv = 1.0D / (((z < -x) ? -x : z) * 0.03225806451);
-                return (atan2[(int)(-x * invDiv) * ATAN2_SQRT + (int)(z * invDiv)]) * -1;
-            }
-            double invDiv = 1.0D / (((z < x) ? x : z) * 0.03225806451);
-            return (atan2[(int)(x * invDiv) * ATAN2_SQRT + (int)(z * invDiv)]);
-        }
+        //exact: TiM looked it up in a 32 x 32 table, steps of up to 1.8 degrees, and trains turned in jerks on curves
+        return (float) Math.atan2(x, z);
     }
 
     public static float atan2degreesf(double x, double y){
         return atan2f(x,y)*57.295779514f;
-    }
-
-    private static final int ATAN2_SQRT = (int) Math.sqrt(1024);//32
-    private static final float[] atan2 = new float[1024];
-
-    static {
-        for (int i = 0; i < ATAN2_SQRT; i++) {
-            for (int j = 0; j < ATAN2_SQRT; j++) {
-                atan2[j * ATAN2_SQRT + i] = (float) Math.atan2((float) j / ATAN2_SQRT, (float) i / ATAN2_SQRT);
-            }
-        }
     }
 
     public static double[] rotatePoint(double f, double pitch, double yaw) {

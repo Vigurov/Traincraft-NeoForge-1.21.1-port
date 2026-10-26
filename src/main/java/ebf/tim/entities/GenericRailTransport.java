@@ -625,6 +625,19 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
         return true;
     }
 
+    private boolean onRails(double x, double y, double z) {
+        //right at a block corner (diagonals run through them) the next block counts as well
+        for (double ox : new double[]{0, -0.05, 0.05}) {
+            for (double oz : new double[]{0, -0.05, 0.05}) {
+                if (CommonUtil.isRailBlockAt(level(), x + ox, y, z + oz) || CommonUtil.isRailBlockAt(level(), x + ox, y - 1, z + oz)
+                        || CommonUtil.isRailBlockAt(level(), x + ox, y + 1, z + oz)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     public void updatePosition(){
 
         //reposition bogies to be sure they are the right distance
@@ -646,12 +659,13 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
                     }
                 }
             } else {
-                //set the derail state based on whether or not there's a valid rail block below.
-                //the blocks below and above count too: around the top end of a slope the train's centre
-                //is part way between the slope and the track one block up
-                setBoolean(boolValues.DERAILED, !CommonUtil.isRailBlockAt(level(),getX(),getY(),getZ())
-                        && !CommonUtil.isRailBlockAt(level(),getX(),getY()-1,getZ())
-                        && !CommonUtil.isRailBlockAt(level(),getX(),getY()+1,getZ()));
+                //derailed when a bogie is off the rails. 1.12 looked under the train's centre, which on a curve
+                //is inside it, on the chord between the bogies, and off a tight curve's rails: a train running
+                //round a 45 degree switch was taken for derailed and dragged to a stop by the ground.
+                //The blocks below and above count too: at the top end of a slope a bogie is part way between
+                //the slope and the track one block up
+                setBoolean(boolValues.DERAILED, !onRails(frontBogie.posX, frontBogie.posY, frontBogie.posZ)
+                        || !onRails(backBogie.posX, backBogie.posY, backBogie.posZ));
             }
 
 
@@ -725,10 +739,6 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
     }
 
     public void finalMove(){
-        cachedVectors[1] = new Vec3f(-rotationPoints()[0], 0, 0).rotatePoint(0, getYRot(), 0)
-                .addVector(backBogie.posX,backBogie.posY,backBogie.posZ);
-        setPos(cachedVectors[1].xCoord, cachedVectors[1].yCoord,cachedVectors[1].zCoord);
-
         frontBogie.minecartMove(this);
         backBogie.minecartMove(this);
         //reset the y coord so they will re-calculate the yaw
@@ -741,6 +751,10 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
                 backBogie.posZ - frontBogie.posZ,
                 backBogie.posX - frontBogie.posX)),
                 CommonUtil.calculatePitch(frontBogie.posY + frontBogie.yOffset, backBogie.posY + backBogie.yOffset, Math.abs(rotationPoints()[0]) + Math.abs(rotationPoints()[1])));
+        //the body where the bogies are now (1.12 placed it before they moved, a tick behind them)
+        cachedVectors[1] = new Vec3f(-rotationPoints()[0], 0, 0).rotatePoint(0, getYRot(), 0)
+                .addVector(backBogie.posX,backBogie.posY,backBogie.posZ);
+        setPos(cachedVectors[1].xCoord, cachedVectors[1].yCoord,cachedVectors[1].zCoord);
 
         //reset the vector when we're done so it wont break trains.
         cachedVectors[1]= new Vec3f(0,0,0);
@@ -932,11 +946,16 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
             if(backLinkedID!=null && level().getEntity(backLinkedID) instanceof GenericRailTransport back){
                manageLink(back);
             }
-            //for some off reason, this madness works pretty reliably from my tests.
-            cachedVectors[1]=new Vec3f(rotationPoints()[1],0,0).rotatePoint(0,getYRot(),0)
-                    .addVector(getX(),0,getZ()).subtract((float)frontBogie.posX,0,(float)frontBogie.posZ);
-            frontBogie.velocity[2]+=cachedVectors[1].xCoord;
-            frontBogie.velocity[3]+=cachedVectors[1].zCoord;
+            //keep the bogies their distance apart, along the line between them where they are now: each follows the
+            //rails by itself. 1.12 pulled the front one towards a point worked out from the train's centre and yaw of
+            //the tick before, which on curves also pulled it sideways and a tick late, and the train's turning on a
+            //curve went in jerks
+            double sx = frontBogie.posX - backBogie.posX, sz = frontBogie.posZ - backBogie.posZ, sl = Math.sqrt(sx * sx + sz * sz);
+            if (sl > 1e-4) {
+                double gap = (Math.abs(rotationPoints()[0]) + Math.abs(rotationPoints()[1])) - sl;
+                frontBogie.velocity[2] += gap * sx / sl;
+                frontBogie.velocity[3] += gap * sz / sl;
+            }
             updatePosition();
 
             if(collisionHandler!=null){
@@ -1553,15 +1572,9 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
         double towardsOther = Math.abs(side) > 1e-6 ? Math.signum(side)
                 : (frontLinkedID != null && other.getId() == frontLinkedID) ? -1 : 1;
 
-        //a derailed loco gives no usable speed (its bogies slide about): the cars brake and only keep their spacing,
-        //following it made them run through each other
-        if (driver != null && driver.getBoolean(boolValues.DERAILED)) {
-            for (int i = 0; i < 2; i++) {
-                frontBogie.velocity[i] *= 0.85;
-                backBogie.velocity[i] *= 0.85;
-            }
-            driver = null;
-        }
+        //a derailed loco still drags its train with it (they stayed behind, the coupling stretched and the
+        //locomotive went on alone); it is followed where it is, not where its sliding bogies' speed says it goes
+        boolean driverDerailed = driver != null && driver.getBoolean(boolValues.DERAILED);
         if (driver != null) {
             if (!chainLeadsTo(other, driver)) {
                 return; //the neighbour on the far side follows us instead
@@ -1580,7 +1593,7 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
             //not moved yet this tick, and once more for next tick. Following where it was (1.12 and before) left
             //every car a tick behind, and the spacing stretched with the speed
             boolean otherMoved = other.tickCount >= tickCount;
-            double ahead = otherMoved ? 1 : 2;
+            double ahead = driverDerailed ? 0 : otherMoved ? 1 : 2;
             double px = other.getX() + lvx * ahead - getX(), pz = other.getZ() + lvz * ahead - getZ();
             double predicted = Math.sqrt(px * px + pz * pz);
             frontBogie.velocity[0] = frontBogie.velocity[1] = 0;

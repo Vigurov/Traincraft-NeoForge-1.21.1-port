@@ -4019,6 +4019,25 @@ public class ItemTCRail extends ItemPart {
         }
         return true;
     }
+    /**
+     * the 45 degree switches: TC made their curve rail a 90 degree turn, so bogies went on turning past the 45
+     * degrees its rails and model end at, off the track. It is a 45 degree turn (bogies go on along the diagonal
+     * past it). Only the rails of this switch: those within its footprint with its radius.
+     */
+    private void fix45Switch(Level world, int x, int y, int z, int l, double radius, String size, boolean left, boolean embedded) {
+        int fx = l == 3 ? 1 : l == 1 ? -1 : 0, fz = l == 0 ? 1 : l == 2 ? -1 : 0;
+        int along = size.equals("MEDIUM") ? 4 : 7, across = size.equals("MEDIUM") ? 2 : 3;
+        String turn = (embedded ? "EMBEDDED_" : "") + size + (left ? "_LEFT" : "_RIGHT") + "_45DEGREE_TURN";
+        for (int a = 0; a <= along; a++) {
+            for (int s = -across; s <= across; s++) {
+                int tx = x + fx * a + -fz * s, tz = z + fz * a + fx * s;
+                if (!(world.getBlockEntity(new BlockPos(tx, y, tz)) instanceof TileTCRail rail) || Math.abs(rail.r - radius) > 1e-3) continue;
+                if (rail.getTrackName() != null && rail.getTrackName().contains("TURN")) rail.setType(turn);
+                rail.setChanged();
+            }
+        }
+    }
+
     private boolean mediumRight45DegreeSwitch(Player player, Level world, int x, int y, int z, int l, EnumTracks tempType, String typeVariantStraight, String typeVariant90Turn){
         int dx = 0;
         int dz = 0;
@@ -4117,6 +4136,7 @@ public class ItemTCRail extends ItemPart {
         }
 
 
+        if (player == null || !player.isShiftKeyDown()) fix45Switch(world, x, y + 1, z, l, 3.75, "MEDIUM", false, tempType.getLabel().contains("EMBEDDED"));
         return true;
     }
     private boolean mediumLeft45DegreeSwitch(Player player, Level world, int x, int y, int z, int l, EnumTracks tempType, String typeVariantStraight, String typeVariant90Turn){
@@ -4215,6 +4235,7 @@ public class ItemTCRail extends ItemPart {
             }
 
 
+        if (player == null || !player.isShiftKeyDown()) fix45Switch(world, x, y + 1, z, l, 3.75, "MEDIUM", true, tempType.getLabel().contains("EMBEDDED"));
         return true;
     }
     private boolean largeRight45DegreeSwitch(Player player, Level world, int x, int y, int z, int l, EnumTracks tempType, String typeVariantStraight, String typeVariant90Turn){
@@ -4349,6 +4370,7 @@ public class ItemTCRail extends ItemPart {
             /** Put down straight exit **/
             putDownSingleRail(world, x + 6, y + 1, z , l, x, y + 1, z, 0, typeVariantStraight, false, x + 3, y + 1, z + 1);
         }
+        if (player == null || !player.isShiftKeyDown()) fix45Switch(world, x, y + 1, z, l, 8.49, "LARGE", false, tempType.getLabel().contains("EMBEDDED"));
         return true;
     }
     private boolean largeLeft45DegreeSwitch(Player player, Level world, int x, int y, int z, int l, EnumTracks tempType, String typeVariantStraight, String typeVariant90Turn){
@@ -4483,6 +4505,7 @@ public class ItemTCRail extends ItemPart {
             /** Put down straight exit **/
             putDownSingleRail(world, x + 6, y + 1, z , l, x, y + 1, z, 0, typeVariantStraight, false, x + 3, y + 1, z - 1);
         }
+        if (player == null || !player.isShiftKeyDown()) fix45Switch(world, x, y + 1, z, l, 8.49, "LARGE", true, tempType.getLabel().contains("EMBEDDED"));
         return true;
     }
     private boolean largeRightParallelSwitch(Player player, Level world, int x, int y, int z, int l, EnumTracks tempType, String typeVariantStraight){

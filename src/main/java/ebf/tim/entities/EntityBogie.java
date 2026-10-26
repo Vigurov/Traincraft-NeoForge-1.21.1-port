@@ -109,8 +109,11 @@ public class EntityBogie {
             velocity[5]=l1 > 0 ? vec.zCoord / l1 : vec.zCoord;
         }
 
-        velocity[2]+=speed*velocity[4];
-        velocity[3]+=speed*velocity[5];
+        //the coupling's pull is a distance: a whole one along the train, at any angle (scaled like the speed it
+        //came out 0.7 of it on diagonals, and coupled cars drifted apart there)
+        double l = Math.abs(velocity[4]) + Math.abs(velocity[5]), e = Math.sqrt(velocity[4] * velocity[4] + velocity[5] * velocity[5]);
+        velocity[2]+=speed*velocity[4] * (e > 0 ? l / e : 1);
+        velocity[3]+=speed*velocity[5] * (e > 0 ? l / e : 1);
     }
 
     public void drag(GenericRailTransport host, double drag){
@@ -139,6 +142,20 @@ public class EntityBogie {
             this.prevPosZ = this.posZ;
 
             Block block = CommonUtil.getBlockAt(getWorld(), xFloor, yFloor, zFloor);
+            if (!CommonUtil.isClassicTrack(block) && lastTrack != null) {
+                //a diagonal runs through block corners: right at one the bogie can be a hair inside an empty block
+                //beside the track, which derailed it for a tick
+                int nx = posX - xFloor < 0.05 ? -1 : posX - xFloor > 0.95 ? 1 : 0;
+                int nz = posZ - zFloor < 0.05 ? -1 : posZ - zFloor > 0.95 ? 1 : 0;
+                for (int[] o : new int[][]{{nx, 0}, {0, nz}, {nx, nz}}) {
+                    if ((o[0] != 0 || o[1] != 0) && CommonUtil.isClassicTrack(CommonUtil.getBlockAt(getWorld(), xFloor + o[0], yFloor, zFloor + o[1]))) {
+                        xFloor += o[0];
+                        zFloor += o[1];
+                        block = CommonUtil.getBlockAt(getWorld(), xFloor, yFloor, zFloor);
+                        break;
+                    }
+                }
+            }
 
             if(CommonUtil.isClassicTrack(block)){
                 //classic Traincraft 4 pieces: follow their geometry (arcs, slopes, switches)
@@ -223,25 +240,34 @@ public class EntityBogie {
         }
 
         if (train.common.items.TCRailTypes.isSwitchTrack(lastTrack)) {
-            double vx = velocity[0] + velocity[2];
-            double vz = velocity[1] + velocity[3];
-            boolean goStraight = false;
-            //going "against" the curve ignores the switch
-            switch (lastTrack.getBlockMeta()) {
-                case 0: goStraight = (vz > 0 && !lastTrack.getSwitchState()) || (vz < 0 && lastTrack.getSwitchState()); break;
-                case 2: goStraight = (vz < 0 && !lastTrack.getSwitchState()) || (vz > 0 && lastTrack.getSwitchState()); break;
-                case 1: goStraight = (vx > 0 && !lastTrack.getSwitchState()) || (vx < 0 && lastTrack.getSwitchState()); break;
-                case 3: goStraight = (vx < 0 && !lastTrack.getSwitchState()) || (vx > 0 && lastTrack.getSwitchState()); break;
-            }
+            //facing the switch (coming from its entry) its setting picks the way; trailing through it (coming back from
+            //one of its two ways) the bogie stays on the way it is on. TC decided both by a table that had the two
+            //directions along x the wrong way round: a switch set straight sent trains along its curve, which only
+            //looked right because the next rail pulled them back
+            int sm = lastTrack.getBlockMeta();
+            double fx = sm == 3 ? 1 : sm == 1 ? -1 : 0, fz = sm == 0 ? 1 : sm == 2 ? -1 : 0;
+            boolean facing = (velocity[0] + velocity[2]) * fx + (velocity[1] + velocity[3]) * fz > 0;
+            boolean goStraight = facing ? !lastTrack.getSwitchState() : closerToStraight(lastTrack, fx, fz);
             if (goStraight) {
-                moveOnTCStraight(j, Math.abs(vx)>Math.abs(vz)?1:2);
+                moveOnTCStraight(j, fx != 0 ? 1 : 2);
             } else {
                 moveOnTC90TurnRail(j, lastTrack.r, lastTrack.cx, lastTrack.cz);
             }
+        } else if (lastTrack.getSwitchState() && train.common.items.TCRailTypes.isTurnTrack(lastTrack) && lastTrack.r > 0
+                && closerToStraight(lastTrack, lastTrack.getFacing() == 3 ? 1 : lastTrack.getFacing() == 1 ? -1 : 0,
+                lastTrack.getFacing() == 0 ? 1 : lastTrack.getFacing() == 2 ? -1 : 0)) {
+            //a straight rail a switch turned into part of its curve: whoever is on the straight way stays on it
+            moveOnTCStraight(j, lastTrack.getFacing() == 1 || lastTrack.getFacing() == 3 ? 1 : 2);
         } else if (train.common.items.TCRailTypes.isStraightTrack(lastTrack)) {
             moveOnTCStraight(j, lastTrack.getBlockMeta());
         } else if (train.common.items.TCRailTypes.isTurnTrack(lastTrack)) {
-            moveOnTC90TurnRail(j, lastTrack.r, lastTrack.cx, lastTrack.cz);
+            if (lastTrack.getRailType() == train.common.items.TCRailTypes.RailTypes.DIAGONALTURN && past45(lastTrack)) {
+                //a 45 degree turn ends there: on along the diagonal it leads to (the arc went on to 90 degrees, off
+                //the rails)
+                moveOn45Exit(j, lastTrack);
+            } else {
+                moveOnTC90TurnRail(j, lastTrack.r, lastTrack.cx, lastTrack.cz);
+            }
         } else if (train.common.items.TCRailTypes.isCrossingTrack(lastTrack)) {
             moveOnTCTwoWaysCrossing(j);
         } else if (train.common.items.TCRailTypes.isSlopeTrack(lastTrack)) {
@@ -277,15 +303,26 @@ public class EntityBogie {
         motionSqrt = Math.abs(velocity[0]) + Math.abs(velocity[1]);
         velocity[0] = motionSqrt * railPathX;
         velocity[1] = motionSqrt * railPathZ;
-        double along = motionSqrt + 0.5 * (velocity[2] * sx + velocity[3] * sz);
-        //onto the diagonal through this block's centre, then along it
-        double cx = xFloor + 0.5, cz = zFloor + 0.5;
-        double t = ((posX - cx) * sx + (posZ - cz) * sz) * 0.5;
-        posX = cx + t * sx;
-        posZ = cz + t * sz;
+        //the speed is the distance moved, at any angle (TiM's |x|+|z| measure moved trains 0.7 as fast on diagonals,
+        //and a train going from a curve onto one was braked by its own front)
+        double along = motionSqrt + DIAG * (velocity[2] * sx + velocity[3] * sz);
+        //onto the nearest diagonal through block centres, then along it. The one through this block's centre
+        //(TC) is another line when the bogie is a hair into a block beside it, as at the corners the line runs
+        //through, and it was thrown sideways and back
+        if (sx * sz < 0) {
+            double shift = (Math.round(posX + posZ) - (posX + posZ)) * 0.5;
+            posX += shift;
+            posZ += shift;
+        } else {
+            double shift = (Math.round(posX - posZ) - (posX - posZ)) * 0.5;
+            posX += shift;
+            posZ -= shift;
+        }
         posY = j;
-        setPositionRelative(railPathX * along, 0, railPathZ * along);
+        setPositionRelative(DIAG * sx * along, 0, DIAG * sz * along);
     }
+
+    private static final double DIAG = Math.sqrt(0.5);
 
     private void moveOnTCStraight(int j, int meta) {
         boolean alongZ = meta == 2 || meta == 0;
@@ -354,6 +391,71 @@ public class EntityBogie {
     private void moveOnTCSlope(int j, int tilex, int tilez, double slopeAngle, int meta) {
         moveOnTCStraight(j, meta);
         posY = j + slopeRise(slopeAngle, tilex, tilez, meta);
+    }
+
+    /**
+     * past the end of a 45 degree turn: along the straight line the arc runs into at 45 degrees (the diagonal its
+     * model and the next diagonal piece lie on), kept on that line. The diagonal through the block's centre is a
+     * different line on the blocks around the corner the line passes through.
+     */
+    private void moveOn45Exit(int j, train.common.tile.TileTCRail t) {
+        int l = t.getFacing();
+        double fx = l == 3 ? 1 : l == 1 ? -1 : 0, fz = l == 0 ? 1 : l == 2 ? -1 : 0;
+        double rx = -fz, rz = fx;
+        if (rx * (t.getBlockPos().getX() + 0.5 - t.cx) + rz * (t.getBlockPos().getZ() + 0.5 - t.cz) < 0) {
+            rx = -rx;
+            rz = -rz;
+        }
+        //the 45 degree point, and the line's direction there
+        double s2 = Math.sqrt(0.5);
+        double px = t.cx + t.r * (rx + fx) * s2, pz = t.cz + t.r * (rz + fz) * s2;
+        double dx = (fx - rx) * s2, dz = (fz - rz) * s2;
+        //onto the nearest diagonal through block centres, where the diagonal pieces lie (a 45 degree turn's own
+        //line is a few hundredths off it, enough to clip the empty block at the corner it crosses)
+        double c = dx * dz < 0 ? px + pz : px - pz, shift = (Math.round(c) - c) * 0.5;
+        px += shift;
+        pz += dx * dz < 0 ? shift : -shift;
+        //the way our own motion goes along it
+        double own = velocity[0] * dx + velocity[1] * dz;
+        if (own < 0 || (own == 0 && velocity[2] * dx + velocity[3] * dz < 0)) {
+            dx = -dx;
+            dz = -dz;
+        }
+        double ux = Math.copySign(1, dx), uz = Math.copySign(1, dz);
+        railPathX = 0.5 * ux;
+        railPathZ = 0.5 * uz;
+        motionSqrt = Math.abs(velocity[0]) + Math.abs(velocity[1]);
+        velocity[0] = motionSqrt * railPathX;
+        velocity[1] = motionSqrt * railPathZ;
+        double along = motionSqrt + DIAG * (velocity[2] * ux + velocity[3] * uz);
+        double tt = (posX - px) * dx + (posZ - pz) * dz;
+        posX = px + tt * dx;
+        posZ = pz + tt * dz;
+        posY = j;
+        setPositionRelative(DIAG * ux * along, 0, DIAG * uz * along);
+    }
+
+    /** nearer the straight way through this rail (its centre line along fx, fz) than its curve */
+    private boolean closerToStraight(train.common.tile.TileTCRail t, double fx, double fz) {
+        double cx = t.getBlockPos().getX() + 0.5, cz = t.getBlockPos().getZ() + 0.5;
+        double toLine = Math.abs((posX - cx) * -fz + (posZ - cz) * fx);
+        double toArc = Math.abs(Math.sqrt((posX - t.cx) * (posX - t.cx) + (posZ - t.cz) * (posZ - t.cz)) - t.r);
+        return t.r <= 0 || toLine <= toArc;
+    }
+
+    /** on a 45 degree turn's arc, further round than 45 degrees from where it starts (the side its rail is on) */
+    private boolean past45(train.common.tile.TileTCRail t) {
+        int l = t.getFacing();
+        double fx = l == 3 ? 1 : l == 1 ? -1 : 0, fz = l == 0 ? 1 : l == 2 ? -1 : 0;
+        //the radius at the start is square to the way the turn sets off, on the side of the turn's rail
+        double rx = -fz, rz = fx;
+        double tx = t.getBlockPos().getX() + 0.5 - t.cx, tz = t.getBlockPos().getZ() + 0.5 - t.cz;
+        if (rx * tx + rz * tz < 0) {
+            rx = -rx;
+            rz = -rz;
+        }
+        double px = posX - t.cx, pz = posZ - t.cz, pl = Math.sqrt(px * px + pz * pz);
+        return pl > 1e-6 && (px * rx + pz * rz) / pl < Math.cos(Math.PI / 4);
     }
 
     private void moveOnTC90TurnRail(int j, double radius, double startX, double startZ){

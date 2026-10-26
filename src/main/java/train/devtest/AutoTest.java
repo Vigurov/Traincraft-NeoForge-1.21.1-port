@@ -367,7 +367,9 @@ public class AutoTest {
             String[] f = p.getProperty("fleet").split(",");
             int go = Integer.parseInt(f[1]);
             //fleet=accel,startTick,coastTick  the throttle is closed again at coastTick (rolling on at a crawl)
-            int accel = f.length > 2 && tick >= Integer.parseInt(f[2]) ? 0 : Integer.parseInt(f[0]);
+            //fleet=accel,startTick,coastTick,reverseTick  from reverseTick the throttle the other way
+            int accel = f.length > 3 && tick >= Integer.parseInt(f[3]) ? -Integer.parseInt(f[0])
+                    : f.length > 2 && tick >= Integer.parseInt(f[2]) ? 0 : Integer.parseInt(f[0]);
             if (tick == 30) server.execute(() -> {
                 for (GenericRailTransport t : placed) {
                     if (!(t instanceof EntityTrainCore)) continue;
@@ -432,10 +434,12 @@ public class AutoTest {
         if (tick == 25 && p.containsKey("railscan")) server.execute(() -> {
             //railscan=1  every classic track block near the spawn: position, kind, its piece and facing
             StringBuilder b = new StringBuilder();
-            for (BlockPos q : BlockPos.betweenClosed(base.offset(-5, -1, -30), base.offset(40, 3, 30))) {
+            for (BlockPos q : BlockPos.betweenClosed(base.offset(-5, -1, -40), base.offset(40, 3, 180))) {
                 var be = level.getBlockEntity(q);
                 if (be instanceof train.common.tile.TileTCRail r) {
                     b.append(String.format(" %d,%d,%d:%s/%d", q.getX() - base.getX(), q.getY() - base.getY(), q.getZ() - base.getZ(), r.getTrackName(), r.getFacing()));
+                    if (p.getProperty("railscan").equals("2")) b.append(String.format("[meta=%d on=%s r=%.2f c=%.2f,%.2f]", r.getBlockMeta(), r.getSwitchState(), r.r,
+                            r.cx - base.getX(), r.cz - base.getZ()));
                 } else if (be instanceof train.common.tile.TileTCRailGag) {
                     b.append(String.format(" %d,%d,%d:gag", q.getX() - base.getX(), q.getY() - base.getY(), q.getZ() - base.getZ()));
                 }
@@ -692,6 +696,22 @@ public class AutoTest {
                     }
                 }
             }
+        }
+        if (p.containsKey("stand") && base != null) {
+            //stand=x,z,tick  the player stands there (survival, on the ground), seen from the front (F5 twice)
+            String[] st = p.getProperty("stand").split(",");
+            int t0 = Integer.parseInt(st[2]);
+            if (tick == t0) server.execute(() -> {
+                sp.setGameMode(GameType.SURVIVAL);
+                sp.getAbilities().flying = false;
+                sp.onUpdateAbilities();
+                sp.connection.teleport(base.getX() + Double.parseDouble(st[0]), base.getY() + 0.5, base.getZ() + Double.parseDouble(st[1]), 0, -50);
+            });
+            if (tick == t0 + 2) {
+                mc.options.setCameraType(net.minecraft.client.CameraType.THIRD_PERSON_FRONT);
+                mc.options.hideGui = true;
+            }
+            if (tick == t0 + 30) log(String.format("stand: feet at y=%.4f above the ground, onGround=%s", mc.player.getY() - base.getY(), mc.player.onGround()));
         }
         if (p.containsKey("walk") && tick >= Integer.parseInt(p.getProperty("walk").split(",")[1])) {
             //walk=index,fromTick,toTick  the player stands behind that placed transport (on a line along x) and walks
