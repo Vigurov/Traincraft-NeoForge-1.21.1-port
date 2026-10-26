@@ -1292,5 +1292,6 @@
  "item.traincraft.steelrail": "Steel Rail",
  "item.traincraft.reinforcedplastic": "Reinforced Plastic",
  "item.traincraft.reinforcedplates": "Reinforced Plates",
- "item.traincraft.composite_wrench": "Composite Wrench"
+ "item.traincraft.composite_wrench": "Composite Wrench",
+ "block.traincraft.block.lantern": "Lantern"
 }

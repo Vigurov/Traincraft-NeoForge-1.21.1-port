@@ -239,5 +239,6 @@
  "item.traincraft.steelrail": "Сталева рейка",
  "item.traincraft.reinforcedplastic": "Армований пластик",
  "item.traincraft.reinforcedplates": "Армовані пластини",
- "item.traincraft.composite_wrench": "Композитний ключ"
+ "item.traincraft.composite_wrench": "Композитний ключ",
+ "block.traincraft.block.lantern": "Ліхтар"
 }

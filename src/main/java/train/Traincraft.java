@@ -80,6 +80,7 @@ public class Traincraft {
     }
 
     private void registerPayloads(RegisterPayloadHandlersEvent event) {
-        event.registrar("1").playToServer(PacketInteract.TYPE, PacketInteract.CODEC, PacketInteract::handle);
+        event.registrar("1").playToServer(PacketInteract.TYPE, PacketInteract.CODEC, PacketInteract::handle)
+                .playToServer(train.blocks.lantern.PacketLantern.TYPE, train.blocks.lantern.PacketLantern.CODEC, train.blocks.lantern.PacketLantern::handle);
     }
 }

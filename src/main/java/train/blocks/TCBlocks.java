@@ -41,6 +41,9 @@ public class TCBlocks {
     public static final DeferredBlock<Block> BALLAST = simple("block.ballast", BlockBehaviour.Properties.of().mapColor(MapColor.STONE)
             .strength(3.0F, 6.0F).sound(SoundType.GRAVEL));
 
+    public static final DeferredBlock<train.blocks.lantern.LanternBlock> LANTERN = block("block.lantern", () -> new train.blocks.lantern.LanternBlock(
+            BlockBehaviour.Properties.of().mapColor(MapColor.METAL).strength(1.5F).sound(SoundType.LANTERN).lightLevel(s -> 15).noOcclusion()));
+
     public static final DeferredItem<Item> BALLOON = item("balloon"), PROPELLER = item("propeller"),
             COPPER_RAIL = item("copperrail"), STEEL_RAIL = item("steelrail"),
             REINFORCED_PLASTIC = item("reinforcedplastic"), REINFORCED_PLATES = item("reinforcedplates"),
@@ -49,6 +52,10 @@ public class TCBlocks {
     @SuppressWarnings("DataFlowIssue")
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<MachineTile>> MACHINE_TILE = TiMBlocks.TILES.register("machine",
             () -> BlockEntityType.Builder.of(MachineTile::new, DISTIL.get(), HEARTH_FURNACE.get(), DIESEL_GENERATOR.get()).build(null));
+
+    @SuppressWarnings("DataFlowIssue")
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<train.blocks.lantern.LanternTile>> LANTERN_TILE = TiMBlocks.TILES.register("lantern",
+            () -> BlockEntityType.Builder.of(train.blocks.lantern.LanternTile::new, LANTERN.get()).build(null));
 
     public static final DeferredHolder<MenuType<?>, MenuType<MachineMenu>> MACHINE_MENU =
             MENUS.register("machine", () -> IMenuTypeExtension.create(MachineMenu::fromNetwork));
@@ -63,6 +70,12 @@ public class TCBlocks {
                 .lightLevel(s -> s.getValue(MachineBlock.LIT) ? 13 : 0), kind));
         ITEMS.add(TiMGenericRegistry.ITEMS.registerSimpleBlockItem(b));
         return b;
+    }
+
+    private static <B extends Block> DeferredBlock<B> block(String name, java.util.function.Supplier<B> b) {
+        DeferredBlock<B> r = TiMBlocks.BLOCKS.register(name, b);
+        ITEMS.add(TiMGenericRegistry.ITEMS.registerSimpleBlockItem(r));
+        return r;
     }
 
     private static DeferredBlock<Block> simple(String name, BlockBehaviour.Properties props) {

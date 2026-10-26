@@ -211,6 +211,17 @@ public class AutoTest {
                 }
             });
         }
+        if (p.containsKey("lanterngui") && tick == Integer.parseInt(p.getProperty("lanterngui"))) {
+            //the colour screen of the first lantern of the use= list
+            for (String use : p.getProperty("use", "").split(";")) {
+                if (!use.startsWith("traincraft:block.lantern")) continue;
+                String[] xyz = use.split("@")[1].split(",");
+                if (mc.level.getBlockEntity(base.offset(Integer.parseInt(xyz[0]), Integer.parseInt(xyz[1]), Integer.parseInt(xyz[2]))) instanceof train.blocks.lantern.LanternTile lt) {
+                    mc.setScreen(new train.client.gui.LanternScreen(lt));
+                }
+                break;
+            }
+        }
         if (machineAt != null && tick % 100 == 0) {
             server.execute(() -> {
                 if (level.getBlockEntity(machineAt) instanceof MachineTile te) {

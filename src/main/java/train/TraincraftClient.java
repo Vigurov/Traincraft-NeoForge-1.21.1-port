@@ -34,5 +34,7 @@ public class TraincraftClient {
         event.registerBlockEntityRenderer(ebf.tim.registry.TiMBlocks.RAIL_TILE.get(), ebf.tim.render.RailRenderer::new);
         event.registerBlockEntityRenderer(train.common.ClassicTracks.TILE_RAIL, train.client.render.RenderTCRail::new);
         event.registerBlockEntityRenderer(train.blocks.TCBlocks.MACHINE_TILE.get(), train.client.render.RenderGeneratorDiesel::new);
+        event.registerBlockEntityRenderer(train.blocks.TCBlocks.LANTERN_TILE.get(), train.client.render.RenderLantern::new);
+        train.blocks.lantern.LanternBlock.openScreen = t -> net.minecraft.client.Minecraft.getInstance().setScreen(new train.client.gui.LanternScreen(t));
     }
 }
