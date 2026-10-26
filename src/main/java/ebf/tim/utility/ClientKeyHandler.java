@@ -20,6 +20,8 @@ import org.lwjgl.glfw.GLFW;
 public class ClientKeyHandler {
     private static final String CATEGORY = "Trains in Motion";
     public static final KeyMapping KeyHorn = new KeyMapping("Use Horn/Whistle", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_H, CATEGORY);
+    /**TC 4.5's bell key*/
+    public static final KeyMapping KeyBell = new KeyMapping("Ring Bell", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_B, CATEGORY);
     public static final KeyMapping KeyLamp = new KeyMapping("Lamp Toggle", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_L, CATEGORY);
     public static final KeyMapping KeyInventory = new KeyMapping("Open Train/rollingstock GUI", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_R, CATEGORY);
     /**1.12 started the engine from the locomotive's GUI, which is not ported yet*/
@@ -32,6 +34,7 @@ public class ClientKeyHandler {
 
     public static void register(RegisterKeyMappingsEvent event) {
         event.register(KeyHorn);
+        event.register(KeyBell);
         event.register(KeyLamp);
         event.register(KeyInventory);
         event.register(KeyIgnition);
@@ -60,6 +63,9 @@ public class ClientKeyHandler {
         boolean loco = t instanceof EntityTrainCore && t.isControlSeat(player);
         while (KeyIgnition.consumeClick()) {
             if (loco) send(8, t);
+        }
+        while (KeyBell.consumeClick()) {
+            if (loco) send(17, t);
         }
         while (KeyHorn.consumeClick()) {
             if (loco) send(9, t);

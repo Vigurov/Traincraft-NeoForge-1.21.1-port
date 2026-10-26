@@ -304,5 +304,14 @@
     "stream": false
    }
   ]
+ },
+ "bell": {
+  "category": "master",
+  "sounds": [
+   {
+    "name": "traincraft:bell",
+    "stream": false
+   }
+  ]
  }
 }

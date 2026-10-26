@@ -269,8 +269,14 @@ public class AutoTest {
             //lamp=tick  switches the driven transport's lamps
             server.execute(() -> train.interact(sp, false, false, 5));
         }
-        if (p.containsKey("horn") && tick == Integer.parseInt(p.getProperty("horn")) && train != null) {
-            server.execute(() -> train.interact(sp, false, false, 9));
+        if (p.containsKey("horn") && train != null) {
+            //horn=tick[,tick...]
+            for (String h : p.getProperty("horn").split(",")) {
+                if (tick == Integer.parseInt(h.trim())) server.execute(() -> train.interact(sp, false, false, 9));
+            }
+        }
+        if (p.containsKey("bell") && tick == Integer.parseInt(p.getProperty("bell")) && train != null) {
+            server.execute(() -> train.interact(sp, false, false, 17));
         }
         if (tick == 25 && p.containsKey("hand")) {
             //hand=item  in the main hand

@@ -258,6 +258,12 @@ public class EntityTrainCore extends GenericRailTransport {
                     setBoolean(boolValues.RUNNING, !getBoolean(boolValues.RUNNING));
                     updateLinks();
                     return true;
+                }case 17:{ //the bell (TC 4.5 Locomotive.soundWhistle, key B); it shares the horn's pause
+                    if(hornDelay ==0 && !level().isClientSide){
+                        playSound("bell", 0.5F, 1F);
+                        hornDelay = 65;
+                    }
+                    return true;
                 }case 9:{ //plays a sound on all clients within hearing distance
                     if(hornDelay ==0){
                         soundHorn();
