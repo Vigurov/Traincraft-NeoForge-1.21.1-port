@@ -108,12 +108,20 @@ public class EntityTrainCore extends GenericRailTransport {
         }
     }
 
-    /** it can pull: an electric only with power from the wire (what it keeps of it), others always */
+    /**
+     * it can pull: an electric only under a live wire (and for 2 seconds after leaving it, over a gap between
+     * spans), others always. What it keeps from the wire only evens out the supply: off the wire a real one has
+     * nothing to run on
+     */
     public boolean hasTraction() {
         if (!getTypes().contains(ELECTRIC)) return true;
+        if (tickCount - lastUnderWire > 40) return false;
         var f = getTank(0);
         return f != null && f.amount > 0;
     }
+
+    /** the last tick it was under a contact wire (server) */
+    private int lastUnderWire = -1000;
 
     private boolean hadTraction = true;
 
@@ -192,6 +200,7 @@ public class EntityTrainCore extends GenericRailTransport {
             var span = train.blocks.catenary.CatenaryMastTile.spanOver(level(), getX(), getY(), getZ());
             float railTop = (float) getY() + (frontBogie.yOffset + backBogie.yOffset) * 0.5f;
             float h = span == null ? 0 : (float) (span.wireY() - railTop);
+            if (span != null) lastUnderWire = tickCount;
             if (Math.abs(entityData().get(WIRE_HEIGHT) - h) > 0.01f) entityData().set(WIRE_HEIGHT, h);
         }
         if(!level().isClientSide && backBogie != null && frontBogie != null) {
@@ -265,6 +274,12 @@ public class EntityTrainCore extends GenericRailTransport {
     private void runningSounds() {
         train.library.EnumSounds s = getSoundRecord();
         if (s == null || !train.core.handlers.ConfigHandler.sounds() || !getBoolean(boolValues.RUNNING) || hornDelay != 0) {
+            return;
+        }
+        //an electric without power from the wire is silent: its motors, fans and compressor all run on it (the
+        //sound playing ends, no new one starts)
+        if (getTypes().contains(ELECTRIC) && !hasTraction()) {
+            if (soundPosition > 0) soundPosition--;
             return;
         }
         double speed = getVelocity();

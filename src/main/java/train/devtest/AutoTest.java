@@ -915,8 +915,8 @@ public class AutoTest {
                     }
                 }
                 for (GenericRailTransport t : placed) {
-                    b.append(String.format(" | %s x=%.1f v=%.3f run=%s tank=%s", t.getClass().getSimpleName().replace("Entity", ""), t.getX() - base.getX(), t.getVelocity(),
-                            t.getBoolean(GenericRailTransport.boolValues.RUNNING), t.getTankInfo() == null ? "-" : java.util.Arrays.stream(t.getTankInfo())
+                    b.append(String.format(" | %s x=%.1f v=%.3f run=%s pull=%s tank=%s", t.getClass().getSimpleName().replace("Entity", ""), t.getX() - base.getX(), t.getVelocity(),
+                            t.getBoolean(GenericRailTransport.boolValues.RUNNING), t instanceof EntityTrainCore c ? c.hasTraction() : "-", t.getTankInfo() == null ? "-" : java.util.Arrays.stream(t.getTankInfo())
                                     .map(x -> x == null || x.fluid == null ? "0" : String.valueOf(x.fluid.amount)).toList()));
                 }
                 log("cat t=" + tick + b);
