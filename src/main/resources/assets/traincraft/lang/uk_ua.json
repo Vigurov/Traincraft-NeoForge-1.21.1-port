@@ -240,5 +240,8 @@
  "item.traincraft.reinforcedplastic": "Армований пластик",
  "item.traincraft.reinforcedplates": "Армовані пластини",
  "item.traincraft.composite_wrench": "Композитний ключ",
- "block.traincraft.block.lantern": "Ліхтар"
+ "block.traincraft.block.lantern": "Ліхтар",
+ "block.traincraft.block.windmill": "Вітряк",
+ "block.traincraft.block.waterwheel": "Водяне колесо",
+ "block.traincraft.block.bridgepillar": "Опора мосту"
 }

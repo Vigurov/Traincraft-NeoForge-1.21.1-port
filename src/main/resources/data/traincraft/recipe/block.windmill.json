@@ -1,0 +1,24 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "misc",
+ "pattern": [
+  " R ",
+  " G ",
+  "B B"
+ ],
+ "key": {
+  "R": {
+   "item": "traincraft:propeller"
+  },
+  "G": {
+   "item": "traincraft:generator"
+  },
+  "B": {
+   "tag": "c:ingots/iron"
+  }
+ },
+ "result": {
+  "id": "traincraft:block.windmill",
+  "count": 1
+ }
+}

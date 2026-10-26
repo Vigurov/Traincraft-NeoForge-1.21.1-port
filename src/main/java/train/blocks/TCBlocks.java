@@ -33,6 +33,10 @@ public class TCBlocks {
     public static final DeferredBlock<MachineBlock> DISTIL = machine("block.distil", "distil", MapColor.METAL);
     public static final DeferredBlock<MachineBlock> HEARTH_FURNACE = machine("block.hearthfurnace", "hearthfurnace", MapColor.STONE);
     public static final DeferredBlock<MachineBlock> DIESEL_GENERATOR = machine("block.dieselgenerator", "dieselgenerator", MapColor.METAL);
+    public static final DeferredBlock<MachineBlock> WINDMILL = machine("block.windmill", "windmill", MapColor.METAL);
+    public static final DeferredBlock<MachineBlock> WATER_WHEEL = machine("block.waterwheel", "waterwheel", MapColor.WOOD);
+    public static final DeferredBlock<train.blocks.BridgePillarBlock> BRIDGE_PILLAR = block("block.bridgepillar", () -> new train.blocks.BridgePillarBlock(
+            BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.0F, 3.0F).sound(SoundType.WOOD).noOcclusion()));
 
     public static final DeferredBlock<Block> ORE_PETROLEUM = simple("block.petroleum", BlockBehaviour.Properties.of().mapColor(MapColor.STONE)
             .strength(3.0F).sound(SoundType.STONE).requiresCorrectToolForDrops());
@@ -51,7 +55,11 @@ public class TCBlocks {
 
     @SuppressWarnings("DataFlowIssue")
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<MachineTile>> MACHINE_TILE = TiMBlocks.TILES.register("machine",
-            () -> BlockEntityType.Builder.of(MachineTile::new, DISTIL.get(), HEARTH_FURNACE.get(), DIESEL_GENERATOR.get()).build(null));
+            () -> BlockEntityType.Builder.of(MachineTile::new, DISTIL.get(), HEARTH_FURNACE.get(), DIESEL_GENERATOR.get(), WINDMILL.get(), WATER_WHEEL.get()).build(null));
+
+    @SuppressWarnings("DataFlowIssue")
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<train.blocks.BridgePillarBlock.Tile>> PILLAR_TILE = TiMBlocks.TILES.register("bridgepillar",
+            () -> BlockEntityType.Builder.of(train.blocks.BridgePillarBlock.Tile::new, BRIDGE_PILLAR.get()).build(null));
 
     @SuppressWarnings("DataFlowIssue")
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<train.blocks.lantern.LanternTile>> LANTERN_TILE = TiMBlocks.TILES.register("lantern",
@@ -67,7 +75,7 @@ public class TCBlocks {
     private static DeferredBlock<MachineBlock> machine(String name, String kind, MapColor color) {
         DeferredBlock<MachineBlock> b = TiMBlocks.BLOCKS.register(name, () -> new MachineBlock(BlockBehaviour.Properties.of()
                 .mapColor(color).strength(3.5F).sound(SoundType.METAL).requiresCorrectToolForDrops().noOcclusion()
-                .lightLevel(s -> s.getValue(MachineBlock.LIT) ? 13 : 0), kind));
+                .lightLevel(s -> s.getValue(MachineBlock.LIT) && !kind.equals("windmill") && !kind.equals("waterwheel") ? 13 : 0), kind));
         ITEMS.add(TiMGenericRegistry.ITEMS.registerSimpleBlockItem(b));
         return b;
     }

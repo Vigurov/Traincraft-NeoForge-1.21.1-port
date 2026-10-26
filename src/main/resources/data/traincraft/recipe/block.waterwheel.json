@@ -1,0 +1,21 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "misc",
+ "pattern": [
+  " P ",
+  "PGP",
+  " P "
+ ],
+ "key": {
+  "P": {
+   "tag": "minecraft:logs"
+  },
+  "G": {
+   "item": "traincraft:generator"
+  }
+ },
+ "result": {
+  "id": "traincraft:block.waterwheel",
+  "count": 1
+ }
+}

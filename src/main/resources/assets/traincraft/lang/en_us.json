@@ -1293,5 +1293,8 @@
  "item.traincraft.reinforcedplastic": "Reinforced Plastic",
  "item.traincraft.reinforcedplates": "Reinforced Plates",
  "item.traincraft.composite_wrench": "Composite Wrench",
- "block.traincraft.block.lantern": "Lantern"
+ "block.traincraft.block.lantern": "Lantern",
+ "block.traincraft.block.windmill": "Wind Mill",
+ "block.traincraft.block.waterwheel": "Water Wheel",
+ "block.traincraft.block.bridgepillar": "Bridge Pillar"
 }

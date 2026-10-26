@@ -48,13 +48,30 @@ public class MachineBlock extends HorizontalDirectionalBlock implements EntityBl
 
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
+        if (kind.equals("windmill") && !context.getLevel().getBlockState(context.getClickedPos().above()).canBeReplaced(context)) return null;
         return defaultBlockState().setValue(FACING, context.getHorizontalDirection().getOpposite());
     }
 
     @Override
     protected RenderShape getRenderShape(BlockState state) {
-        //the generator is a model drawn by its renderer
-        return kind.equals("dieselgenerator") ? RenderShape.ENTITYBLOCK_ANIMATED : RenderShape.MODEL;
+        //the generator, wind mill and water wheel are models drawn by the renderer
+        return modelDrawn() ? RenderShape.ENTITYBLOCK_ANIMATED : RenderShape.MODEL;
+    }
+
+    private boolean modelDrawn() {
+        return kind.equals("dieselgenerator") || kind.equals("windmill") || kind.equals("waterwheel");
+    }
+
+    /** energy only: no screen */
+    private boolean hasScreen() {
+        return !kind.equals("windmill") && !kind.equals("waterwheel");
+    }
+
+    private static final net.minecraft.world.phys.shapes.VoxelShape TALL = box(0, 0, 0, 16, 32, 16);
+
+    @Override
+    protected net.minecraft.world.phys.shapes.VoxelShape getShape(BlockState state, net.minecraft.world.level.BlockGetter level, BlockPos pos, net.minecraft.world.phys.shapes.CollisionContext context) {
+        return kind.equals("windmill") ? TALL : super.getShape(state, level, pos, context);
     }
 
     @Override
@@ -71,6 +88,7 @@ public class MachineBlock extends HorizontalDirectionalBlock implements EntityBl
 
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
+        if (!hasScreen()) return InteractionResult.PASS;
         if (!level.isClientSide && player instanceof ServerPlayer sp && level.getBlockEntity(pos) instanceof MachineTile te) {
             sp.openMenu(new SimpleMenuProvider((id, inv, p) -> new MachineMenu(id, inv, te), getName()),
                     buf -> { buf.writeBlockPos(pos); buf.writeUtf(kind); });
@@ -96,7 +114,7 @@ public class MachineBlock extends HorizontalDirectionalBlock implements EntityBl
     /** smoke from a working machine */
     @Override
     public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
-        if (state.getValue(LIT)) {
+        if (state.getValue(LIT) && hasScreen()) {
             double x = pos.getX() + 0.5, y = pos.getY() + 1.0, z = pos.getZ() + 0.5;
             level.addParticle(ParticleTypes.SMOKE, x + (random.nextDouble() - 0.5) * 0.4, y, z + (random.nextDouble() - 0.5) * 0.4, 0, 0.02, 0);
         }
@@ -104,6 +122,6 @@ public class MachineBlock extends HorizontalDirectionalBlock implements EntityBl
 
     @Override
     protected int getLightBlock(BlockState state, net.minecraft.world.level.BlockGetter level, BlockPos pos) {
-        return kind.equals("dieselgenerator") ? 0 : super.getLightBlock(state, level, pos);
+        return modelDrawn() ? 0 : super.getLightBlock(state, level, pos);
     }
 }

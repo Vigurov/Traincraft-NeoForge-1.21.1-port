@@ -45,13 +45,24 @@ public class MachineTile extends BlockEntity implements ItemStackSlot.Host {
     public FluidStack tank = null;
     public int burnTime, currentItemBurnTime, cookTime, cookDuration;
     public boolean powered;
-    public final EnergyStorage energy = new EnergyStorage(320, 80);
+    public final EnergyStorage energy;
+    /** water wheel: the side the water is on (1.12 facing numbers), -1 none; drawn by the client */
+    public int waterDir = -1;
+    /** the wind, drifting like 1.12 WorldEvents: 10..20 mostly */
+    public static int windStrength = 10 + new Random().nextInt(10);
+    private static long windTicked = -1;
     private final Random random = new Random();
 
     public MachineTile(BlockPos pos, BlockState state) {
         super(TCBlocks.MACHINE_TILE.get(), pos, state);
         kind = state.getBlock() instanceof MachineBlock m ? m.kind : "distil";
+        energy = switch (kind) {
+            case "windmill" -> new EnergyStorage(240, 80);
+            case "waterwheel" -> new EnergyStorage(80, 80);
+            default -> new EnergyStorage(320, 80);
+        };
         switch (kind) {
+            case "windmill", "waterwheel" -> {}
             case "distil" -> {
                 cookDuration = 400;
                 inventory.add(new ItemStackSlot(this, 400, 56, 17).setCraftingInput(true).setOverlay(TCBlocks.ORE_PETROLEUM.get()));
@@ -130,9 +141,12 @@ public class MachineTile extends BlockEntity implements ItemStackSlot.Host {
         switch (te.kind) {
             case "distil" -> te.tickDistil();
             case "hearthfurnace" -> te.tickHearth();
+            case "windmill" -> te.tickWindmill();
+            case "waterwheel" -> te.tickWaterWheel();
             default -> te.tickGenerator();
         }
-        boolean lit = te.kind.equals("dieselgenerator") ? te.burnTime > 0 : te.isBurning();
+        if (te.energy.getEnergyStored() > 0) te.pushEnergy();
+        boolean lit = te.kind.equals("windmill") || te.kind.equals("waterwheel") ? te.energy.getEnergyStored() > 0 : te.isBurning();
         if (state.hasProperty(MachineBlock.LIT) && state.getValue(MachineBlock.LIT) != lit) {
             level.setBlock(pos, state.setValue(MachineBlock.LIT, lit), 3);
         }
@@ -346,14 +360,68 @@ public class MachineTile extends BlockEntity implements ItemStackSlot.Host {
                 setChanged();
             }
         }
-        if (energy.getEnergyStored() > 0) {
-            for (Direction side : Direction.Plane.HORIZONTAL) {
-                IEnergyStorage other = level.getCapability(Capabilities.EnergyStorage.BLOCK, worldPosition.relative(side), side.getOpposite());
-                if (other != null && other.canReceive()) {
-                    int got = other.receiveEnergy(Math.min(energy.getMaxEnergyStored(), energy.getEnergyStored()), false);
-                    energy.extractEnergy(got, false);
-                }
+    }
+
+    /** gives the stored energy to the blocks around that take it (1.12: the four sides; the water wheel all six) */
+    private void pushEnergy() {
+        for (Direction side : Direction.values()) {
+            if (side.getAxis().isVertical() && !kind.equals("waterwheel")) continue;
+            IEnergyStorage other = level.getCapability(Capabilities.EnergyStorage.BLOCK, worldPosition.relative(side), side.getOpposite());
+            if (other != null && other.canReceive()) {
+                int got = other.receiveEnergy(Math.min(energy.getMaxEnergyStored(), energy.getEnergyStored()), false);
+                energy.extractEnergy(got, false);
             }
+        }
+    }
+
+    private int tickCount2;
+
+    private void tickWindmill() {
+        tickCount2++;
+        long time = level.getGameTime();
+        if (time != windTicked && time % 128 == 0) {
+            windTicked = time;
+            int up = 10, down = 10;
+            if (windStrength > 20) up -= windStrength - 20;
+            else if (windStrength < 10) down -= 10 - windStrength;
+            if (random.nextInt(100) <= up) windStrength++;
+            if (random.nextInt(100) <= down) windStrength--;
+        }
+        BlockPos above = worldPosition.above();
+        if (tickCount2 % 20 == 0 && !level.isEmptyBlock(above)) {
+            //the blades turn in the block above: whatever is there breaks
+            level.destroyBlock(above, true);
+        }
+        if (tickCount2 % 4 == 0 && level.canSeeSky(above)) {
+            //1.12 worlds start at y 0: below that the height adds nothing
+            energy.receiveEnergy(windStrength + Math.round(Math.max(0, worldPosition.getY()) * 0.25f) * 10, false);
+            if (level.isThundering()) {
+                energy.receiveEnergy(Math.round(energy.getEnergyStored() * 3.5f), false);
+            } else if (level.isRaining()) {
+                energy.receiveEnergy(Math.round(energy.getEnergyStored() * 2.2f), false);
+            }
+        }
+    }
+
+    private boolean water(BlockPos p) {
+        var fs = level.getFluidState(p);
+        return fs.is(net.minecraft.tags.FluidTags.WATER)
+                && !(fs.hasProperty(net.minecraft.world.level.material.FlowingFluid.FALLING) && fs.getValue(net.minecraft.world.level.material.FlowingFluid.FALLING));
+    }
+
+    private void tickWaterWheel() {
+        int dir;
+        if (water(worldPosition.west())) dir = 2;
+        else if (water(worldPosition.east())) dir = 0;
+        else if (water(worldPosition.south())) dir = 1;
+        else if (water(worldPosition.north())) dir = 3;
+        else if (water(worldPosition.above()) || water(worldPosition.below())) dir = waterDir < 0 ? 0 : waterDir;
+        else dir = -1;
+        if (dir >= 0) energy.receiveEnergy(5, false);
+        if (dir != waterDir) {
+            waterDir = dir;
+            setChanged();
+            level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
         }
     }
 
@@ -412,6 +480,19 @@ public class MachineTile extends BlockEntity implements ItemStackSlot.Host {
         tag.putInt("CookDuration", cookDuration);
         tag.putBoolean("Powered", powered);
         tag.putInt("energy", energy.getEnergyStored());
+        tag.putInt("waterDir", waterDir);
+    }
+
+    @Override
+    public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
+        CompoundTag t = super.getUpdateTag(registries);
+        t.putInt("waterDir", waterDir);
+        return t;
+    }
+
+    @Override
+    public net.minecraft.network.protocol.Packet<net.minecraft.network.protocol.game.ClientGamePacketListener> getUpdatePacket() {
+        return net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket.create(this);
     }
 
     @Override
@@ -430,5 +511,6 @@ public class MachineTile extends BlockEntity implements ItemStackSlot.Host {
         if (tag.contains("CookDuration")) cookDuration = tag.getInt("CookDuration");
         powered = tag.getBoolean("Powered");
         energy.receiveEnergy(tag.getInt("energy"), false);
+        if (tag.contains("waterDir")) waterDir = tag.getInt("waterDir");
     }
 }
