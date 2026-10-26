@@ -313,6 +313,9 @@ public class AutoTest {
                 log("jukebox t=" + tick + " playing=" + cj.isPlaying() + " url=" + cj.getStreamURL() + " " + JukeboxClient.status(cj));
             }
         }
+        if (tick == 30 && p.containsKey("recipeaudit")) {
+            server.execute(() -> recipeAudit(level));
+        }
         if (p.containsKey("bell") && tick == Integer.parseInt(p.getProperty("bell")) && train != null) {
             server.execute(() -> train.interact(sp, false, false, 17));
         }
@@ -483,6 +486,84 @@ public class AutoTest {
     }
 
     private static BlockPos machineAt;
+
+    /**
+     * recipeaudit=1: which Traincraft items survival can't get. Starts from the vanilla items, what the mod's
+     * ores drop and what its machines make, then adds whatever a crafting/smelting recipe or a TiM table recipe
+     * makes from things already got, until nothing changes.
+     */
+    private static void recipeAudit(ServerLevel level) {
+        java.util.Set<net.minecraft.world.item.Item> got = new java.util.HashSet<>();
+        for (var item : BuiltInRegistries.ITEM) {
+            String ns = BuiltInRegistries.ITEM.getKey(item).getNamespace();
+            if (ns.equals("minecraft")) got.add(item);
+        }
+        //ores of the mod: what they drop to a diamond pickaxe
+        var pick = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND_PICKAXE);
+        for (var block : BuiltInRegistries.BLOCK) {
+            var id = BuiltInRegistries.BLOCK.getKey(block);
+            if (!id.getNamespace().equals("traincraft")) continue;
+            String n = id.getPath();
+            if (n.contains("ore") || n.contains("petroleum") || n.contains("oilsand")) {
+                for (var d : Block.getDrops(block.defaultBlockState(), level, base, null, null, pick)) got.add(d.getItem());
+                log("audit ore " + n + " drops " + Block.getDrops(block.defaultBlockState(), level, base, null, null, pick));
+            }
+        }
+        var rm = level.getRecipeManager();
+        boolean changed = true;
+        int rounds = 0;
+        while (changed && rounds++ < 50) {
+            changed = false;
+            //machines: distillation (diesel, fuel oil, plastic) and the open hearth furnace (steel)
+            if (got.contains(TCBlocks.DISTIL.get().asItem())) {
+                for (var it : new net.minecraft.world.item.Item[]{ebf.tim.registry.TiMItems.dieselCanister.get(), ebf.tim.registry.TiMOres.dustPlastic.get()}) changed |= got.add(it);
+                for (var f : ebf.tim.registry.TiMFluids.ALL) changed |= got.add(f.bucket.get());
+            }
+            if (got.contains(TCBlocks.HEARTH_FURNACE.get().asItem()) && got.contains(ebf.tim.registry.TiMItems.graphite.get())) {
+                changed |= got.add(ebf.tim.registry.TiMOres.ingotSteel.get());
+            }
+            for (var holder : rm.getRecipes()) {
+                var r = holder.value();
+                var out = r.getResultItem(level.registryAccess());
+                if (out.isEmpty() || got.contains(out.getItem())) continue;
+                boolean ok = !r.getIngredients().isEmpty();
+                for (var ing : r.getIngredients()) {
+                    if (ing.isEmpty()) continue;
+                    boolean any = false;
+                    for (var st : ing.getItems()) if (got.contains(st.getItem())) { any = true; break; }
+                    if (!any) { ok = false; break; }
+                }
+                if (ok) changed |= got.add(out.getItem());
+            }
+            for (String table : new String[]{"traintable", "traintabletier1", "traintabletier2", "traintabletier3"}) {
+                var tableItem = BuiltInRegistries.ITEM.get(ResourceLocation.parse("traincraft:block." + table));
+                if (!got.contains(tableItem)) continue;
+                for (var r : ebf.tim.utility.RecipeManager.getRecipes(table)) {
+                    boolean ok = true;
+                    for (var slot : r.getRecipeItems()) {
+                        if (slot == null) continue;
+                        boolean any = false;
+                        for (var st : slot) if (st.isEmpty() || got.contains(st.getItem())) { any = true; break; }
+                        if (!any) { ok = false; break; }
+                    }
+                    if (ok) for (var res : r.getresult()) changed |= got.add(res.getItem());
+                }
+            }
+            if (got.contains(TiMBlocksItem("block.railtable"))) changed |= got.add(ebf.tim.registry.TiMBlocks.railItem());
+        }
+        java.util.List<String> missing = new java.util.ArrayList<>();
+        for (var item : BuiltInRegistries.ITEM) {
+            var id = BuiltInRegistries.ITEM.getKey(item);
+            if (id.getNamespace().equals("traincraft") && !got.contains(item)) missing.add(id.getPath());
+        }
+        java.util.Collections.sort(missing);
+        log("audit rounds=" + rounds + " got " + got.stream().filter(i -> BuiltInRegistries.ITEM.getKey(i).getNamespace().equals("traincraft")).count()
+                + " traincraft items, missing " + missing.size() + ": " + missing);
+    }
+
+    private static net.minecraft.world.item.Item TiMBlocksItem(String name) {
+        return BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath("traincraft", name));
+    }
 
     /** block@x,y,z  or  rail line: block@x,y,z@len@axis  or  transport item@x,y,z@playerSide */
     private static void run(ServerLevel level, ServerPlayer sp, String use) {
