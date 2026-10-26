@@ -31,7 +31,7 @@ public class RenderCatenary implements BlockEntityRenderer<CatenaryMastTile> {
     private static final ResourceLocation TEX = ResourceLocation.fromNamespaceAndPath("traincraft", "textures/models/catenary_mast.png");
     private static final int TW = 512, TH = 128;
     /** the cantilever's reach (to the middle of the track beside the mast) and wire heights, in blocks */
-    public static final double REACH = 1.0, CONTACT_Y = 3.03, MESSENGER_Y = 3.955;
+    public static final double REACH = 1.0, CONTACT_Y = 3.03, MESSENGER_Y = 59.4 / 16;
     private static ModelRendererTurbo[] parts, glass;
 
     public RenderCatenary(BlockEntityRendererProvider.Context c) {}
@@ -63,12 +63,13 @@ public class RenderCatenary implements BlockEntityRenderer<CatenaryMastTile> {
     private static final java.util.List<ModelRendererTurbo> GLASS_PARTS = new java.util.ArrayList<>();
 
     /**
-     * a string of three glass disc insulators (the Soviet tempered glass ones, bluish green) from (ax, ay) to
-     * (bx, by) in the cantilever's plane: a pin, then disc and cap, disc and cap, disc and cap
+     * a string of glass disc insulators (the Soviet tempered glass ones, bluish green) from (ax, ay) to (bx, by) in
+     * the cantilever's plane: a pin, then a disc and a cap for each
      */
-    private static void insulatorString(java.util.List<ModelRendererTurbo> l, float ax, float ay, float bx, float by) {
+    private static void insulatorString(java.util.List<ModelRendererTurbo> l, float ax, float ay, float bx, float by, int discs) {
         float dx = bx - ax, dy = by - ay, len = (float) Math.sqrt(dx * dx + dy * dy), ux = dx / len, uy = dy / len;
-        float[] lens = {0.7f, 0.9f, 0.7f, 0.9f, 0.7f, 0.9f, 0.7f};
+        float[] lens = new float[discs * 2 + 1];
+        for (int i = 0; i < lens.length; i++) lens[i] = i % 2 == 1 ? 0.9f : 0.7f;
         float total = 0;
         for (float f : lens) total += f;
         float k = len / total, at = 0;
@@ -83,18 +84,18 @@ public class RenderCatenary implements BlockEntityRenderer<CatenaryMastTile> {
 
     /** half the lattice mast's width at a height (pixels): it narrows towards the top, like a pylon */
     private static float half(float y) {
-        return 4.5f - 2.3f * (y - 3) / 64f;
+        return 4.5f - 2.3f * (y - 3) / 67f;
     }
 
     /**
      * in pixels, y up from the block's bottom, the cantilever along +x. The mast is a lattice of steel angles (four
      * corner posts, struts and zig-zag bracing on every face, as the old Soviet line masts); the cantilever a
-     * triangle of a top tube and a strut, insulated at the mast, with the registration arm for the contact wire
+     * triangle of a top tube and a strut with the wires hung from it on glass insulators
      */
     private static ModelRendererTurbo[] build() {
         java.util.List<ModelRendererTurbo> l = new java.util.ArrayList<>();
         l.add(box(CONCRETE, 0, -6, 0, -6, 12, 3, 12));
-        float y0 = 3, y1 = 67;
+        float y0 = 3, y1 = 70;
         int[][] corners = {{1, 1}, {1, -1}, {-1, -1}, {-1, 1}};
         for (int[] c : corners) {
             l.add(bar(STEEL, 0, c[0] * half(y0), y0, c[1] * half(y0), c[0] * half(y1), y1, c[1] * half(y1), 1.3f));
@@ -114,16 +115,20 @@ public class RenderCatenary implements BlockEntityRenderer<CatenaryMastTile> {
             }
         }
         l.add(box(STEEL, 12, -2.8f, y1, -2.8f, 5.6f, 1.2f, 5.6f));
-        //cantilever: a string of glass insulators at the mast, the top tube out over the track, the strut up to its far end
-        float ty = 61.5f, sy = 51.5f, mx = half(ty);
-        insulatorString(l, mx, ty, mx + 5.2f, ty);
-        l.add(bar(STEEL, 16, mx + 5.2f, ty, 0, 19.5f, ty, 0, 1.4f));
-        insulatorString(l, half(sy), sy, half(sy) + 4.4f, sy + 2.7f);
-        l.add(bar(STEEL, 20, half(sy) + 4.4f, sy + 2.7f, 0, 17.5f, ty - 0.5f, 0, 1.2f));
-        //the messenger's saddle on the tube, over the middle of the track
-        l.add(box(DARK, 0, 15, ty + 0.6f, -1, 2, 1.2f, 2));
-        //registration arm: from the strut down and out to the contact wire
-        l.add(bar(DARK, 4, 9.5f, 55, 0, 16, 48.8f, 0, 0.7f));
+        //cantilever, earthed with the mast (the Soviet 3 kV lines' "uninsulated cantilever"): the top tube out over
+        //the track and the strut up to its far end, bolted to the mast; the insulators are where the wires hang
+        float ty = 66f, sy = 54f;
+        l.add(box(DARK, 16, half(ty) - 0.5f, ty - 1.5f, -1.6f, 1.2f, 3, 3.2f));
+        l.add(bar(STEEL, 16, half(ty), ty, 0, 19.5f, ty, 0, 1.4f));
+        l.add(box(DARK, 16, half(sy) - 0.5f, sy - 1.5f, -1.6f, 1.2f, 3, 3.2f));
+        l.add(bar(STEEL, 20, half(sy), sy, 0, 17.5f, ty - 0.5f, 0, 1.2f));
+        //the messenger wire hangs under the tube's end on a string of three glass discs, in its clamp
+        insulatorString(l, 16, ty - 0.7f, 16, 60.2f, 3);
+        l.add(box(DARK, 0, 15.3f, 58.7f, -1, 1.4f, 1.5f, 2));
+        //registration arm: from the strut through two glass discs, then down and out to the contact wire's clamp
+        float fx0 = 9, fy0 = sy + (ty - 0.5f - sy) * (fx0 - half(sy)) / (17.5f - half(sy));
+        insulatorString(l, fx0, fy0, fx0 + 2.6f, fy0 - 2.6f, 2);
+        l.add(bar(DARK, 4, fx0 + 2.6f, fy0 - 2.6f, 0, 16, 48.8f, 0, 0.7f));
         l.add(box(DARK, 8, 15.4f, 47.8f, -0.6f, 1.2f, 1.4f, 1.2f));
         return l.toArray(new ModelRendererTurbo[0]);
     }
