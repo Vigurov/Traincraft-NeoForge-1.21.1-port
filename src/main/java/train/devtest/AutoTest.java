@@ -37,6 +37,8 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.common.NeoForge;
 
 import java.io.File;
+import net.minecraft.util.Mth;
+import train.client.RoofRideClient;
 import java.io.FileReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -654,6 +656,43 @@ public class AutoTest {
                 }
             }
         }
+        if (p.containsKey("roof") && base != null) {
+            //roof=index,tick  the player (survival, not flying) is dropped onto that placed transport and stays; where
+            //they are on it (along, across, height) is logged every 10 ticks, as long as they are near it
+            String[] r = p.getProperty("roof").split(",");
+            int t0 = Integer.parseInt(r[1]);
+            if (tick == t0 && r.length > 3) {
+                //roof=index,tick,frameFrom,frameTo  also the camera every frame between those ticks
+                int f0 = Integer.parseInt(r[2]), f1 = Integer.parseInt(r[3]);
+                NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.client.event.RenderFrameEvent.Post e) -> {
+                    if (tick < f0 || tick > f1 || mc.player == null) return;
+                    var cam = mc.gameRenderer.getMainCamera();
+                    float pt = e.getPartialTick().getGameTimeDeltaPartialTick(false);
+                    var ct = mc.level.getEntity(placed.get(Integer.parseInt(r[0])).getId());
+                    log(String.format("frame t=%d pt=%.2f yaw=%.3f x=%.4f z=%.4f trainx=%.4f trainz=%.4f turned=%.2f", tick, pt, cam.getYRot(), cam.getPosition().x - base.getX(),
+                            cam.getPosition().z - base.getZ(), ct == null ? 0 : Mth.lerp(pt, ct.xo, ct.getX()) - base.getX(), ct == null ? 0 : Mth.lerp(pt, ct.zo, ct.getZ()) - base.getZ(),
+                            RoofRideClient.turned));
+                });
+            }
+            if (tick >= t0 && placed.size() > Integer.parseInt(r[0])) {
+                var t = placed.get(Integer.parseInt(r[0]));
+                if (tick == t0) server.execute(() -> {
+                    sp.setGameMode(GameType.SURVIVAL);
+                    sp.getAbilities().flying = false;
+                    sp.onUpdateAbilities();
+                    sp.connection.teleport(t.getX(), t.getY() + 3, t.getZ(), 0, 0);
+                });
+                if (tick % 10 == 0) {
+                    var ct = mc.level.getEntity(t.getId());
+                    if (ct != null) {
+                        double a = Math.toRadians(ct.getYRot()), ux = Math.cos(a), uz = Math.sin(a);
+                        double ox = mc.player.getX() - ct.getX(), oz = mc.player.getZ() - ct.getZ();
+                        log(String.format("roof t=%d vehicle=%s along=%.2f across=%.2f up=%.2f onGround=%s trainYaw=%.1f playerYaw=%.1f", tick, mc.player.getVehicle(), ox * ux + oz * uz,
+                                -ox * uz + oz * ux, mc.player.getY() - ct.getY(), mc.player.onGround(), ct.getYRot(), mc.player.getYRot()));
+                    }
+                }
+            }
+        }
         if (p.containsKey("walk") && tick >= Integer.parseInt(p.getProperty("walk").split(",")[1])) {
             //walk=index,fromTick,toTick  the player stands behind that placed transport (on a line along x) and walks
             //into it, holding forward; its speed is logged every 2 ticks
@@ -687,7 +726,7 @@ public class AutoTest {
             }
         }
         if (p.containsKey("mobs") && base != null) {
-            //mobs=type@x,z;...  mobs that cannot walk standing there from tick 30; their health is logged as it changes
+            //mobs=type@x,z[,y];...  mobs that cannot walk standing there from tick 30; their health is logged as it changes
             if (tick == 30) server.execute(() -> {
                 for (String m : p.getProperty("mobs").split(";")) {
                     String[] a = m.trim().split("@");
@@ -696,7 +735,8 @@ public class AutoTest {
                     if (type.create(level) instanceof net.minecraft.world.entity.Mob mob) {
                         //it keeps its AI (a mob without one is not moved by pushes) but cannot walk off
                         mob.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.MOVEMENT_SLOWDOWN, 100000, 255, false, false));
-                        mob.moveTo(base.getX() + Double.parseDouble(xz[0]) + 0.5, base.getY(), base.getZ() + Double.parseDouble(xz[1]) + 0.5, 0, 0);
+                        mob.moveTo(base.getX() + Double.parseDouble(xz[0]) + 0.5, base.getY() + (xz.length > 2 ? Double.parseDouble(xz[2]) : 0),
+                                base.getZ() + Double.parseDouble(xz[1]) + 0.5, 0, 0);
                         level.addFreshEntity(mob);
                         MOBS.add(mob);
                         log("mob " + a[0] + " at " + a[1] + " health " + mob.getHealth());
@@ -707,6 +747,8 @@ public class AutoTest {
                 for (var mob : MOBS) {
                     float h = mob.isAlive() ? mob.getHealth() : 0;
                     Float was = MOB_HEALTH.put(mob, h);
+                    if (tick % 50 == 0) log(String.format("mob t=%d %s at x=%.2f y=%.2f z=%.2f", tick, mob.getType().toShortString(),
+                            mob.getX() - base.getX(), mob.getY() - base.getY(), mob.getZ() - base.getZ()));
                     if (was == null || was != h) log(String.format("mob t=%d %s z=%.0f health %.1f -> %.1f at x=%.2f y=%.2f",
                             tick, mob.getType().toShortString(), mob.getZ() - base.getZ(), was == null ? Float.NaN : was, h, mob.getX() - base.getX(), mob.getY() - base.getY()));
                 }

@@ -29,7 +29,7 @@ public class TraincraftClient {
                 train.client.gui.HUDloco::render));
         modBus.addListener(this::armourExtensions);
         modBus.addListener((net.neoforged.fml.event.lifecycle.FMLClientSetupEvent e) -> bookPages());
-        modBus.addListener((net.neoforged.fml.event.lifecycle.FMLClientSetupEvent e) -> train.client.JukeboxClient.init());
+        modBus.addListener((net.neoforged.fml.event.lifecycle.FMLClientSetupEvent e) -> { train.client.JukeboxClient.init(); train.client.RoofRideClient.init(); });
         modBus.addListener((net.neoforged.fml.event.lifecycle.FMLClientSetupEvent e) -> train.devtest.AutoTest.init());
         NeoForge.EVENT_BUS.addListener(ClientKeyHandler::onClientTick);
     }

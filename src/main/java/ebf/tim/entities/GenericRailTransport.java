@@ -948,6 +948,7 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
         } else if (backBogie != null && collisionHandler != null) {
             collisionHandler.position(getX(), getY(), getZ(), getXRot(), getYRot());
         }
+        carryRiders();
 
         if (!level().isClientSide) {
             //tell the clients where the bogies are
@@ -1250,9 +1251,67 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
             net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DAMAGE_TYPE,
                     net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("traincraft", "train"));
 
+    /**
+     * whoever stands on top goes with it, turning with it on curves: the player on their own client (it moves its
+     * player), mobs and items on the server. Before this the train ran out from under them.
+     */
+    private void carryRiders() {
+        if (tickCount < 3) return;
+        double dx = getX() - xo, dz = getZ() - zo;
+        float dyaw = Mth.wrapDegrees(getYRot() - yRotO);
+        if (Math.abs(dx) + Math.abs(dz) < 1.0E-5 && Math.abs(dyaw) < 1.0E-4) return;
+        if (level().isClientSide) {
+            for (Player p : level().players()) {
+                if (p.isLocalPlayer() && standsOnTop(p)) {
+                    //their view turns with it every frame (train.client.RoofRideClient)
+                    carry(p, dx, dz, dyaw, false);
+                    roofRide = this;
+                    roofRideTime = level().getGameTime();
+                }
+            }
+        } else {
+            AABB area = new AABB(xo - getHitboxSize()[0], getY() + 0.4, zo - getHitboxSize()[0],
+                    xo + getHitboxSize()[0], getY() + getHitboxSize()[1] + 1.5, zo + getHitboxSize()[0]);
+            for (Entity e : level().getEntities(this, area, e -> !(e instanceof Player) && !(e instanceof GenericRailTransport)
+                    && !(e instanceof CollisionBox) && !e.isPassenger())) {
+                if (standsOnTop(e)) carry(e, dx, dz, dyaw, true);
+            }
+        }
+    }
+
+    /** the train the player on this client stood on, and when (client side) */
+    public static GenericRailTransport roofRide;
+    public static long roofRideTime;
+
+    /** on the ground on top of it, over its body as it was before this tick's move */
+    private boolean standsOnTop(Entity e) {
+        if (!e.onGround() || e.isPassenger() || e.getY() < getY() + 0.5 || e.getY() > getY() + getHitboxSize()[1] + 1.0) return false;
+        double r = Math.toRadians(yRotO);
+        double ux = Math.cos(r), uz = Math.sin(r);
+        double ox = e.getX() - xo, oz = e.getZ() - zo;
+        double along = ox * ux + oz * uz, side = -ox * uz + oz * ux;
+        double w = e.getBbWidth() * 0.5;
+        return Math.abs(along) <= getHitboxSize()[0] * 0.5 + w && Math.abs(side) <= getHitboxSize()[2] * 0.5 + w;
+    }
+
+    /** moves them with the body: its shift, and its turn about its centre */
+    private void carry(Entity e, double dx, double dz, float dyaw, boolean turnThem) {
+        double ox = e.getX() - xo, oz = e.getZ() - zo;
+        double r = Math.toRadians(dyaw), c = Math.cos(r), sn = Math.sin(r);
+        double nx = ox * c - oz * sn, nz = ox * sn + oz * c;
+        //a sideways move counts as not standing on anything: they still are
+        boolean ground = e.onGround();
+        e.move(net.minecraft.world.entity.MoverType.SHULKER_BOX, new Vec3(nx - ox + dx, 0, nz - oz + dz));
+        e.setOnGround(ground);
+        if (turnThem && dyaw != 0) {
+            e.setYRot(e.getYRot() + dyaw);
+            e.setYHeadRot(e.getYHeadRot() + dyaw);
+        }
+    }
+
     /** while moving: the entity is pushed sideways off the track; returns whether it was */
     private boolean pushAside(Entity e) {
-        if (Math.abs(getVelocity()) < 0.01 || frontBogie == null || backBogie == null) return false;
+        if (Math.abs(getVelocity()) < 0.01 || frontBogie == null || backBogie == null || e.getY() > getY() + 0.5) return false;
         double ax = frontBogie.posX - backBogie.posX, az = frontBogie.posZ - backBogie.posZ, l = Math.sqrt(ax * ax + az * az);
         if (l < 1e-3) return false;
         //someone at an end (pushing it, or it backing off from them) stays there
