@@ -133,8 +133,73 @@ public class EntityTrainCore extends GenericRailTransport {
             }
         }
         super.tick();
+        if (!level().isClientSide) {
+            runningSounds();
+        } else {
+            train.render.TrainSmoke.tick(this);
+        }
         if(hornDelay >0) {
             hornDelay--;
+        }
+    }
+
+    private int soundPosition = 0;
+    private train.library.EnumSounds soundRecord;
+    private boolean soundLooked = false;
+
+    /**the TC4 sound set of this locomotive class (1.12's fallback for transports without their own sounds)*/
+    public train.library.EnumSounds getSoundRecord() {
+        if (!soundLooked) {
+            soundLooked = true;
+            for (train.library.EnumSounds s : train.library.EnumSounds.values()) {
+                if (s.getEntityClass() == getClass()) {
+                    soundRecord = s;
+                    break;
+                }
+            }
+        }
+        return soundRecord;
+    }
+
+    private void playSound(String name, float volume, float pitch) {
+        if (name == null || name.isEmpty()) return;
+        SoundEvent sound = SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(train.library.Info.resourceLocation, name));
+        level().playSound(null, getX(), getY(), getZ(), sound, SoundSource.NEUTRAL, volume, pitch);
+    }
+
+    /**
+     * TC 4.5 Locomotive: while the engine runs, the idle sound when stopped and the running sound when moving,
+     * each played again once its length (ticks) is over; locomotives whose sound changes with speed repeat it
+     * sooner the faster they go. Quiet while the horn blows. 1.12 TiM never played these.
+     */
+    private void runningSounds() {
+        train.library.EnumSounds s = getSoundRecord();
+        if (s == null || !getBoolean(boolValues.RUNNING) || hornDelay != 0) {
+            return;
+        }
+        double speed = getVelocity();
+        if (soundPosition == 0) {
+            if (speed < 0.01D) {
+                playSound(s.getIdleString(), s.getIdleVolume(), 0.001F);
+                soundPosition = s.getIdleSoundLenght();
+            } else if (s.getSoundChangeWithSpeed()) {
+                if (speed < 0.06D) {
+                    playSound(s.getRunString(), s.getRunVolume(), 0.4F - 0.3F);
+                    soundPosition = s.getRunSoundLenght();
+                } else if (speed < 0.2D) {
+                    playSound(s.getRunString(), s.getRunVolume(), 0.4F - 0.1F);
+                    soundPosition = s.getRunSoundLenght() / 2;
+                } else {
+                    playSound(s.getRunString(), s.getRunVolume(), 0.4F);
+                    soundPosition = s.getRunSoundLenght() / 3;
+                }
+            } else {
+                playSound(s.getRunString(), s.getRunVolume(), 0.4F);
+                soundPosition = s.getRunSoundLenght();
+            }
+        }
+        if (soundPosition > 0) {
+            soundPosition--;
         }
     }
 
@@ -174,6 +239,13 @@ public class EntityTrainCore extends GenericRailTransport {
         if(getHorn()!=null){
             SoundEvent sound = SoundEvent.createVariableRangeEvent(getHorn());
             level().playSound(null, getX(), getY(), getZ(), sound, SoundSource.NEUTRAL, getHornVolume(), getHornPitch());
+            hornDelay = 65;
+            return;
+        }
+        //fallback for the TC4 sounds
+        train.library.EnumSounds s = getSoundRecord();
+        if (s != null && !s.getHornString().isEmpty()) {
+            playSound(s.getHornString(), s.getHornVolume(), 1.0F);
             hornDelay = 65;
         }
     }

@@ -70,6 +70,14 @@ public class AutoTest {
             throw new RuntimeException(e);
         }
         NeoForge.EVENT_BUS.addListener(AutoTest::onTick);
+        if (p.containsKey("soundlog")) {
+            //soundlog=1  logs the sounds the client plays (but the steps and the like)
+            NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.client.event.sound.PlaySoundEvent e) -> {
+                if (e.getSound() != null && e.getSound().getLocation().getNamespace().equals("traincraft")) {
+                    log("sound t=" + tick + " " + e.getSound().getLocation());
+                }
+            });
+        }
         log("autotest on: " + p);
     }
 
@@ -250,6 +258,9 @@ public class AutoTest {
                     sp.getInventory().setItem(9 + n, stack);
                 }
             });
+        }
+        if (p.containsKey("horn") && tick == Integer.parseInt(p.getProperty("horn")) && train != null) {
+            server.execute(() -> train.interact(sp, false, false, 9));
         }
         if (tick == 25 && p.containsKey("hand")) {
             //hand=item  in the main hand
