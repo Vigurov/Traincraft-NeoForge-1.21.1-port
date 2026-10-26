@@ -548,6 +548,7 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
         if (tag.contains("timdata")) {
             entityData = new XmlBuilder(tag.getCompound("timdata"));
         }
+        savedFlung = tag.getBoolean("offRails");
         bools.set(tag.getByteArray("bools"));
         net.minecraft.nbt.ListTag inv = tag.getList("inventory", net.minecraft.nbt.Tag.TAG_COMPOUND);
         for (int i = 0; i < inv.size(); i++) {
@@ -574,6 +575,8 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
         if (tag.contains("frontBogieX")) {
             frontBogie = new EntityBogie(this, tag.getDouble("frontBogieX"), tag.getDouble("frontBogieY"), tag.getDouble("frontBogieZ"), true);
             backBogie = new EntityBogie(this, tag.getDouble("backBogieX"), tag.getDouble("backBogieY"), tag.getDouble("backBogieZ"), false);
+            frontBogie.flung = backBogie.flung = savedFlung;
+            savedFlung = false;
             frontBogie.velocity[0] = tag.getDouble("frontBogieVX");
             frontBogie.velocity[1] = tag.getDouble("frontBogieVZ");
             backBogie.velocity[0] = tag.getDouble("backBogieVX");
@@ -592,6 +595,8 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
         tag.put("timdata", entityData.tag);
+        //thrown off a curve: it stays off the rails after a reload too
+        tag.putBoolean("offRails", savedFlung || frontBogie != null && frontBogie.flung);
         net.minecraft.nbt.ListTag inv = new net.minecraft.nbt.ListTag();
         for (ItemStackSlot slot : inventory) {
             if (slot.getHasStack()) {
@@ -638,6 +643,8 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
         return true;
     }
 
+    /** loaded thrown off the rails, for the bogies made after loading */
+    private boolean savedFlung;
     /** derailed last tick (server) */
     private boolean wasDerailed;
 
@@ -892,6 +899,8 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
             //spawn back bogie
             cachedVectors[1] = new Vec3f(rotationPoints()[0],0,0).rotatePoint(getXRot(), getYRot(),0);
             backBogie = new EntityBogie(this, getX() + cachedVectors[1].xCoord, getY() + cachedVectors[1].yCoord, getZ() + cachedVectors[1].zCoord, false);
+            frontBogie.flung = backBogie.flung = savedFlung;
+            savedFlung = false;
 
             if(!(this instanceof EntityTrainCore)) {
                 updatePosition();

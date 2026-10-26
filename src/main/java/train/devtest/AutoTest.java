@@ -99,15 +99,90 @@ public class AutoTest {
         return p.containsKey(key) ? Integer.parseInt(p.getProperty(key).trim()) : def;
     }
 
+    /**
+     * remote=host:port  joins that (dedicated) server instead of making a world; remotecmd=tick:command|tick:command
+     * sends chat commands (without the slash) at those ticks; every remotelog ticks (default 20) logs the transports
+     * this client sees; quits after ticks
+     */
+    private static void remoteTick(Minecraft mc) {
+        if (!started && mc.screen instanceof TitleScreen) {
+            started = true;
+            String addr = p.getProperty("remote");
+            log("joining " + addr + " as " + mc.getUser().getName() + " " + mc.getUser().getProfileId());
+            net.minecraft.client.gui.screens.ConnectScreen.startConnecting(mc.screen, mc,
+                    net.minecraft.client.multiplayer.resolver.ServerAddress.parseString(addr),
+                    new net.minecraft.client.multiplayer.ServerData("tctest", addr, net.minecraft.client.multiplayer.ServerData.Type.OTHER), false, null);
+            return;
+        }
+        if (mc.player == null || mc.level == null) {
+            return;
+        }
+        tick++;
+        if (tick == 1) log("joined, player at " + mc.player.blockPosition());
+        for (String c : p.getProperty("remotecmd", "").split("\\|")) {
+            int at = c.indexOf(':');
+            if (at > 0 && Integer.parseInt(c.substring(0, at).trim()) == tick) {
+                String cmd = c.substring(at + 1).trim();
+                mc.player.connection.sendCommand(cmd);
+                log("cmd " + cmd);
+            }
+        }
+        //remotekeys=tick:key:on|tick:key:off|tick:ignition  holds or releases forward/back/jump, or presses ignition
+        for (String c : p.getProperty("remotekeys", "").split("\\|")) {
+            String[] k = c.trim().split(":");
+            if (k.length < 2 || Integer.parseInt(k[0]) != tick) continue;
+            boolean on = k.length < 3 || k[2].equals("on");
+            switch (k[1]) {
+                case "forward" -> mc.options.keyUp.setDown(on);
+                case "back" -> mc.options.keyDown.setDown(on);
+                case "jump" -> mc.options.keyJump.setDown(on);
+                case "ignition" -> net.minecraft.client.KeyMapping.click(ebf.tim.utility.ClientKeyHandler.KeyIgnition.getKey());
+                default -> log("unknown key " + k[1]);
+            }
+            log("key " + c.trim() + " vehicle=" + mc.player.getVehicle());
+        }
+        if (tick % i("remotelog", 20) == 0) {
+            StringBuilder b = new StringBuilder();
+            for (var e : mc.level.entitiesForRendering()) {
+                if (e instanceof GenericRailTransport t) {
+                    b.append(String.format(" [%s %.2f,%.2f,%.2f yaw=%.1f v=%.3f run=%s derail=%s f=%s b=%s]", t.getClass().getSimpleName().replace("Entity", ""),
+                            t.getX(), t.getY(), t.getZ(), t.getYRot(), t.getVelocity(), t.getBoolean(GenericRailTransport.boolValues.RUNNING),
+                            t.getBoolean(GenericRailTransport.boolValues.DERAILED), t.frontLinkedID, t.backLinkedID));
+                }
+            }
+            log("remote t=" + tick + b);
+        }
+        if (p.containsKey("shots")) {
+            String[] sh = p.getProperty("shots").split(",");
+            int from = Integer.parseInt(sh[0]), to = Integer.parseInt(sh[1]), every = Integer.parseInt(sh[2]);
+            if (tick >= from && tick <= to && (tick - from) % every == 0) {
+                net.minecraft.client.Screenshot.grab(mc.gameDirectory, "tc-" + tick + ".png", mc.getMainRenderTarget(), m -> {});
+            }
+        }
+        if (tick == i("ticks", 200)) {
+            log("done");
+            mc.stop();
+        }
+    }
+
     private static void log(String s) {
         System.out.println("[TCTEST] " + s);
     }
 
     private static void onTick(ClientTickEvent.Post event) {
         Minecraft mc = Minecraft.getInstance();
+        if (p.containsKey("remote")) {
+            remoteTick(mc);
+            return;
+        }
         if (!started && mc.screen instanceof TitleScreen) {
             started = true;
             String name = "tctest";
+            if (p.containsKey("keepworld")) {
+                //keepworld=1  opens the world the last run left (saved when it quit) instead of a new one
+                mc.createWorldOpenFlows().openWorld(name, () -> log("could not open the kept world"));
+                return;
+            }
             try {
                 Path dir = mc.gameDirectory.toPath().resolve("saves").resolve(name);
                 if (Files.exists(dir)) {
@@ -144,6 +219,17 @@ public class AutoTest {
                 level.setDayTime(i("time", 6000));
                 base = BlockPos.containing(sp.getX(), sp.getY(), sp.getZ());
                 log("base " + base);
+                if (p.containsKey("adopt")) {
+                    //adopt=1  the transports already in the (kept) world are the test's, locomotive first
+                    for (var e : level.getAllEntities()) {
+                        if (e instanceof GenericRailTransport t) {
+                            if (t instanceof EntityTrainCore && train == null) train = t;
+                            placed.add(t);
+                        }
+                    }
+                    placed.sort(Comparator.comparingInt(t -> t instanceof EntityTrainCore ? 0 : 1));
+                    log("adopted " + placed.size());
+                }
                 var mods = level.registryAccess().registryOrThrow(net.neoforged.neoforge.registries.NeoForgeRegistries.Keys.BIOME_MODIFIERS);
                 log("config: biome modifiers " + mods.keySet().stream().filter(k -> k.getNamespace().equals("traincraft")).sorted().toList()
                         + ", steam recipes " + ebf.tim.utility.RecipeManager.getRecipes("traintabletier1").stream()
@@ -714,6 +800,29 @@ public class AutoTest {
                 mc.options.hideGui = true;
             }
             if (tick == t0 + 30) log(String.format("stand: feet at y=%.4f above the ground, onGround=%s", mc.player.getY() - base.getY(), mc.player.onGround()));
+        }
+        if (p.containsKey("statedump") && base != null) {
+            //statedump=tick[,tick...]  every placed transport: where, which way, coupled to which (by uuid), engine,
+            //fuel, derailed
+            for (String at : p.getProperty("statedump").split(",")) {
+                if (Integer.parseInt(at.trim()) != tick) continue;
+                server.execute(() -> {
+                    for (GenericRailTransport t : placed) {
+                        var f = t.frontLinkedID == null ? null : level.getEntity(t.frontLinkedID);
+                        var b = t.backLinkedID == null ? null : level.getEntity(t.backLinkedID);
+                        var slot = t.getSlotIndexByID(400);
+                        log(String.format("state %s %s at %.2f,%.2f,%.2f yaw=%.1f front=%s back=%s run=%s derailed=%s flung=%s/%s fuelSlot=%s tank=%s couplers=%s/%s",
+                                t.getClass().getSimpleName().replace("Entity", ""), t.getUUID().toString().substring(0, 8),
+                                t.getX(), t.getY(), t.getZ(), t.getYRot(),
+                                f == null ? "-" : f.getUUID().toString().substring(0, 8), b == null ? "-" : b.getUUID().toString().substring(0, 8),
+                                t.getBoolean(GenericRailTransport.boolValues.RUNNING), t.getBoolean(GenericRailTransport.boolValues.DERAILED),
+                                t.frontBogie != null && t.frontBogie.flung, t.backBogie != null && t.backBogie.flung,
+                                slot == null ? "-" : slot.getStackOrEmpty(), t.getTankInfo() == null ? "-" : java.util.Arrays.stream(t.getTankInfo())
+                                        .map(x -> x == null || x.fluid == null ? "-" : x.fluid.getName() + "=" + x.fluid.amount).toList(),
+                                t.getBoolean(GenericRailTransport.boolValues.COUPLINGFRONT), t.getBoolean(GenericRailTransport.boolValues.COUPLINGBACK)));
+                    }
+                });
+            }
         }
         if (p.containsKey("walk") && tick >= Integer.parseInt(p.getProperty("walk").split(",")[1])) {
             //walk=index,fromTick,toTick  the player stands behind that placed transport (on a line along x) and walks
