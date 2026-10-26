@@ -39,6 +39,8 @@ import net.neoforged.neoforge.common.NeoForge;
 import java.io.File;
 import net.minecraft.util.Mth;
 import train.client.RoofRideClient;
+import train.blocks.TCBlocks;
+import train.blocks.catenary.CatenaryMastBlock;
 import java.io.FileReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -284,6 +286,7 @@ public class AutoTest {
                         rowX.add(x);
                     }
                 }
+                if (p.containsKey("hidegui")) mc.options.hideGui = true;
                 if (p.containsKey("cam")) {
                     String[] c = p.getProperty("cam").split(",");
                     sp.getAbilities().flying = true;
@@ -853,6 +856,20 @@ public class AutoTest {
                 }
             });
         }
+        if (p.containsKey("wire") && base != null && tick == 30) {
+            //wire=x,y,z>x,y,z>x,y,z...  strings the catenary wire mast to mast with the item, as a player clicks
+            server.execute(() -> {
+                var stack = new net.minecraft.world.item.ItemStack(TCBlocks.CATENARY_WIRE.get(), 64);
+                sp.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, stack);
+                for (String q : p.getProperty("wire").split(">")) {
+                    String[] c = q.split(",");
+                    BlockPos at = base.offset(Integer.parseInt(c[0]), Integer.parseInt(c[1]), Integer.parseInt(c[2]));
+                    var hit = new net.minecraft.world.phys.BlockHitResult(net.minecraft.world.phys.Vec3.atCenterOf(at), net.minecraft.core.Direction.UP, at, false);
+                    var r = stack.useOn(new net.minecraft.world.item.context.UseOnContext(level, sp, net.minecraft.world.InteractionHand.MAIN_HAND, stack, hit));
+                    log("wire click " + q + " -> " + r);
+                }
+            });
+        }
         if (p.containsKey("statedump") && base != null) {
             //statedump=tick[,tick...]  every placed transport: where, which way, coupled to which (by uuid), engine,
             //fuel, derailed
@@ -1216,6 +1233,14 @@ public class AutoTest {
                         .append(be instanceof ebf.tim.blocks.RailTileEntity r ? r.getMeta() + (r.getData().isEmpty() ? "e" : "") : (be == null ? "null" : be.getClass().getSimpleName())).append(' ');
             }
             log("placed " + len + " TiM rails from " + pos + " along " + axis + ": " + dump);
+            return;
+        }
+        if (id.equals(ResourceLocation.fromNamespaceAndPath("traincraft", "catenary_mast"))) {
+            //catenary_mast@x,y,z@facing  (the way its cantilever points: north/east/south/west)
+            var facing = net.minecraft.core.Direction.byName(a.length > 2 ? a[2] : "east");
+            level.setBlock(pos.below(), Blocks.STONE.defaultBlockState(), 3);
+            level.setBlock(pos, TCBlocks.CATENARY_MAST.get().defaultBlockState().setValue(CatenaryMastBlock.FACING, facing), 3);
+            log("mast at " + pos + " facing " + facing);
             return;
         }
         if (BuiltInRegistries.BLOCK.containsKey(id)) {

@@ -265,5 +265,13 @@
  "item.traincraft.jukeboxcart": "Вагон-музичний автомат",
  "description.jukebox.default": "Грає інтернет-радіо MP3 за посиланнями .m3u/.pls, як-от Shoutcast",
  "death.attack.traincraft.train": "Потяг збив %1$s",
- "death.attack.traincraft.train.player": "Потяг збив %1$s під час бою з %2$s"
+ "death.attack.traincraft.train.player": "Потяг збив %1$s під час бою з %2$s",
+ "block.traincraft.catenary_mast": "Опора контактної мережі",
+ "item.traincraft.catenary_wire": "Контактний дріт",
+ "message.traincraft.catenary.start": "Дріт тягнеться від цієї опори: клацни наступну",
+ "message.traincraft.catenary.cancel": "Дріт відпущено",
+ "message.traincraft.catenary.gone": "Першої опори вже немає",
+ "message.traincraft.catenary.toofar": "Задалеко: між опорами щонайбільше 24 блоки",
+ "message.traincraft.catenary.already": "Ці опори вже з'єднані",
+ "message.traincraft.catenary.strung": "Дріт натягнуто"
 }

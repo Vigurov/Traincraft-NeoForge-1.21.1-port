@@ -1317,5 +1317,13 @@
  "block.traincraft.block.signal": "Signal",
  "description.jukebox.default": "Plays MP3 internet radio from .m3u/.pls links, like Shoutcast",
  "death.attack.traincraft.train": "%1$s was hit by a train",
- "death.attack.traincraft.train.player": "%1$s was hit by a train whilst fighting %2$s"
+ "death.attack.traincraft.train.player": "%1$s was hit by a train whilst fighting %2$s",
+ "block.traincraft.catenary_mast": "Catenary Mast",
+ "item.traincraft.catenary_wire": "Catenary Wire",
+ "message.traincraft.catenary.start": "Wire held from this mast: right click the next one",
+ "message.traincraft.catenary.cancel": "Wire let go",
+ "message.traincraft.catenary.gone": "The first mast is gone",
+ "message.traincraft.catenary.toofar": "Too far: masts at most 24 blocks apart",
+ "message.traincraft.catenary.already": "These masts are already joined",
+ "message.traincraft.catenary.strung": "Wire strung"
 }

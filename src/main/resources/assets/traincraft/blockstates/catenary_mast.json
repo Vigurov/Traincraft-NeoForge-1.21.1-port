@@ -1,0 +1,16 @@
+{
+ "variants": {
+  "facing=north": {
+   "model": "traincraft:block/catenary_mast"
+  },
+  "facing=east": {
+   "model": "traincraft:block/catenary_mast"
+  },
+  "facing=south": {
+   "model": "traincraft:block/catenary_mast"
+  },
+  "facing=west": {
+   "model": "traincraft:block/catenary_mast"
+  }
+ }
+}

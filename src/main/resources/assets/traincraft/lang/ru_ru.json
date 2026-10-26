@@ -244,5 +244,13 @@
  "train.locked.name": "Заблокирован",
  "train.unlocked.name": "Разблокирован",
  "death.attack.traincraft.train": "Поезд сбил %1$s",
- "death.attack.traincraft.train.player": "Поезд сбил %1$s во время боя с %2$s"
+ "death.attack.traincraft.train.player": "Поезд сбил %1$s во время боя с %2$s",
+ "block.traincraft.catenary_mast": "Опора контактной сети",
+ "item.traincraft.catenary_wire": "Контактный провод",
+ "message.traincraft.catenary.start": "Провод тянется от этой опоры: нажми на следующую",
+ "message.traincraft.catenary.cancel": "Провод отпущен",
+ "message.traincraft.catenary.gone": "Первой опоры уже нет",
+ "message.traincraft.catenary.toofar": "Слишком далеко: между опорами не больше 24 блоков",
+ "message.traincraft.catenary.already": "Эти опоры уже соединены",
+ "message.traincraft.catenary.strung": "Провод натянут"
 }

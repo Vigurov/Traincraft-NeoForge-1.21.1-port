@@ -60,6 +60,12 @@ public class TCBlocks {
             BlockBehaviour.Properties.of().mapColor(MapColor.METAL).strength(1.0F).sound(SoundType.METAL).noOcclusion().lightLevel(s -> 15),
             train.blocks.signal.TileTCSignal::new));
 
+    /** catenary: masts beside the track and the wire strung between them */
+    public static final DeferredBlock<train.blocks.catenary.CatenaryMastBlock> CATENARY_MAST = block("catenary_mast", () -> new train.blocks.catenary.CatenaryMastBlock(
+            BlockBehaviour.Properties.of().mapColor(MapColor.METAL).strength(3.0F, 6.0F).sound(SoundType.METAL).noOcclusion().requiresCorrectToolForDrops()));
+    public static final DeferredItem<train.blocks.catenary.CatenaryWireItem> CATENARY_WIRE = TiMGenericRegistry.ITEMS.register("catenary_wire",
+            () -> new train.blocks.catenary.CatenaryWireItem(new Item.Properties()));
+
     public static final DeferredItem<Item> BALLOON = item("balloon"), PROPELLER = item("propeller"),
             COPPER_RAIL = item("copperrail"), STEEL_RAIL = item("steelrail"),
             REINFORCED_PLASTIC = item("reinforcedplastic"), REINFORCED_PLATES = item("reinforcedplates"),
@@ -89,6 +95,10 @@ public class TCBlocks {
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<train.blocks.signal.TileTCSignal>> SIGNAL_TILE = TiMBlocks.TILES.register("signal",
             () -> BlockEntityType.Builder.of(train.blocks.signal.TileTCSignal::new, SIGNAL.get()).build(null));
 
+    @SuppressWarnings("DataFlowIssue")
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<train.blocks.catenary.CatenaryMastTile>> CATENARY_TILE = TiMBlocks.TILES.register("catenary_mast",
+            () -> BlockEntityType.Builder.of(train.blocks.catenary.CatenaryMastTile::new, CATENARY_MAST.get()).build(null));
+
     public static final DeferredHolder<MenuType<?>, MenuType<train.blocks.bench.TrainWorkbenchMenu>> WORKBENCH_MENU =
             MENUS.register("trainworkbench", () -> IMenuTypeExtension.create(train.blocks.bench.TrainWorkbenchMenu::fromNetwork));
 
@@ -97,6 +107,7 @@ public class TCBlocks {
 
     static {
         ITEMS.add(COMPOSITE_WRENCH);
+        ITEMS.add(CATENARY_WIRE);
     }
 
     private static DeferredBlock<MachineBlock> machine(String name, String kind, MapColor color) {

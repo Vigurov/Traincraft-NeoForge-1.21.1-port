@@ -126,6 +126,7 @@ public class TraincraftClient {
         event.registerBlockEntityRenderer(train.blocks.TCBlocks.PILLAR_TILE.get(), train.client.render.RenderBridgePillar::new);
         event.registerBlockEntityRenderer(train.blocks.TCBlocks.SWITCH_STAND_TILE.get(), train.client.render.RenderSwitchBlocks::new);
         event.registerBlockEntityRenderer(train.blocks.TCBlocks.SIGNAL_TILE.get(), train.client.render.RenderSwitchBlocks::new);
+        event.registerBlockEntityRenderer(train.blocks.TCBlocks.CATENARY_TILE.get(), train.client.render.RenderCatenary::new);
         train.blocks.lantern.LanternBlock.openScreen = t -> net.minecraft.client.Minecraft.getInstance().setScreen(new train.client.gui.LanternScreen(t));
     }
 }
