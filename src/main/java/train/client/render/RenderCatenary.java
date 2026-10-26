@@ -37,7 +37,7 @@ public class RenderCatenary implements BlockEntityRenderer<CatenaryMastTile> {
     public RenderCatenary(BlockEntityRendererProvider.Context c) {}
 
     /** texture columns: steel, concrete, insulator, copper, dark steel, plate */
-    private static final int STEEL = 0, CONCRETE = 256, INSULATOR = 288, COPPER = 320, DARK = 352, PLATE = 384;
+    private static final int STEEL = 0, CONCRETE = 256, INSULATOR = 320, COPPER = 352, DARK = 384, PLATE = 416;
 
     private static ModelRendererTurbo box(int u, int v, float x, float y, float z, float w, float h, float d) {
         ModelRendererTurbo m = new ModelRendererTurbo("", u, v, TW, TH);
