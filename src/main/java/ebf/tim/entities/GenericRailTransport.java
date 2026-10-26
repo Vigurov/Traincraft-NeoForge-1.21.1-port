@@ -210,6 +210,8 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
     public static final EntityDataAccessor<Integer> FUEL_CONSUMPTION = SynchedEntityData.defineId(GenericRailTransport.class, EntityDataSerializers.INT);
     public static final EntityDataAccessor<Integer> BOILER_HEAT = SynchedEntityData.defineId(GenericRailTransport.class, EntityDataSerializers.INT);
     public static final EntityDataAccessor<Float> BOGIE_Y_OFFSET = SynchedEntityData.defineId(GenericRailTransport.class, EntityDataSerializers.FLOAT);
+    /** an electric under a contact wire: the wire's height over the top of the rails (0: no wire over it) */
+    public static final EntityDataAccessor<Float> WIRE_HEIGHT = SynchedEntityData.defineId(GenericRailTransport.class, EntityDataSerializers.FLOAT);
 
     @Override
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
@@ -225,6 +227,7 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
         builder.define(TANKS, new CompoundTag());
         builder.define(FUEL_CONSUMPTION, 0);
         builder.define(BOILER_HEAT, 0);
+        builder.define(WIRE_HEIGHT, 0f);
     }
 
     /**1.12 name of the synced data; vanilla's own entityData field is the XML data here*/

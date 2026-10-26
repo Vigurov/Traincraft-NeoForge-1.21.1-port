@@ -59,9 +59,10 @@ public class CustomModelRenderer extends ModelRendererTurbo {
 	//same as super, but old models have inverse Y rotations and I don't even understand the Z rotation
 	@Override
 	public void render(float scale) {
-		if(!showModel){
+		if(!showModel || RenderContext.hidden != null && RenderContext.hidden.contains(this)){
 			return;
 		}
+		RenderContext.currentPart = this;
 		boolean bright = RenderContext.fullBright;
 		if (ignoresLighting){
 			RenderContext.fullBright = true;

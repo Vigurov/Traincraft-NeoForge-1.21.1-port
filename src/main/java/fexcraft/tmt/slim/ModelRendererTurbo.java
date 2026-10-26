@@ -1342,9 +1342,10 @@ public class ModelRendererTurbo {
      * @param scale the scale of the shape. Usually is 0.0625.
      */
     public void render(float scale){
-        if(!showModel){
+        if(!showModel || RenderContext.hidden != null && RenderContext.hidden.contains(this)){
             return;
         }
+        RenderContext.currentPart = this;
         boolean bright = RenderContext.fullBright;
         if (ignoresLighting){
             RenderContext.fullBright = true;

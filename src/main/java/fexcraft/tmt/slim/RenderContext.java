@@ -24,6 +24,16 @@ public final class RenderContext {
     public static boolean lampsOn;
     /**when set, polygons are not drawn: their vertices (in the pose stack's base space) are collected here*/
     public static java.util.List<org.joml.Vector3f> measure;
+    /** parts not drawn (an electric's folded pantograph while it is raised) */
+    public static java.util.Set<ModelRendererTurbo> hidden;
+    /** the part being drawn */
+    public static ModelRendererTurbo currentPart;
+    /**
+     * set: nothing is drawn, each part's bounds are kept instead (min x, y, z, max x, y, z), in the frame whose
+     * inverse is classifyFrame
+     */
+    public static java.util.Map<ModelRendererTurbo, float[]> classify;
+    public static org.joml.Matrix4f classifyFrame;
     /**GL_TEXTURE_2D disabled: draw with the vertex colour on a white part of the block atlas*/
     public static boolean untextured;
     private static ResourceLocation boundBeforeUntextured;

@@ -123,11 +123,10 @@ public class CatenaryMastTile extends BlockEntity {
         }
     }
 
-    /**
-     * energy for a train at x, y, z from the contact wire over it: from the two masts of the span it is under, at
-     * most max; how much it got
-     */
-    public static int feed(Level level, double x, double y, double z, int max) {
+    /** the span whose contact wire is over x, y, z: its two masts and the wire's height there, or null */
+    public record Span(CatenaryMastTile near, CatenaryMastTile far, double wireY) {}
+
+    public static Span spanOver(Level level, double x, double y, double z) {
         for (CatenaryMastTile t : loaded(level)) {
             if (t.isRemoved()) continue;
             Vec3 a = t.contactPoint();
@@ -139,27 +138,39 @@ public class CatenaryMastTile extends BlockEntity {
                 double dx = b.x - a.x, dz = b.z - a.z, l2 = dx * dx + dz * dz;
                 double s = l2 < 1e-6 ? 0 : Math.max(0, Math.min(1, ((x - a.x) * dx + (z - a.z) * dz) / l2));
                 double px = a.x + dx * s - x, pz = a.z + dz * s - z;
-                double above = a.y + (b.y - a.y) * s - y;
+                double wireY = a.y + (b.y - a.y) * s;
+                double above = wireY - y;
                 //under it: within a pantograph's reach across, the wire a pantograph's height over the train's wheels
                 if (px * px + pz * pz > 0.8 * 0.8 || above < 1.8 || above > 4.2) continue;
-                int got = 0;
-                int fromNear = Math.min(max / 2 + max % 2, t.energy.getEnergyStored());
-                t.energy.set(t.energy.getEnergyStored() - fromNear);
-                got += fromNear;
-                int fromFar = Math.min(max - got, other.energy.getEnergyStored());
-                other.energy.set(other.energy.getEnergyStored() - fromFar);
-                got += fromFar;
-                if (got < max) {
-                    int more = Math.min(max - got, t.energy.getEnergyStored());
-                    t.energy.set(t.energy.getEnergyStored() - more);
-                    got += more;
-                }
-                t.setChanged();
-                other.setChanged();
-                return got;
+                return new Span(t, other, wireY);
             }
         }
-        return 0;
+        return null;
+    }
+
+    /**
+     * energy for a train at x, y, z from the contact wire over it: from the two masts of the span it is under, at
+     * most max; how much it got
+     */
+    public static int feed(Level level, double x, double y, double z, int max) {
+        Span span = spanOver(level, x, y, z);
+        if (span == null) return 0;
+        CatenaryMastTile t = span.near(), other = span.far();
+        int got = 0;
+        int fromNear = Math.min(max / 2 + max % 2, t.energy.getEnergyStored());
+        t.energy.set(t.energy.getEnergyStored() - fromNear);
+        got += fromNear;
+        int fromFar = Math.min(max - got, other.energy.getEnergyStored());
+        other.energy.set(other.energy.getEnergyStored() - fromFar);
+        got += fromFar;
+        if (got < max) {
+            int more = Math.min(max - got, t.energy.getEnergyStored());
+            t.energy.set(t.energy.getEnergyStored() - more);
+            got += more;
+        }
+        t.setChanged();
+        other.setChanged();
+        return got;
     }
 
     /** the contact wire of a span: where it is held at this mast */

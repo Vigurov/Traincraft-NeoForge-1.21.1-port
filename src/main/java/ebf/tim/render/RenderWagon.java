@@ -248,6 +248,9 @@ public class RenderWagon extends EntityRenderer<GenericRailTransport> {
             s=entity.getTextureByID(Minecraft.getInstance().player,false, entity.getDefaultSkin());
         }
 
+        //an electric under the wire: its folded pantographs left out (the first raised frame only finds them)
+        boolean pantoProbe = !measuring && !isPaintBucket && entity.level() != null
+                && Pantographs.begin(entity, new org.joml.Matrix4f(fexcraft.tmt.slim.RenderContext.pose.last().pose()).invert());
         for(int i=0; i< entity.renderData.modelList.length;i++) {
             if(s!=null && s.getTexture(i)!=null) {
                 TextureManager.bindTexture(s.getTexture(i), s.colorsFrom, s.colorsTo, entity.colorsFrom, entity.colorsTo);
@@ -263,6 +266,12 @@ public class RenderWagon extends EntityRenderer<GenericRailTransport> {
             }
             entity.renderData.modelList[i].render(entity, 0,0,0,0,0, 0.0625f);
             GL11.glPopMatrix();
+        }
+        if (pantoProbe) {
+            Pantographs.classified(entity);
+        } else if (!measuring && !isPaintBucket && entity.level() != null) {
+            Pantographs.end();
+            Pantographs.draw(entity);
         }
         GL11.glPopMatrix();
 

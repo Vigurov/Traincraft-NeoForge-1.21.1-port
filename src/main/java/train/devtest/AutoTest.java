@@ -84,6 +84,7 @@ public class AutoTest {
         //another window) had every train standing still
         Minecraft.getInstance().options.pauseOnLostFocus = false;
         GenericRailTransport.debugCollide = p.containsKey("debugcollide");
+        ebf.tim.render.Pantographs.debug = p.containsKey("pantolog");
         //what hurts the player during a test
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.living.LivingDamageEvent.Post e) -> {
             if (e.getEntity() instanceof net.minecraft.world.entity.player.Player) {
@@ -288,6 +289,8 @@ public class AutoTest {
                     }
                 }
                 if (p.containsKey("hidegui")) mc.options.hideGui = true;
+                //fov=degrees  a narrow view from far away draws nearly without perspective, for measuring
+                if (p.containsKey("fov")) mc.options.fov().set(Integer.parseInt(p.getProperty("fov")));
                 if (p.containsKey("cam")) {
                     String[] c = p.getProperty("cam").split(",");
                     sp.getAbilities().flying = true;
@@ -543,6 +546,9 @@ public class AutoTest {
             }
             log("railscan" + b);
         });
+        if (tick == 30 && p.containsKey("roofscan")) {
+            roofScan(mc);
+        }
         if (tick == 30 && p.containsKey("measure")) {
             measureAll(mc);
         }
@@ -748,7 +754,10 @@ public class AutoTest {
                     server.execute(() -> {
                         sp.getAbilities().flying = true;
                         sp.onUpdateAbilities();
-                        sp.teleportTo(level, base.getX() + x + 0.5, base.getY(), base.getZ() - 6.5, 0, 6);
+                        //rowdist=blocks  how far from the track the camera stands
+                        double dist = Double.parseDouble(p.getProperty("rowdist", "6.5"));
+                        sp.teleportTo(level, base.getX() + x + 0.5, base.getY() + Double.parseDouble(p.getProperty("rowheight", "0")), base.getZ() - dist,
+                                0, Float.parseFloat(p.getProperty("rowpitch", "6")));
                     });
                 }
                 if (phase == rowEvery - 3) {
@@ -1044,6 +1053,45 @@ public class AutoTest {
      * a + s * the bogie height, from two heights) and how far the model reaches past the centre to the front and
      * the back (along the line between the bogies). Written as tools/transport_dims.json.
      */
+    /**
+     * roofscan=1  for every electric locomotive the height of its model along it (every eighth of a block): the
+     * pantographs stand out as bumps over the roof
+     */
+    private static void roofScan(Minecraft mc) {
+        for (var holder : TiMGenericRegistry.TRANSPORTS) {
+            String id = BuiltInRegistries.ENTITY_TYPE.getKey(holder.get()).getPath();
+            GenericRailTransport t = holder.get().create(mc.level);
+            if (t == null || !t.getTypes().contains(ebf.tim.TrainsInMotion.transportTypes.ELECTRIC)) continue;
+            t.setPos(0, 0, 0);
+            float[] rp = t.rotationPoints();
+            t.frontBogie = new ebf.tim.entities.EntityBogie(t, rp[1], 0, 0, true);
+            t.backBogie = new ebf.tim.entities.EntityBogie(t, rp[0], 0, 0, false);
+            double dir = rp[1] - rp[0] >= 0 ? 1 : -1;
+            t.frontBogie.yOffset = t.backBogie.yOffset = 0.125f;
+            var verts = new java.util.ArrayList<org.joml.Vector3f>();
+            fexcraft.tmt.slim.RenderContext.begin(new com.mojang.blaze3d.vertex.PoseStack(), null, 0, null);
+            fexcraft.tmt.slim.RenderContext.measure = verts;
+            ebf.tim.render.RenderWagon.measuring = true;
+            try {
+                ebf.tim.render.RenderWagon.doRender(t, t.getYRot(), 0, t.backBogie.yOffset, false, null);
+            } catch (Exception e) {
+                log("roof " + id + " failed " + e);
+                continue;
+            } finally {
+                ebf.tim.render.RenderWagon.measuring = false;
+                fexcraft.tmt.slim.RenderContext.measure = null;
+                fexcraft.tmt.slim.RenderContext.end();
+            }
+            java.util.TreeMap<Integer, Float> top = new java.util.TreeMap<>();
+            float lo = Float.MAX_VALUE;
+            for (var v : verts) lo = Math.min(lo, v.y);
+            for (var v : verts) top.merge((int) Math.floor(v.x * dir * 8), v.y - lo, Math::max);
+            StringBuilder b = new StringBuilder();
+            for (var e : top.entrySet()) b.append(String.format(java.util.Locale.ROOT, " %.2f:%.2f", e.getKey() / 8f, e.getValue()));
+            log("roof " + id + " #" + TiMGenericRegistry.TRANSPORTS.indexOf(holder) + b);
+        }
+    }
+
     private static void measureAll(Minecraft mc) {
         StringBuilder json = new StringBuilder("{\n");
         int n = 0;

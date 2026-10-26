@@ -173,6 +173,13 @@ public class EntityTrainCore extends GenericRailTransport {
      */
     @Override
     public void tick() {
+        if (!level().isClientSide && tickCount % 5 == 0 && getTypes().contains(ELECTRIC) && frontBogie != null && backBogie != null) {
+            //the wire over it, for the pantographs to reach up to
+            var span = train.blocks.catenary.CatenaryMastTile.spanOver(level(), getX(), getY(), getZ());
+            float railTop = (float) getY() + (frontBogie.yOffset + backBogie.yOffset) * 0.5f;
+            float h = span == null ? 0 : (float) (span.wireY() - railTop);
+            if (Math.abs(entityData().get(WIRE_HEIGHT) - h) > 0.01f) entityData().set(WIRE_HEIGHT, h);
+        }
         if(!level().isClientSide && backBogie != null && frontBogie != null) {
             cachedVectors[2].xCoord = 0;
             //twice a second, re-calculate the speed.

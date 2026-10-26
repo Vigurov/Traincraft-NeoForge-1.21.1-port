@@ -108,6 +108,17 @@ public class Tessellator {
 
     /** quads as they are, triangles with the last vertex twice, larger polygons as a fan of quads */
     private static void emit(List<float[]> pts, float unused, float nx, float ny, float nz) {
+        if (RenderContext.classify != null) {
+            org.joml.Matrix4f m = new org.joml.Matrix4f(RenderContext.classifyFrame).mul(RenderContext.pose.last().pose());
+            float[] b = RenderContext.classify.computeIfAbsent(RenderContext.currentPart, k -> new float[]{
+                    Float.MAX_VALUE, Float.MAX_VALUE, Float.MAX_VALUE, -Float.MAX_VALUE, -Float.MAX_VALUE, -Float.MAX_VALUE});
+            for (float[] p : pts) {
+                org.joml.Vector3f v = m.transformPosition(p[0], p[1], p[2], new org.joml.Vector3f());
+                b[0] = Math.min(b[0], v.x); b[1] = Math.min(b[1], v.y); b[2] = Math.min(b[2], v.z);
+                b[3] = Math.max(b[3], v.x); b[4] = Math.max(b[4], v.y); b[5] = Math.max(b[5], v.z);
+            }
+            return;
+        }
         if (RenderContext.measure != null) {
             org.joml.Matrix4f m = RenderContext.pose.last().pose();
             for (float[] p : pts) RenderContext.measure.add(m.transformPosition(p[0], p[1], p[2], new org.joml.Vector3f()));
