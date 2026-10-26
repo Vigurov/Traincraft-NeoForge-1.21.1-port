@@ -29,9 +29,10 @@ import train.blocks.catenary.CatenaryMastTile;
  */
 public class RenderCatenary implements BlockEntityRenderer<CatenaryMastTile> {
     private static final ResourceLocation TEX = ResourceLocation.fromNamespaceAndPath("traincraft", "textures/models/catenary_mast.png");
+    public static final ResourceLocation TEXTURE = TEX;
     private static final int TW = 512, TH = 128;
     private static final double CONTACT_Y = train.blocks.catenary.CatenaryGeometry.CONTACT_Y, MESSENGER_Y = train.blocks.catenary.CatenaryGeometry.MESSENGER_Y;
-    private static ModelRendererTurbo[] parts, glass;
+    private static ModelRendererTurbo[] parts, glass, feederParts, feederGlass;
 
     public RenderCatenary(BlockEntityRendererProvider.Context c) {}
 
@@ -134,6 +135,34 @@ public class RenderCatenary implements BlockEntityRenderer<CatenaryMastTile> {
         return l.toArray(new ModelRendererTurbo[0]);
     }
 
+    /**
+     * where a feeder comes to the mast: a bracket out from its top on the side away from the track, the cable hung
+     * under it on two glass discs (at CatenaryMastTile.feederPoint)
+     */
+    private static ModelRendererTurbo[] buildFeederBracket() {
+        java.util.List<ModelRendererTurbo> l = new java.util.ArrayList<>();
+        float y = 68.5f;
+        l.add(bar(STEEL, 24, -half(y), y, 0, -10.6f, y, 0, 1.2f));
+        l.add(bar(STEEL, 28, -half(y - 5), y - 5, 0, -8.5f, y - 0.4f, 0, 0.9f));
+        insulatorString(l, -9.9f, y - 0.7f, -9.9f, 65.6f, 2);
+        l.add(box(DARK, 24, -10.6f, 64.5f, -0.7f, 1.4f, 1.1f, 1.4f));
+        return l.toArray(new ModelRendererTurbo[0]);
+    }
+
+    /** a cable sagging from a to b (world), drawn relative to origin */
+    public static void cable(PoseStack pose, VertexConsumer vc, Vec3 origin, Vec3 a, Vec3 b, double w, int la, int lb) {
+        double len = a.distanceTo(b);
+        int n = Math.max(4, (int) Math.ceil(len * 2));
+        double sag = Math.min(0.6, 0.015 * len * len / 4 + 0.1);
+        Vec3 prev = null;
+        for (int i = 0; i <= n; i++) {
+            double t = i / (double) n;
+            Vec3 p = a.add(b.subtract(a).scale(t)).add(0, -4 * sag * t * (1 - t), 0).subtract(origin);
+            if (prev != null) wire(pose, vc, prev, p, w, DARK, t < 0.5 ? la : lb);
+            prev = p;
+        }
+    }
+
     private static float yaw(Direction d) {
         return switch (d) {
             case NORTH -> 90;
@@ -153,6 +182,9 @@ public class RenderCatenary implements BlockEntityRenderer<CatenaryMastTile> {
             GLASS_PARTS.clear();
             parts = build();
             glass = GLASS_PARTS.toArray(new ModelRendererTurbo[0]);
+            GLASS_PARTS.clear();
+            feederParts = buildFeederBracket();
+            feederGlass = GLASS_PARTS.toArray(new ModelRendererTurbo[0]);
         }
         BlockState state = tile.getBlockState();
         Direction facing = state.getValue(CatenaryMastBlock.FACING);
@@ -167,8 +199,22 @@ public class RenderCatenary implements BlockEntityRenderer<CatenaryMastTile> {
                 p.render(0.0625f);
                 GL11.glPopMatrix();
             }
+            if (tile.feeder != null) {
+                for (ModelRendererTurbo p : feederParts) {
+                    GL11.glPushMatrix();
+                    p.render(0.0625f);
+                    GL11.glPopMatrix();
+                }
+            }
             //the glass, see-through
             RenderContext.consumer = buffers.getBuffer(RenderType.entityTranslucent(TEX));
+            if (tile.feeder != null) {
+                for (ModelRendererTurbo p : feederGlass) {
+                    GL11.glPushMatrix();
+                    p.render(0.0625f);
+                    GL11.glPopMatrix();
+                }
+            }
             for (ModelRendererTurbo p : glass) {
                 GL11.glPushMatrix();
                 p.render(0.0625f);

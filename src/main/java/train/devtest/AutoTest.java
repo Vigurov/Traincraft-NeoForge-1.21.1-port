@@ -867,6 +867,19 @@ public class AutoTest {
                 }
             });
         }
+        if (p.containsKey("feeder") && base != null && tick == 31) {
+            //feeder=x,y,z>x,y,z  strings a feeder cable, substation to mast, with the item as a player clicks
+            server.execute(() -> {
+                var stack = new net.minecraft.world.item.ItemStack(TCBlocks.FEEDER_CABLE.get(), 16);
+                sp.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, stack);
+                for (String q : p.getProperty("feeder").split(">")) {
+                    String[] c = q.split(",");
+                    BlockPos at = base.offset(Integer.parseInt(c[0]), Integer.parseInt(c[1]), Integer.parseInt(c[2]));
+                    var hit = new net.minecraft.world.phys.BlockHitResult(net.minecraft.world.phys.Vec3.atCenterOf(at), net.minecraft.core.Direction.UP, at, false);
+                    log("feeder click " + q + " -> " + stack.useOn(new net.minecraft.world.item.context.UseOnContext(level, sp, net.minecraft.world.InteractionHand.MAIN_HAND, stack, hit)));
+                }
+            });
+        }
         if (p.containsKey("wire") && base != null && tick == 30) {
             //wire=x,y,z>x,y,z>x,y,z...  strings the catenary wire mast to mast with the item, as a player clicks
             server.execute(() -> {
@@ -881,9 +894,10 @@ public class AutoTest {
                 }
             });
         }
-        if (p.containsKey("feedmast") && base != null) {
-            //feedmast=x,y,z,fe  that mast gets fe every tick, a big generator beside it
-            String[] f = p.getProperty("feedmast").split(",");
+        //feedmast=x,y,z,fe[,untilTick]  that block (a substation) gets fe every tick, a big generator beside it, until then
+        String[] feedSpec = p.containsKey("feedmast") ? p.getProperty("feedmast").split(",") : null;
+        if (feedSpec != null && base != null && (feedSpec.length < 5 || tick <= Integer.parseInt(feedSpec[4]))) {
+            String[] f = feedSpec;
             server.execute(() -> {
                 BlockPos at = base.offset(Integer.parseInt(f[0]), Integer.parseInt(f[1]), Integer.parseInt(f[2]));
                 var cap = level.getCapability(net.neoforged.neoforge.capabilities.Capabilities.EnergyStorage.BLOCK, at, null);
@@ -894,10 +908,13 @@ public class AutoTest {
             //catlog=1  the energy at each mast (by x), and each placed transport's tank and engine
             server.execute(() -> {
                 StringBuilder b = new StringBuilder();
-                CatenaryMastTile.loaded(level).stream().sorted(Comparator.comparingInt(t -> t.getBlockPos().getX()))
-                        .forEach(t -> b.append(String.format(" mast%d=%d", t.getBlockPos().getX() - base.getX(), t.energy.getEnergyStored())));
+                for (BlockPos q : BlockPos.betweenClosed(base.offset(-8, -1, -8), base.offset(140, 2, 8))) {
+                    if (level.getBlockEntity(q) instanceof train.blocks.catenary.SubstationTile st) {
+                        b.append(String.format(" sub%d=%d", q.getX() - base.getX(), st.energy.getEnergyStored()));
+                    }
+                }
                 for (GenericRailTransport t : placed) {
-                    b.append(String.format(" | %s x=%.1f run=%s tank=%s", t.getClass().getSimpleName().replace("Entity", ""), t.getX() - base.getX(),
+                    b.append(String.format(" | %s x=%.1f v=%.3f run=%s tank=%s", t.getClass().getSimpleName().replace("Entity", ""), t.getX() - base.getX(), t.getVelocity(),
                             t.getBoolean(GenericRailTransport.boolValues.RUNNING), t.getTankInfo() == null ? "-" : java.util.Arrays.stream(t.getTankInfo())
                                     .map(x -> x == null || x.fluid == null ? "0" : String.valueOf(x.fluid.amount)).toList()));
                 }

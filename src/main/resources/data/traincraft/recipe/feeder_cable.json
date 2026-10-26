@@ -1,0 +1,23 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "misc",
+ "pattern": [
+  "CGC",
+  " S "
+ ],
+ "key": {
+  "C": {
+   "tag": "c:ingots/copper"
+  },
+  "G": {
+   "item": "minecraft:glass_pane"
+  },
+  "S": {
+   "tag": "c:ingots/steel"
+  }
+ },
+ "result": {
+  "id": "traincraft:feeder_cable",
+  "count": 4
+ }
+}

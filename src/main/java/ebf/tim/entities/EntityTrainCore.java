@@ -108,6 +108,15 @@ public class EntityTrainCore extends GenericRailTransport {
         }
     }
 
+    /** it can pull: an electric only with power from the wire (what it keeps of it), others always */
+    public boolean hasTraction() {
+        if (!getTypes().contains(ELECTRIC)) return true;
+        var f = getTank(0);
+        return f != null && f.amount > 0;
+    }
+
+    private boolean hadTraction = true;
+
     /** this locomotive's own push for its throttle (the TC4 formula, before the speed limits) */
     private float ownAcceleration() {
         float accel=0.0025f* Math.abs(getAcceleratorPercentage());
@@ -128,7 +137,7 @@ public class EntityTrainCore extends GenericRailTransport {
         double force = 0, mass = 0;
         for (GenericRailTransport t : getConsist()) {
             mass += Math.max(1000, t.weightKg());
-            if (t instanceof EntityTrainCore l && l.getBoolean(boolValues.RUNNING) && l.getAccelerator() != 0 && !l.getBoolean(boolValues.DERAILED)) {
+            if (t instanceof EntityTrainCore l && l.getBoolean(boolValues.RUNNING) && l.getAccelerator() != 0 && !l.getBoolean(boolValues.DERAILED) && l.hasTraction()) {
                 force += l.ownAcceleration() * Math.max(1000, l.weightKg());
             }
         }
@@ -173,6 +182,11 @@ public class EntityTrainCore extends GenericRailTransport {
      */
     @Override
     public void tick() {
+        if (!level().isClientSide && getTypes().contains(ELECTRIC) && hasTraction() != hadTraction) {
+            //power on the wire came or went: the train's pull again, at once
+            hadTraction = !hadTraction;
+            if (consistDriver() instanceof EntityTrainCore d && d.getAccelerator() != 0) d.calculateAcceleration();
+        }
         if (!level().isClientSide && tickCount % 5 == 0 && getTypes().contains(ELECTRIC) && frontBogie != null && backBogie != null) {
             //the wire over it, for the pantographs to reach up to
             var span = train.blocks.catenary.CatenaryMastTile.spanOver(level(), getX(), getY(), getZ());

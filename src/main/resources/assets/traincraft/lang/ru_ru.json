@@ -252,5 +252,12 @@
  "message.traincraft.catenary.gone": "Первой опоры уже нет",
  "message.traincraft.catenary.toofar": "Слишком далеко: между опорами не больше 24 блоков",
  "message.traincraft.catenary.already": "Эти опоры уже соединены",
- "message.traincraft.catenary.strung": "Провод натянут"
+ "message.traincraft.catenary.strung": "Провод натянут",
+ "block.traincraft.substation": "Тяговая подстанция",
+ "item.traincraft.feeder_cable": "Фидерный кабель",
+ "message.traincraft.feeder.start": "Кабель тянется: нажми на опору (или подстанцию)",
+ "message.traincraft.feeder.ends": "Фидер соединяет подстанцию с опорой",
+ "message.traincraft.feeder.toofar": "Слишком далеко: фидер не длиннее 24 блоков",
+ "message.traincraft.feeder.taken": "К этой опоре уже подведён фидер",
+ "message.traincraft.feeder.strung": "Фидер натянут"
 }

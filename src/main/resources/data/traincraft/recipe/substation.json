@@ -1,0 +1,27 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "redstone",
+ "pattern": [
+  "GGG",
+  "SBS",
+  "SCS"
+ ],
+ "key": {
+  "G": {
+   "item": "minecraft:glass_pane"
+  },
+  "S": {
+   "tag": "c:ingots/steel"
+  },
+  "B": {
+   "tag": "c:storage_blocks/copper"
+  },
+  "C": {
+   "item": "minecraft:stone"
+  }
+ },
+ "result": {
+  "id": "traincraft:substation",
+  "count": 1
+ }
+}

@@ -26,40 +26,16 @@ import java.util.Set;
 import java.util.WeakHashMap;
 
 /**
- * A mast and the masts its wire spans go to (each span is kept on both ends), and the energy (FE) the line has at
- * it. A mast takes energy from any block beside it (generators push it in; from those that don't, it draws). Along
- * each span energy flows from the fuller mast to the emptier one, as much as a span carries, and some of it is lost
- * on the way, the more the longer the span (about 5 % over 24 blocks): far from a generator a line has less, and a
- * long one wants more feeding points, like the substations of a real line.
+ * A mast and the masts its wire spans go to (each span is kept on both ends), and the substation that feeds the
+ * line here, if a feeder cable comes to this mast. A mast holds no energy: the line only carries it, from the
+ * substations to the trains under it (CatenaryNetwork).
  */
 public class CatenaryMastTile extends BlockEntity {
     /** the longest span between two masts, in blocks (real ones are 50-70 m) */
     public static final int MAX_SPAN = 24;
-    /** energy a mast holds, takes in a tick from beside it, and a span carries in a tick */
-    public static final int CAPACITY = 4000, INTAKE = 1000, SPAN_RATE = 500;
-    /** the share of what goes along a span lost per block of its length */
-    public static final double LOSS_PER_BLOCK = 0.002;
-
     public final Set<BlockPos> links = new LinkedHashSet<>();
-    public final Buffer energy = new Buffer();
-
-    /** the mast's energy: takes from outside at most INTAKE a tick, gives as much as asked */
-    public final class Buffer extends EnergyStorage {
-        Buffer() {
-            super(CAPACITY, INTAKE, CAPACITY);
-        }
-
-        void set(int e) {
-            energy = Math.max(0, Math.min(CAPACITY, e));
-        }
-
-        @Override
-        public int receiveEnergy(int max, boolean simulate) {
-            int got = super.receiveEnergy(max, simulate);
-            if (got > 0 && !simulate) setChanged();
-            return got;
-        }
-    }
+    /** the substation whose feeder cable comes to this mast */
+    public BlockPos feeder;
 
     /** the masts loaded on the server, per level, for the trains to find the wire over them */
     private static final Map<Level, Set<CatenaryMastTile>> LOADED = new WeakHashMap<>();
@@ -88,41 +64,6 @@ public class CatenaryMastTile extends BlockEntity {
         if (level != null) loaded(level).remove(this);
     }
 
-    /** server tick: energy in from beside the mast, then along its spans */
-    public void tickServer() {
-        if (energy.getEnergyStored() < CAPACITY) {
-            for (Direction d : Direction.values()) {
-                IEnergyStorage near = level.getCapability(Capabilities.EnergyStorage.BLOCK, worldPosition.relative(d), d.getOpposite());
-                if (near == null || near == energy || !near.canExtract()) continue;
-                int want = Math.min(INTAKE, CAPACITY - energy.getEnergyStored());
-                int got = near.extractEnergy(want, false);
-                if (got > 0) energy.receiveEnergy(got, false);
-                if (energy.getEnergyStored() >= CAPACITY) break;
-            }
-        }
-        //each span once, by its mast with the lower position
-        for (BlockPos o : links) {
-            if (o.asLong() < worldPosition.asLong() || !level.isLoaded(o)) continue;
-            if (!(level.getBlockEntity(o) instanceof CatenaryMastTile other)) continue;
-            int a = energy.getEnergyStored(), b = other.energy.getEnergyStored();
-            if (Math.abs(a - b) < 2) continue;
-            CatenaryMastTile from = a > b ? this : other, to = a > b ? other : this;
-            int move = Math.min(SPAN_RATE, Math.abs(a - b) / 2);
-            double keep = Math.max(0, 1 - LOSS_PER_BLOCK * Math.sqrt(worldPosition.distSqr(o)));
-            int arrives = (int) Math.floor(move * keep);
-            int room = CAPACITY - to.energy.getEnergyStored();
-            if (arrives > room) {
-                arrives = room;
-                move = (int) Math.ceil(arrives / Math.max(keep, 1e-6));
-            }
-            if (move <= 0) continue;
-            from.energy.set(from.energy.getEnergyStored() - move);
-            to.energy.set(to.energy.getEnergyStored() + arrives);
-            from.setChanged();
-            to.setChanged();
-        }
-    }
-
     /** the span whose contact wire is over x, y, z: its two masts and the wire's height there, or null */
     public record Span(CatenaryMastTile near, CatenaryMastTile far, double wireY) {}
 
@@ -148,29 +89,16 @@ public class CatenaryMastTile extends BlockEntity {
         return null;
     }
 
-    /**
-     * energy for a train at x, y, z from the contact wire over it: from the two masts of the span it is under, at
-     * most max; how much it got
-     */
-    public static int feed(Level level, double x, double y, double z, int max) {
-        Span span = spanOver(level, x, y, z);
-        if (span == null) return 0;
-        CatenaryMastTile t = span.near(), other = span.far();
-        int got = 0;
-        int fromNear = Math.min(max / 2 + max % 2, t.energy.getEnergyStored());
-        t.energy.set(t.energy.getEnergyStored() - fromNear);
-        got += fromNear;
-        int fromFar = Math.min(max - got, other.energy.getEnergyStored());
-        other.energy.set(other.energy.getEnergyStored() - fromFar);
-        got += fromFar;
-        if (got < max) {
-            int more = Math.min(max - got, t.energy.getEnergyStored());
-            t.energy.set(t.energy.getEnergyStored() - more);
-            got += more;
-        }
-        t.setChanged();
-        other.setChanged();
-        return got;
+    public void setFeeder(BlockPos substation) {
+        feeder = substation == null ? null : substation.immutable();
+        changed();
+    }
+
+    /** where a feeder cable comes to this mast: a bracket at its top, on the side away from the track */
+    public Vec3 feederPoint() {
+        BlockState st = getBlockState();
+        net.minecraft.core.Direction d = st.hasProperty(CatenaryMastBlock.FACING) ? st.getValue(CatenaryMastBlock.FACING) : net.minecraft.core.Direction.EAST;
+        return new Vec3(worldPosition.getX() + 0.5 - d.getStepX() * 0.62, worldPosition.getY() + 4.05, worldPosition.getZ() + 0.5 - d.getStepZ() * 0.62);
     }
 
     /** the contact wire of a span: where it is held at this mast */
@@ -198,6 +126,12 @@ public class CatenaryMastTile extends BlockEntity {
                     new ItemStack(TCBlocks.CATENARY_WIRE.get()));
         }
         links.clear();
+        if (feeder != null) {
+            if (level.getBlockEntity(feeder) instanceof SubstationTile sub) sub.removeFeeder(worldPosition);
+            Containers.dropItemStack(level, worldPosition.getX() + 0.5, worldPosition.getY() + 1, worldPosition.getZ() + 0.5,
+                    new ItemStack(TCBlocks.FEEDER_CABLE.get()));
+            feeder = null;
+        }
     }
 
     private void changed() {
@@ -209,7 +143,7 @@ public class CatenaryMastTile extends BlockEntity {
     protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.saveAdditional(tag, registries);
         tag.putLongArray("links", links.stream().mapToLong(BlockPos::asLong).toArray());
-        tag.putInt("energy", energy.getEnergyStored());
+        if (feeder != null) tag.putLong("feeder", feeder.asLong());
     }
 
     @Override
@@ -217,7 +151,7 @@ public class CatenaryMastTile extends BlockEntity {
         super.loadAdditional(tag, registries);
         links.clear();
         for (long l : tag.getLongArray("links")) links.add(BlockPos.of(l));
-        energy.set(tag.getInt("energy"));
+        feeder = tag.contains("feeder") ? BlockPos.of(tag.getLong("feeder")) : null;
     }
 
     @Override

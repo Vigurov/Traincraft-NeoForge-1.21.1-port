@@ -65,6 +65,11 @@ public class TCBlocks {
             BlockBehaviour.Properties.of().mapColor(MapColor.METAL).strength(3.0F, 6.0F).sound(SoundType.METAL).noOcclusion().requiresCorrectToolForDrops()));
     public static final DeferredItem<train.blocks.catenary.CatenaryWireItem> CATENARY_WIRE = TiMGenericRegistry.ITEMS.register("catenary_wire",
             () -> new train.blocks.catenary.CatenaryWireItem(new Item.Properties()));
+    /** a traction substation and the feeder cable from it to a mast */
+    public static final DeferredBlock<train.blocks.catenary.SubstationBlock> SUBSTATION = block("substation", () -> new train.blocks.catenary.SubstationBlock(
+            BlockBehaviour.Properties.of().mapColor(MapColor.METAL).strength(4.0F, 8.0F).sound(SoundType.METAL).noOcclusion().requiresCorrectToolForDrops()));
+    public static final DeferredItem<train.blocks.catenary.FeederCableItem> FEEDER_CABLE = TiMGenericRegistry.ITEMS.register("feeder_cable",
+            () -> new train.blocks.catenary.FeederCableItem(new Item.Properties()));
 
     public static final DeferredItem<Item> BALLOON = item("balloon"), PROPELLER = item("propeller"),
             COPPER_RAIL = item("copperrail"), STEEL_RAIL = item("steelrail"),
@@ -96,6 +101,10 @@ public class TCBlocks {
             () -> BlockEntityType.Builder.of(train.blocks.signal.TileTCSignal::new, SIGNAL.get()).build(null));
 
     @SuppressWarnings("DataFlowIssue")
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<train.blocks.catenary.SubstationTile>> SUBSTATION_TILE = TiMBlocks.TILES.register("substation",
+            () -> BlockEntityType.Builder.of(train.blocks.catenary.SubstationTile::new, SUBSTATION.get()).build(null));
+
+    @SuppressWarnings("DataFlowIssue")
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<train.blocks.catenary.CatenaryMastTile>> CATENARY_TILE = TiMBlocks.TILES.register("catenary_mast",
             () -> BlockEntityType.Builder.of(train.blocks.catenary.CatenaryMastTile::new, CATENARY_MAST.get()).build(null));
 
@@ -108,6 +117,7 @@ public class TCBlocks {
     static {
         ITEMS.add(COMPOSITE_WRENCH);
         ITEMS.add(CATENARY_WIRE);
+        ITEMS.add(FEEDER_CABLE);
     }
 
     private static DeferredBlock<MachineBlock> machine(String name, String kind, MapColor color) {

@@ -1,0 +1,16 @@
+{
+ "variants": {
+  "facing=north": {
+   "model": "traincraft:block/substation"
+  },
+  "facing=east": {
+   "model": "traincraft:block/substation"
+  },
+  "facing=south": {
+   "model": "traincraft:block/substation"
+  },
+  "facing=west": {
+   "model": "traincraft:block/substation"
+  }
+ }
+}

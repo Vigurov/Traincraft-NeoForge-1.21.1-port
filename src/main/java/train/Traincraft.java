@@ -71,7 +71,7 @@ public class Traincraft {
                 e.registerBlockEntity(net.neoforged.neoforge.capabilities.Capabilities.EnergyStorage.BLOCK, train.blocks.TCBlocks.MACHINE_TILE.get(),
                         (be, side) -> switch (be.kind) { case "dieselgenerator", "windmill", "waterwheel" -> be.energyOut; default -> null; }));
         modBus.addListener((net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent e) ->
-                e.registerBlockEntity(net.neoforged.neoforge.capabilities.Capabilities.EnergyStorage.BLOCK, train.blocks.TCBlocks.CATENARY_TILE.get(),
+                e.registerBlockEntity(net.neoforged.neoforge.capabilities.Capabilities.EnergyStorage.BLOCK, train.blocks.TCBlocks.SUBSTATION_TILE.get(),
                         (be, side) -> be.energy));
         TiMGenericRegistry.ENTITIES.register(modBus);
         ebf.tim.registry.TiMBlocks.BLOCKS.register(modBus);

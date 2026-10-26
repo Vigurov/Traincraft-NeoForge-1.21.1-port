@@ -1,6 +1,6 @@
 package ebf.tim.utility;
 
-import train.blocks.catenary.CatenaryMastTile;
+import train.blocks.catenary.CatenaryNetwork;
 import ebf.tim.TrainsInMotion;
 import ebf.tim.entities.EntityTrainCore;
 import ebf.tim.entities.GenericRailTransport;
@@ -56,17 +56,7 @@ public class FuelHandler{
 		if(itemStack==null || itemStack.isEmpty()){
 			return null;
 		}
-		if(transport.getTypes().contains(TrainsInMotion.transportTypes.ELECTRIC)) {
-			if (itemStack.getItem() == Items.REDSTONE) {
-				return new FluidStack(TiMFluids.fluidRedstone, 250);
-			} else if (itemStack.getItem() == Blocks.REDSTONE_BLOCK.asItem()) {
-				return new FluidStack(TiMFluids.fluidRedstone, 2250);
-			}
-			IEnergyStorage energy = itemStack.getCapability(Capabilities.EnergyStorage.ITEM);
-			if (energy != null && energy.extractEnergy(250, true) > 0) {
-				return new FluidStack(TiMFluids.fluidRedstone, energy.extractEnergy(250, true));
-			}
-		}
+		//electrics take nothing from their slot: they run on the contact wire
 		if(transport.getTypes().contains(TrainsInMotion.transportTypes.DIESEL)) {
 			if (itemStack.getItem() == TiMItems.dieselCanister.get()) {
 				return new FluidStack(TiMFluids.fluidDiesel, 1000);
@@ -280,52 +270,35 @@ public class FuelHandler{
 		}
 	}
 
+	/**
+	 * an electric runs on the contact wire over it, as a real one: it takes what its motors use from the line (the
+	 * substations feeding it), keeping a few seconds' worth (its capacitors) to ride over a short gap. Without
+	 * power from the wire it does not pull, its engine still on (1.12 filled a tank with redstone and ran on that)
+	 */
 	public static void manageElectricFuel(EntityTrainCore train){
-		//add redstone to the fuel tank
-		FluidStack charge = getUseableFluid(train.fuelSlot().getSlotID(),train);
-		if(charge!=null){
-			if(train.fill(charge)){
-				if (!train.getBoolean(GenericRailTransport.boolValues.CREATIVE)) {
-					ItemStackSlot slot = train.getSlotIndexByID(train.fuelSlot().getSlotID());
-					IEnergyStorage energy = slot.getStackOrEmpty().getCapability(Capabilities.EnergyStorage.ITEM);
-					if (energy != null && slot.getItem() != Items.REDSTONE && slot.getItem() != Blocks.REDSTONE_BLOCK.asItem()) {
-						energy.extractEnergy(250, false);
-					} else {
-						slot.decrStackSize(1);
-					}
-				}
-			}
-		}
-		//the catenary over the train: up to 500 a second, enough to run on at full power
-		int room = train.fill(new FluidStack(TiMFluids.fluidRedstone, 500), false);
-		if (room > 0) {
-			int got = CatenaryMastTile.feed(train.level(), train.getX(), train.getY(), train.getZ(), room);
+		int perSecond = electricUse(train);
+		int keep = Math.min(train.getTankCapacity()[0], 3 * electricMaxUse(train));
+		FluidStack in = tank(train, 0);
+		int have = in == null ? 0 : in.amount;
+		int want = keep - have + (train.getBoolean(GenericRailTransport.boolValues.RUNNING) ? perSecond : 0);
+		if (want > 0) {
+			int got = CatenaryNetwork.draw(train.level(), train.getX(), train.getY(), train.getZ(), want);
 			if (got > 0) train.fill(new FluidStack(TiMFluids.fluidRedstone, got), true);
 		}
-		//fill from overhead wires/3rd rail/under rail: any energy block from 2 below to 4 above the train
-		if (train.fill(new FluidStack(TiMFluids.fluidRedstone, 100), false) == 100) {
-			for (int i=-2; i<5;i++) {
-				if(i==1){continue;}
-				BlockPos pos = BlockPos.containing(train.getX(), train.getY() + i, train.getZ());
-				IEnergyStorage te = train.level().getCapability(Capabilities.EnergyStorage.BLOCK, pos, null);
-				//as much as the block gives in a tick, up to 100 (Traincraft's generators give at most 80 at a time)
-				if (te != null && te.extractEnergy(100, true) > 0) {
-					train.fill(new FluidStack(TiMFluids.fluidRedstone, te.extractEnergy(100, false)), true);
-					break;
-				}
-			}
+		if (train.getBoolean(GenericRailTransport.boolValues.RUNNING) && perSecond > 0) {
+			FluidStack now = tank(train, 0);
+			int use = Math.min(perSecond, now == null ? 0 : now.amount);
+			if (use > 0) train.drain(0, use, true);
 		}
-		//use stored energy
-		if (train.getBoolean(GenericRailTransport.boolValues.RUNNING)){
-			//electric trains run at a generally set rate which is multiplied at the square of speed.
-			int use = CommonUtil.floorDouble((1*train.getFuelEfficiency()) + (Math.copySign(train.accelerator, 1)*(5*train.getFuelEfficiency())));
-			if (train.drain(0, use, false)<1){
-				train.drain(0, use, true);
-			} else {
-				train.setBoolean(GenericRailTransport.boolValues.RUNNING, false);
-				train.updateConsist();
-			}
-		}
+	}
+
+	/** what an electric's motors use in a second at its throttle */
+	public static int electricUse(EntityTrainCore train) {
+		return CommonUtil.floorDouble(train.getFuelEfficiency() + Math.abs(train.accelerator) * 5 * train.getFuelEfficiency());
+	}
+
+	private static int electricMaxUse(EntityTrainCore train) {
+		return CommonUtil.floorDouble(train.getFuelEfficiency() * 41);
 	}
 
 	/**tankers and tenders: fill from buckets in the input slot, fill empty buckets in the output slot*/
