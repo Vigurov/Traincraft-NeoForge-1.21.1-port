@@ -32,12 +32,12 @@ public class RenderCatenary implements BlockEntityRenderer<CatenaryMastTile> {
     private static final int TW = 512, TH = 128;
     /** the cantilever's reach (to the middle of the track beside the mast) and wire heights, in blocks */
     public static final double REACH = 1.0, CONTACT_Y = 3.03, MESSENGER_Y = 3.955;
-    private static ModelRendererTurbo[] parts;
+    private static ModelRendererTurbo[] parts, glass;
 
     public RenderCatenary(BlockEntityRendererProvider.Context c) {}
 
     /** texture columns: steel, concrete, insulator, copper, dark steel */
-    private static final int STEEL = 0, CONCRETE = 256, INSULATOR = 320, COPPER = 352, DARK = 384;
+    private static final int STEEL = 0, CONCRETE = 256, INSULATOR = 320, COPPER = 352, DARK = 384, GLASS = 432;
 
     private static ModelRendererTurbo box(int u, int v, float x, float y, float z, float w, float h, float d) {
         ModelRendererTurbo m = new ModelRendererTurbo("", u, v, TW, TH);
@@ -57,6 +57,28 @@ public class RenderCatenary implements BlockEntityRenderer<CatenaryMastTile> {
         m.rotateAngleY = (float) Math.toDegrees(Math.atan2(-dz, dx));
         m.rotateAngleZ = (float) Math.toDegrees(Math.atan2(dy, hl));
         return m;
+    }
+
+    /** the glass discs of the insulator strings, drawn see-through after the rest */
+    private static final java.util.List<ModelRendererTurbo> GLASS_PARTS = new java.util.ArrayList<>();
+
+    /**
+     * a string of three glass disc insulators (the Soviet tempered glass ones, bluish green) from (ax, ay) to
+     * (bx, by) in the cantilever's plane: a pin, then disc and cap, disc and cap, disc and cap
+     */
+    private static void insulatorString(java.util.List<ModelRendererTurbo> l, float ax, float ay, float bx, float by) {
+        float dx = bx - ax, dy = by - ay, len = (float) Math.sqrt(dx * dx + dy * dy), ux = dx / len, uy = dy / len;
+        float[] lens = {0.7f, 0.9f, 0.7f, 0.9f, 0.7f, 0.9f, 0.7f};
+        float total = 0;
+        for (float f : lens) total += f;
+        float k = len / total, at = 0;
+        for (int i = 0; i < lens.length; i++) {
+            float s0 = at, s1 = at + lens[i] * k;
+            boolean disc = i % 2 == 1;
+            ModelRendererTurbo m = bar(disc ? GLASS : DARK, disc ? 0 : 12, ax + ux * s0, ay + uy * s0, 0, ax + ux * s1, ay + uy * s1, 0, disc ? 3.8f : 1.1f);
+            (disc ? GLASS_PARTS : l).add(m);
+            at = s1;
+        }
     }
 
     /** half the lattice mast's width at a height (pixels): it narrows towards the top, like a pylon */
@@ -92,17 +114,16 @@ public class RenderCatenary implements BlockEntityRenderer<CatenaryMastTile> {
             }
         }
         l.add(box(STEEL, 12, -2.8f, y1, -2.8f, 5.6f, 1.2f, 5.6f));
-        //cantilever: insulators at the mast, the top tube out over the track, the strut up to its far end
+        //cantilever: a string of glass insulators at the mast, the top tube out over the track, the strut up to its far end
         float ty = 61.5f, sy = 51.5f, mx = half(ty);
-        l.add(bar(INSULATOR, 0, mx, ty, 0, mx + 4.5f, ty, 0, 2.6f));
-        l.add(bar(STEEL, 16, mx + 4.5f, ty, 0, 19.5f, ty, 0, 1.4f));
-        l.add(bar(INSULATOR, 4, half(sy), sy, 0, half(sy) + 3.6f, sy + 2.2f, 0, 2.4f));
-        l.add(bar(STEEL, 20, half(sy) + 3.6f, sy + 2.2f, 0, 17.5f, ty - 0.5f, 0, 1.2f));
+        insulatorString(l, mx, ty, mx + 5.2f, ty);
+        l.add(bar(STEEL, 16, mx + 5.2f, ty, 0, 19.5f, ty, 0, 1.4f));
+        insulatorString(l, half(sy), sy, half(sy) + 4.4f, sy + 2.7f);
+        l.add(bar(STEEL, 20, half(sy) + 4.4f, sy + 2.7f, 0, 17.5f, ty - 0.5f, 0, 1.2f));
         //the messenger's saddle on the tube, over the middle of the track
         l.add(box(DARK, 0, 15, ty + 0.6f, -1, 2, 1.2f, 2));
-        //registration arm: from the strut down and out to the contact wire, with its own small insulator
-        l.add(bar(INSULATOR, 8, 9, 55.5f, 0, 11, 53.5f, 0, 1.8f));
-        l.add(bar(DARK, 4, 11, 53.5f, 0, 16, 48.8f, 0, 0.7f));
+        //registration arm: from the strut down and out to the contact wire
+        l.add(bar(DARK, 4, 9.5f, 55, 0, 16, 48.8f, 0, 0.7f));
         l.add(box(DARK, 8, 15.4f, 47.8f, -0.6f, 1.2f, 1.4f, 1.2f));
         return l.toArray(new ModelRendererTurbo[0]);
     }
@@ -124,7 +145,11 @@ public class RenderCatenary implements BlockEntityRenderer<CatenaryMastTile> {
 
     @Override
     public void render(CatenaryMastTile tile, float partialTick, PoseStack pose, MultiBufferSource buffers, int light, int overlay) {
-        if (parts == null) parts = build();
+        if (parts == null) {
+            GLASS_PARTS.clear();
+            parts = build();
+            glass = GLASS_PARTS.toArray(new ModelRendererTurbo[0]);
+        }
         BlockState state = tile.getBlockState();
         Direction facing = state.getValue(CatenaryMastBlock.FACING);
         RenderContext.begin(pose, buffers, light, TEX);
@@ -134,6 +159,13 @@ public class RenderCatenary implements BlockEntityRenderer<CatenaryMastTile> {
             GL11.glRotatef(yaw(facing), 0, 1, 0);
             for (ModelRendererTurbo p : parts) {
                 //TMT leaves a part's rotation on the matrix: each part in its own
+                GL11.glPushMatrix();
+                p.render(0.0625f);
+                GL11.glPopMatrix();
+            }
+            //the glass, see-through
+            RenderContext.consumer = buffers.getBuffer(RenderType.entityTranslucent(TEX));
+            for (ModelRendererTurbo p : glass) {
                 GL11.glPushMatrix();
                 p.render(0.0625f);
                 GL11.glPopMatrix();
