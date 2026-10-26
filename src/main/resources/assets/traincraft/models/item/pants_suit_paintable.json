@@ -1,0 +1,7 @@
+{
+ "parent": "item/generated",
+ "textures": {
+  "layer0": "traincraft:items/armour/armor_composite_pants",
+  "layer1": "traincraft:items/armour/armor_composite_pants_overlay"
+ }
+}

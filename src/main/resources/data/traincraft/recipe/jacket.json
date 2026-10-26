@@ -1,0 +1,24 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "equipment",
+ "pattern": [
+  "X X",
+  "X$X",
+  "X#X"
+ ],
+ "key": {
+  "X": {
+   "tag": "c:dyes/orange"
+  },
+  "$": {
+   "item": "minecraft:leather_chestplate"
+  },
+  "#": {
+   "item": "minecraft:string"
+  }
+ },
+ "result": {
+  "id": "traincraft:jacket",
+  "count": 1
+ }
+}

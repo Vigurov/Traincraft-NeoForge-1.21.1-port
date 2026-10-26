@@ -1,0 +1,7 @@
+{
+ "parent": "item/generated",
+ "textures": {
+  "layer0": "traincraft:items/armour/armor_composite_chest",
+  "layer1": "traincraft:items/armour/armor_composite_chest_overlay"
+ }
+}

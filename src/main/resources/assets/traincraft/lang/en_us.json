@@ -1296,5 +1296,21 @@
  "block.traincraft.block.lantern": "Lantern",
  "block.traincraft.block.windmill": "Wind Mill",
  "block.traincraft.block.waterwheel": "Water Wheel",
- "block.traincraft.block.bridgepillar": "Bridge Pillar"
+ "block.traincraft.block.bridgepillar": "Bridge Pillar",
+ "block.traincraft.block.parttable": "Train Workbench",
+ "container.traincraft.trainworkbench": "Train Workbench",
+ "item.traincraft.craftbook": "Recipe Book",
+ "item.traincraft.overalls": "Engineer's Overalls",
+ "item.traincraft.jacket": "Reflective Jacket",
+ "item.traincraft.hat": "Engineer's Hat",
+ "item.traincraft.hat_ticketman_paintable": "Ticket Man's Hat (Paintable)",
+ "item.traincraft.pants_ticketman_paintable": "Ticket Man's Pants (Paintable)",
+ "item.traincraft.jacket_ticketman_paintable": "Ticket Man's Jacket (Paintable)",
+ "item.traincraft.hat_driver_paintable": "Driver's Hat (Paintable)",
+ "item.traincraft.pants_driver_paintable": "Driver's Pants (Paintable)",
+ "item.traincraft.jacket_driver_paintable": "Driver's Jacket (Paintable)",
+ "item.traincraft.helmet_suit_paintable": "Composite Suit's Helmet (Paintable)",
+ "item.traincraft.pants_suit_paintable": "Composite Suit's Pants (Paintable)",
+ "item.traincraft.boots_suit_paintable": "Composite Suit's Boots (Paintable)",
+ "item.traincraft.jacket_suit_paintable": "Composite Suit's Chest (Paintable)"
 }

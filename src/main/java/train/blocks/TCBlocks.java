@@ -48,6 +48,10 @@ public class TCBlocks {
     public static final DeferredBlock<train.blocks.lantern.LanternBlock> LANTERN = block("block.lantern", () -> new train.blocks.lantern.LanternBlock(
             BlockBehaviour.Properties.of().mapColor(MapColor.METAL).strength(1.5F).sound(SoundType.LANTERN).lightLevel(s -> 15).noOcclusion()));
 
+    /** 1.12: wood, the TiM train table's textures */
+    public static final DeferredBlock<train.blocks.bench.BlockTrainWorkbench> PART_TABLE = block("block.parttable", () -> new train.blocks.bench.BlockTrainWorkbench(
+            BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.5F).sound(SoundType.WOOD)));
+
     public static final DeferredItem<Item> BALLOON = item("balloon"), PROPELLER = item("propeller"),
             COPPER_RAIL = item("copperrail"), STEEL_RAIL = item("steelrail"),
             REINFORCED_PLASTIC = item("reinforcedplastic"), REINFORCED_PLATES = item("reinforcedplates"),
@@ -64,6 +68,13 @@ public class TCBlocks {
     @SuppressWarnings("DataFlowIssue")
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<train.blocks.lantern.LanternTile>> LANTERN_TILE = TiMBlocks.TILES.register("lantern",
             () -> BlockEntityType.Builder.of(train.blocks.lantern.LanternTile::new, LANTERN.get()).build(null));
+
+    @SuppressWarnings("DataFlowIssue")
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<train.blocks.bench.BlockTrainWorkbench.Tile>> WORKBENCH_TILE = TiMBlocks.TILES.register("parttable",
+            () -> BlockEntityType.Builder.of(train.blocks.bench.BlockTrainWorkbench.Tile::new, PART_TABLE.get()).build(null));
+
+    public static final DeferredHolder<MenuType<?>, MenuType<train.blocks.bench.TrainWorkbenchMenu>> WORKBENCH_MENU =
+            MENUS.register("trainworkbench", () -> IMenuTypeExtension.create(train.blocks.bench.TrainWorkbenchMenu::fromNetwork));
 
     public static final DeferredHolder<MenuType<?>, MenuType<MachineMenu>> MACHINE_MENU =
             MENUS.register("machine", () -> IMenuTypeExtension.create(MachineMenu::fromNetwork));

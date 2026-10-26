@@ -1,5 +1,8 @@
 package train.devtest;
 
+import train.blocks.TCBlocks;
+import train.blocks.bench.BlockTrainWorkbench;
+import train.blocks.bench.TrainWorkbenchMenu;
 import train.blocks.machines.MachineMenu;
 import train.blocks.machines.MachineTile;
 import com.mojang.blaze3d.platform.NativeImage;
@@ -221,6 +224,87 @@ public class AutoTest {
                 }
                 break;
             }
+        }
+        if (tick == 30 && p.containsKey("wear")) {
+            //wear=item[#rrggbb],...  puts the clothes on (dyed if a colour is given)
+            server.execute(() -> {
+                for (String w : p.getProperty("wear").split(",")) {
+                    String[] a = w.split("#");
+                    var stack = new net.minecraft.world.item.ItemStack(BuiltInRegistries.ITEM.get(ResourceLocation.parse(a[0])));
+                    if (a.length > 1) stack.set(net.minecraft.core.component.DataComponents.DYED_COLOR,
+                            new net.minecraft.world.item.component.DyedItemColor(Integer.parseInt(a[1], 16), true));
+                    sp.setItemSlot(sp.getEquipmentSlotForItem(stack), stack);
+                    log("wear " + stack + " in " + sp.getEquipmentSlotForItem(stack));
+                }
+            });
+        }
+        if (tick == 25 && p.containsKey("inv")) {
+            //inv=item[#rrggbb],...  into the player's inventory from slot 9 on (the main rows)
+            server.execute(() -> {
+                String[] g = p.getProperty("inv").split(",");
+                for (int n = 0; n < g.length; n++) {
+                    String[] a = g[n].split("#");
+                    var stack = new net.minecraft.world.item.ItemStack(BuiltInRegistries.ITEM.get(ResourceLocation.parse(a[0])));
+                    if (a.length > 1) stack.set(net.minecraft.core.component.DataComponents.DYED_COLOR,
+                            new net.minecraft.world.item.component.DyedItemColor(Integer.parseInt(a[1], 16), true));
+                    sp.getInventory().setItem(9 + n, stack);
+                }
+            });
+        }
+        if (tick == 40 && p.containsKey("viewfront")) {
+            mc.options.setCameraType(net.minecraft.client.CameraType.THIRD_PERSON_FRONT);
+        }
+        if (p.containsKey("suittest")) {
+            //suittest=1  the composite suit against poison, blindness and fire; logs what is left and the wear
+            if (tick == 50) server.execute(() -> {
+                sp.setGameMode(GameType.SURVIVAL);
+                sp.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.POISON, 400));
+                sp.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.BLINDNESS, 400));
+                sp.igniteForSeconds(10);
+                //no natural regeneration, so only the chest piece heals
+                server.setDifficulty(Difficulty.NORMAL, true);
+                level.getGameRules().getRule(GameRules.RULE_NATURAL_REGENERATION).set(false, server);
+                sp.setHealth(14);
+                log("suittest start health=" + sp.getHealth() + " effects=" + sp.getActiveEffects() + " fire=" + sp.getRemainingFireTicks());
+            });
+            if (tick == 60 || tick == 260) server.execute(() -> {
+                StringBuilder b = new StringBuilder();
+                for (var s : sp.getArmorSlots()) b.append(" ").append(s.getItem()).append(" dmg=").append(s.getDamageValue()).append("/").append(s.getMaxDamage());
+                log("suittest t=" + tick + " health=" + sp.getHealth() + " effects=" + sp.getActiveEffects() + " fire=" + sp.getRemainingFireTicks() + b);
+            });
+            if (tick == 70) server.execute(() -> {
+                //a 20 block fall: the boots take it
+                sp.teleportTo(sp.getX(), sp.getY() + 20, sp.getZ());
+                sp.fallDistance = 0;
+            });
+        }
+        if (p.containsKey("book") && tick == Integer.parseInt(p.getProperty("book").split(":")[0])) {
+            //book=tick[:page]  opens the recipe book
+            String[] a = p.getProperty("book").split(":");
+            ebf.tim.gui.GUICraftBook.page = a.length > 1 ? Integer.parseInt(a[1]) : 0;
+            mc.setScreen(new ebf.tim.gui.GUICraftBook());
+        }
+        if (tick == 30 && p.containsKey("bench")) {
+            //bench=item,-,item,...  (9 grid slots) places a train workbench, fills it and opens it
+            server.execute(() -> {
+                BlockPos at = base.offset(-3, 0, 2);
+                level.setBlock(at, TCBlocks.PART_TABLE.get().defaultBlockState(), 3);
+                var te = (BlockTrainWorkbench.Tile) level.getBlockEntity(at);
+                String[] g = p.getProperty("bench").split(",");
+                for (int n = 0; n < 9 && n < g.length; n++) {
+                    if (!g[n].equals("-")) {
+                        String[] a = g[n].split("#");
+                        var stack = new net.minecraft.world.item.ItemStack(BuiltInRegistries.ITEM.get(ResourceLocation.parse(a[0])));
+                        if (a.length > 1) stack.set(net.minecraft.core.component.DataComponents.DYED_COLOR,
+                                new net.minecraft.world.item.component.DyedItemColor(Integer.parseInt(a[1], 16), true));
+                        te.items.set(n, stack);
+                    }
+                }
+                te.setChanged();
+                sp.openMenu(new net.minecraft.world.SimpleMenuProvider((id, inv, pl) -> new TrainWorkbenchMenu(id, inv, te.items, te,
+                        net.minecraft.world.inventory.ContainerLevelAccess.create(level, at)), net.minecraft.network.chat.Component.translatable("container.traincraft.trainworkbench")));
+                log("bench result " + sp.containerMenu.getSlot(0).getItem() + " color=" + sp.containerMenu.getSlot(0).getItem().get(net.minecraft.core.component.DataComponents.DYED_COLOR));
+            });
         }
         if (machineAt != null && tick % 100 == 0) {
             server.execute(() -> {

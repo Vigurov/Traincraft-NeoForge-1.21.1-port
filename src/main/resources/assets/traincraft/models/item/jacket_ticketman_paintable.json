@@ -1,0 +1,7 @@
+{
+ "parent": "item/generated",
+ "textures": {
+  "layer0": "traincraft:items/armour/armor_ticket_man_jacket",
+  "layer1": "traincraft:items/armour/armor_ticket_man_jacket_overlay"
+ }
+}

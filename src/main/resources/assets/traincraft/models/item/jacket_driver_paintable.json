@@ -1,0 +1,7 @@
+{
+ "parent": "item/generated",
+ "textures": {
+  "layer0": "traincraft:items/armour/armor_driver_jacket",
+  "layer1": "traincraft:items/armour/armor_driver_jacket_overlay"
+ }
+}

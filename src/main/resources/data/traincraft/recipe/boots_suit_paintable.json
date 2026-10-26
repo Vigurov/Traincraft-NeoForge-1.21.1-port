@@ -1,0 +1,24 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "equipment",
+ "pattern": [
+  " D ",
+  "X X",
+  "XFX"
+ ],
+ "key": {
+  "F": {
+   "item": "minecraft:feather"
+  },
+  "D": {
+   "item": "minecraft:diamond"
+  },
+  "X": {
+   "item": "traincraft:reinforcedplates"
+  }
+ },
+ "result": {
+  "id": "traincraft:boots_suit_paintable",
+  "count": 1
+ }
+}

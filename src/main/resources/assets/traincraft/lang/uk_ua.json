@@ -243,5 +243,21 @@
  "block.traincraft.block.lantern": "Ліхтар",
  "block.traincraft.block.windmill": "Вітряк",
  "block.traincraft.block.waterwheel": "Водяне колесо",
- "block.traincraft.block.bridgepillar": "Опора мосту"
+ "block.traincraft.block.bridgepillar": "Опора мосту",
+ "block.traincraft.block.parttable": "Верстак деталей",
+ "container.traincraft.trainworkbench": "Верстак деталей",
+ "item.traincraft.craftbook": "Книга рецептів",
+ "item.traincraft.overalls": "Комбінезон машиніста",
+ "item.traincraft.jacket": "Світловідбивна куртка",
+ "item.traincraft.hat": "Кашкет машиніста",
+ "item.traincraft.hat_ticketman_paintable": "Кашкет кондуктора (фарбується)",
+ "item.traincraft.pants_ticketman_paintable": "Штани кондуктора (фарбуються)",
+ "item.traincraft.jacket_ticketman_paintable": "Піджак кондуктора (фарбується)",
+ "item.traincraft.hat_driver_paintable": "Кашкет машиніста (фарбується)",
+ "item.traincraft.pants_driver_paintable": "Штани машиніста (фарбуються)",
+ "item.traincraft.jacket_driver_paintable": "Куртка машиніста (фарбується)",
+ "item.traincraft.helmet_suit_paintable": "Шолом композитного костюма (фарбується)",
+ "item.traincraft.pants_suit_paintable": "Штани композитного костюма (фарбуються)",
+ "item.traincraft.boots_suit_paintable": "Чоботи композитного костюма (фарбуються)",
+ "item.traincraft.jacket_suit_paintable": "Нагрудник композитного костюма (фарбується)"
 }

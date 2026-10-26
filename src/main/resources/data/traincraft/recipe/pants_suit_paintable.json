@@ -1,0 +1,24 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "equipment",
+ "pattern": [
+  "XDX",
+  "X$X",
+  "X X"
+ ],
+ "key": {
+  "$": {
+   "item": "minecraft:fire_charge"
+  },
+  "X": {
+   "item": "traincraft:reinforcedplates"
+  },
+  "D": {
+   "item": "minecraft:diamond"
+  }
+ },
+ "result": {
+  "id": "traincraft:pants_suit_paintable",
+  "count": 1
+ }
+}

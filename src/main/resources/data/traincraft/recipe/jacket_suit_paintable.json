@@ -1,0 +1,24 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "equipment",
+ "pattern": [
+  "X X",
+  "XDX",
+  "XAX"
+ ],
+ "key": {
+  "A": {
+   "item": "minecraft:golden_apple"
+  },
+  "X": {
+   "item": "traincraft:reinforcedplates"
+  },
+  "D": {
+   "item": "minecraft:diamond_block"
+  }
+ },
+ "result": {
+  "id": "traincraft:jacket_suit_paintable",
+  "count": 1
+ }
+}

@@ -28,6 +28,8 @@ public class Traincraft {
                 output.accept(TiMGenericRegistry.STAKE.get());
                 for (var t : ebf.tim.registry.TiMBlocks.TABLE_ITEMS) output.accept(t.get());
                 for (var t : train.blocks.TCBlocks.ITEMS) output.accept(t.get());
+                output.accept(train.items.TCItems.recipeBook.get());
+                for (var t : train.items.TCItems.ARMOUR) output.accept(t.get());
                 ebf.tim.items.ItemRail.addCreativeVariants(output::accept);
                 for (train.common.library.ItemIDs id : train.common.library.ItemIDs.values()) {
                     if (id.item != null) output.accept(id.item);
@@ -61,6 +63,7 @@ public class Traincraft {
         ebf.tim.registry.TiMMenus.MENUS.register(modBus);
         train.blocks.TCBlocks.init();
         train.blocks.TCBlocks.MENUS.register(modBus);
+        train.items.TCItems.init(modBus);
         modBus.addListener((net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent e) ->
                 e.registerBlockEntity(net.neoforged.neoforge.capabilities.Capabilities.EnergyStorage.BLOCK, train.blocks.TCBlocks.MACHINE_TILE.get(),
                         (be, side) -> switch (be.kind) { case "dieselgenerator", "windmill", "waterwheel" -> be.energyOut; default -> null; }));

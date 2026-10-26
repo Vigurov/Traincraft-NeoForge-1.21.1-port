@@ -1,0 +1,24 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "equipment",
+ "pattern": [
+  " # ",
+  "X$X",
+  "X$X"
+ ],
+ "key": {
+  "X": {
+   "tag": "c:dyes/blue"
+  },
+  "$": {
+   "item": "minecraft:leather_leggings"
+  },
+  "#": {
+   "tag": "c:dyes/red"
+  }
+ },
+ "result": {
+  "id": "traincraft:overalls",
+  "count": 1
+ }
+}

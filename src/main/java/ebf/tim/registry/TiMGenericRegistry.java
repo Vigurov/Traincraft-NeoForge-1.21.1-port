@@ -29,7 +29,7 @@ public class TiMGenericRegistry {
     public static final List<DeferredHolder<EntityType<?>, ? extends EntityType<? extends GenericRailTransport>>> TRANSPORTS = new ArrayList<>();
     public static final List<DeferredItem<ItemTransport>> TRANSPORT_ITEMS = new ArrayList<>();
     private static final Map<Class<?>, DeferredItem<ItemTransport>> ITEM_BY_CLASS = new HashMap<>();
-    private static final Map<Class<?>, EntityType.EntityFactory<?>> FACTORY_BY_CLASS = new HashMap<>();
+    private static final Map<Class<?>, EntityType.EntityFactory<?>> FACTORY_BY_CLASS = new java.util.LinkedHashMap<>();
     private static final Map<Class<?>, DeferredHolder<EntityType<?>, ? extends EntityType<? extends GenericRailTransport>>> TYPE_BY_CLASS = new HashMap<>();
 
     public static <T extends GenericRailTransport> DeferredHolder<EntityType<?>, EntityType<T>> registerTransport(

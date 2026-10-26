@@ -1,0 +1,15 @@
+{
+ "replace": false,
+ "values": [
+  "traincraft:pants_ticketman_paintable",
+  "traincraft:jacket_ticketman_paintable",
+  "traincraft:hat_ticketman_paintable",
+  "traincraft:pants_driver_paintable",
+  "traincraft:jacket_driver_paintable",
+  "traincraft:hat_driver_paintable",
+  "traincraft:boots_suit_paintable",
+  "traincraft:pants_suit_paintable",
+  "traincraft:jacket_suit_paintable",
+  "traincraft:helmet_suit_paintable"
+ ]
+}
