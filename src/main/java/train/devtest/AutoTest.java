@@ -265,9 +265,27 @@ public class AutoTest {
                 }
             });
         }
-        if (p.containsKey("lamp") && tick == Integer.parseInt(p.getProperty("lamp")) && train != null) {
-            //lamp=tick  switches the driven transport's lamps
-            server.execute(() -> train.interact(sp, false, false, 5));
+        if (p.containsKey("lamp") && train != null) {
+            //lamp=tick[,tick...]  switches the driven transport's lamps
+            for (String l : p.getProperty("lamp").split(",")) {
+                if (tick == Integer.parseInt(l.trim())) server.execute(() -> train.interact(sp, false, false, 5));
+            }
+        }
+        if (p.containsKey("lightscan") && base != null && tick % 20 == 0) {
+            //lightscan=1  counts the light blocks around the spawn
+            server.execute(() -> {
+                StringBuilder b = new StringBuilder();
+                int n = 0;
+                for (BlockPos q : BlockPos.betweenClosed(base.offset(-10, -2, -10), base.offset(70, 4, 10))) {
+                    var st = level.getBlockState(q);
+                    if (st.is(Blocks.LIGHT)) {
+                        n++;
+                        b.append(" ").append(q.getX() - base.getX()).append(",").append(q.getY() - base.getY()).append(",").append(q.getZ() - base.getZ())
+                                .append("=").append(st.getValue(net.minecraft.world.level.block.LightBlock.LEVEL));
+                    }
+                }
+                log("lights t=" + tick + " n=" + n + b + (train == null ? "" : String.format(" train x=%.1f", train.getX() - base.getX())));
+            });
         }
         if (p.containsKey("horn") && train != null) {
             //horn=tick[,tick...]

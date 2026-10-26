@@ -32,6 +32,16 @@ public class EntityTrainCore extends GenericRailTransport {
     protected void readAdditionalSaveData(CompoundTag tag) {
         super.readAdditionalSaveData(tag);
         accelerator = tag.getInt("accelerator");
+        headlights.load(tag);
+    }
+
+    /**the light blocks ahead while the lamps are on*/
+    public final ebf.tim.utility.Headlights headlights = new ebf.tim.utility.Headlights();
+
+    @Override
+    public void remove(RemovalReason reason) {
+        headlights.clear(level());
+        super.remove(reason);
     }
 
     /**saves the entity to server world*/
@@ -39,6 +49,7 @@ public class EntityTrainCore extends GenericRailTransport {
     protected void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
         tag.putInt("accelerator", getAccelerator());
+        headlights.save(tag);
     }
 
     @Override
@@ -135,6 +146,7 @@ public class EntityTrainCore extends GenericRailTransport {
         super.tick();
         if (!level().isClientSide) {
             runningSounds();
+            headlights.tick(this);
         } else {
             train.render.TrainSmoke.tick(this);
         }
