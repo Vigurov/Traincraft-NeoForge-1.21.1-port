@@ -121,12 +121,14 @@ public class RenderCatenary implements BlockEntityRenderer<CatenaryMastTile> {
         l.add(box(DARK, 16, half(ty) - 0.5f, ty - 1.5f, -1.6f, 1.2f, 3, 3.2f));
         l.add(bar(STEEL, 16, half(ty), ty, 0, 19.5f, ty, 0, 1.4f));
         l.add(box(DARK, 16, half(sy) - 0.5f, sy - 1.5f, -1.6f, 1.2f, 3, 3.2f));
-        l.add(bar(STEEL, 20, half(sy), sy, 0, 17.5f, ty - 0.5f, 0, 1.2f));
+        //the strut meets the tube short of the string, so the discs hang clear of it
+        float strutEnd = 12.5f;
+        l.add(bar(STEEL, 20, half(sy), sy, 0, strutEnd, ty - 0.5f, 0, 1.2f));
         //the messenger wire hangs under the tube's end on a string of three glass discs, in its clamp
         insulatorString(l, 16, ty - 0.7f, 16, 60.2f, 3);
         l.add(box(DARK, 0, 15.3f, 58.7f, -1, 1.4f, 1.5f, 2));
         //registration arm: from the strut through two glass discs, then down and out to the contact wire's clamp
-        float fx0 = 9, fy0 = sy + (ty - 0.5f - sy) * (fx0 - half(sy)) / (17.5f - half(sy));
+        float fx0 = 8, fy0 = sy + (ty - 0.5f - sy) * (fx0 - half(sy)) / (strutEnd - half(sy));
         insulatorString(l, fx0, fy0, fx0 + 2.6f, fy0 - 2.6f, 2);
         l.add(bar(DARK, 4, fx0 + 2.6f, fy0 - 2.6f, 0, 16, 48.8f, 0, 0.7f));
         l.add(box(DARK, 8, 15.4f, 47.8f, -0.6f, 1.2f, 1.4f, 1.2f));
