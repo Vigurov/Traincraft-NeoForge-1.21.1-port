@@ -368,7 +368,9 @@ public class AutoTest {
             int go = Integer.parseInt(f[1]);
             //fleet=accel,startTick,coastTick  the throttle is closed again at coastTick (rolling on at a crawl)
             //fleet=accel,startTick,coastTick,reverseTick  from reverseTick the throttle the other way
-            int accel = f.length > 3 && tick >= Integer.parseInt(f[3]) ? -Integer.parseInt(f[0])
+            //...,reverseTick,backAgainTick  and from backAgainTick the first way again
+            int accel = f.length > 4 && tick >= Integer.parseInt(f[4]) ? Integer.parseInt(f[0])
+                    : f.length > 3 && tick >= Integer.parseInt(f[3]) ? -Integer.parseInt(f[0])
                     : f.length > 2 && tick >= Integer.parseInt(f[2]) ? 0 : Integer.parseInt(f[0]);
             if (tick == 30) server.execute(() -> {
                 for (GenericRailTransport t : placed) {

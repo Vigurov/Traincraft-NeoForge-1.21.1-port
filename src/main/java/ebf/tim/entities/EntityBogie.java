@@ -142,10 +142,8 @@ public class EntityBogie {
             this.prevPosZ = this.posZ;
 
             if (flung) {
+                //off the rails it stays, even stopped over them: it has to be picked up and put back on
                 moveOffRail();
-                if (Math.abs(velocity[0]) + Math.abs(velocity[1]) < 0.005) {
-                    flung = false;
-                }
                 velocity[2]=0;velocity[3]=0;
                 return;
             }
@@ -473,7 +471,7 @@ public class EntityBogie {
      * about 45 km/h, a 45 degree switch 40
      */
     private static final double CURVE_LIMIT = 3.5 * 10;
-    /** came off the rails on a curve: rolls on the ground until it stops, it can be put back on the track then */
+    /** came off the rails on a curve: ploughs on along the ground, and stays off the track */
     public boolean flung;
 
     private void moveOnTC90TurnRail(int j, double radius, double startX, double startZ){

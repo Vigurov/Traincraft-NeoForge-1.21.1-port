@@ -389,18 +389,31 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
                 setBoolean(boolValues.COUPLINGBACK, toset);
                 return true;
             }case 13:{ //unlink transports
-                unlink(frontLinkedID);
-                frontLinkedTransport = null;
-                frontLinkedID = null;
-                unlink(backLinkedID);
-                backLinkedTransport = null;
-                backLinkedID = null;
-                updateWatchers = true;
-                updateConsist();
+                uncouple();
                 return true;
             }
         }
         return false;
+    }
+
+    /** lets go of both neighbours */
+    public void uncouple() {
+        //cars pulled along have no speed of their own: each keeps the one it really had, and rolls on
+        for (GenericRailTransport t : getConsist()) {
+            if (t.frontBogie == null || t.backBogie == null) continue;
+            for (EntityBogie b : new EntityBogie[]{t.frontBogie, t.backBogie}) {
+                b.velocity[0] = t.getX() - t.xo;
+                b.velocity[1] = t.getZ() - t.zo;
+            }
+        }
+        unlink(frontLinkedID);
+        frontLinkedTransport = null;
+        frontLinkedID = null;
+        unlink(backLinkedID);
+        backLinkedTransport = null;
+        backLinkedID = null;
+        updateWatchers = true;
+        updateConsist();
     }
 
     /**drops this transport from the link of the given neighbour*/
@@ -625,6 +638,9 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
         return true;
     }
 
+    /** derailed last tick (server) */
+    private boolean wasDerailed;
+
     private boolean onRails(double x, double y, double z) {
         //right at a block corner (diagonals run through them) the next block counts as well
         for (double ox : new double[]{0, -0.05, 0.05}) {
@@ -669,6 +685,15 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
                         || !onRails(backBogie.posX, backBogie.posY, backBogie.posZ));
             }
 
+
+            //coming off the rails breaks its couplings: it is left behind by (or leaves) the cars still on the
+            //track, and its couplers are shut so it does not catch on them again (open them with the stake)
+            if (getBoolean(boolValues.DERAILED) && !wasDerailed && (frontLinkedID != null || backLinkedID != null)) {
+                uncouple();
+                setBoolean(boolValues.COUPLINGFRONT, false);
+                setBoolean(boolValues.COUPLINGBACK, false);
+            }
+            wasDerailed = getBoolean(boolValues.DERAILED);
 
             //handle yaw changes for derail
             if(getBoolean(boolValues.DERAILED)) {
@@ -742,6 +767,10 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
     public void finalMove(){
         frontBogie.minecartMove(this);
         backBogie.minecartMove(this);
+        //one end thrown off a curve takes the whole car off (the other end caught the rails again and it ran on)
+        if (frontBogie.flung != backBogie.flung) {
+            frontBogie.flung = backBogie.flung = true;
+        }
         //reset the y coord so they will re-calculate the yaw
         if(hasDrag()) {
             applyDrag();
