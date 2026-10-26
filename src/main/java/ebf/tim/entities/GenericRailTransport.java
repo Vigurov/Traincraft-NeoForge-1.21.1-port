@@ -82,6 +82,8 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
     public Integer backLinkedID = null;
     /**the id of the lead entity in the consist*/
     public Integer consistLeadID=null;
+    /** the locomotive whose controls were last used: in a consist with more locomotives it leads, the others follow its controls */
+    public Integer muLeadID=null;
     /**the destination for routing*/
     public String destination ="";
     /**used to initialize a large number of variables that are used to calculate everything from movement to linking.
@@ -1039,6 +1041,7 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
                             other.setbackLinkedTransport(this);
                         }
                         updateConsist();
+                        settleCoupled(other);
                         Player listener = level().getNearestPlayer(this,20);
                         if(listener!=null && getItem()!=null && other.getItem()!=null){
                             CommonUtil.sendChat(listener, "Linked the " +
@@ -1128,6 +1131,33 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
         double n1 = v1 - jimp * inv1, n2 = v2 + jimp * inv2;
         if (inv1 > 0) for (GenericRailTransport t : getConsist()) t.setSpeedAlong(n1, ux, uz);
         if (inv2 > 0) for (GenericRailTransport t : other.getConsist()) t.setSpeedAlong(n2, ux, uz);
+    }
+
+    /** the transport a group without a locomotive moves by: the one with the lowest entity id */
+    private GenericRailTransport consistReference() {
+        GenericRailTransport ref = this;
+        for (GenericRailTransport t : getConsist()) if (t.getId() < ref.getId()) ref = t;
+        return ref;
+    }
+
+    /**
+     * the couplers catch: from now on the coupled group moves as one, at the speed that keeps its momentum (all
+     * the cars' masses times their speeds along the line, over the group's mass)
+     */
+    private void settleCoupled(GenericRailTransport other) {
+        double dx = other.getX() - getX(), dz = other.getZ() - getZ(), d = Math.sqrt(dx * dx + dz * dz);
+        if (d < 1e-3) return;
+        double ux = dx / d, uz = dz / d, p = 0, m = 0;
+        for (GenericRailTransport t : getConsist()) {
+            double mt = Math.max(1000, t.weightKg());
+            p += mt * ((t.getX() - t.xo) * ux + (t.getZ() - t.zo) * uz);
+            m += mt;
+        }
+        for (GenericRailTransport t : getConsist()) {
+            if (t instanceof EntityTrainCore && t.getAccelerator() != 0) return; //a driven train keeps its own speed
+        }
+        double v = m > 0 ? p / m : 0;
+        for (GenericRailTransport t : getConsist()) t.setSpeedAlong(v, ux, uz);
     }
 
     /** the mass of everything coupled to this (weights in kg, as the transports give them) */
@@ -1323,7 +1353,14 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
     private final java.util.Map<Integer, Double> linkRest = new java.util.HashMap<>();
 
     /** the locomotive that drives this consist: one with the throttle open, else any locomotive, else none */
-    private GenericRailTransport consistDriver() {
+    protected GenericRailTransport consistDriver() {
+        //the locomotive the driver works from leads (multiple units: the others run with it)
+        if (muLeadID != null) {
+            GenericRailTransport lead = transportById(muLeadID);
+            if (lead instanceof EntityTrainCore && lead.getAccelerator() != 0 && getConsist().contains(lead)) {
+                return lead;
+            }
+        }
         GenericRailTransport any = null;
         for (GenericRailTransport t : getConsist()) {
             if (t instanceof EntityTrainCore) {
@@ -1361,7 +1398,12 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
             return;
         }
         GenericRailTransport driver = consistDriver();
-        if (driver == this || (driver == null && getAccelerator() != 0)) {
+        if (driver == null) {
+            //cars rolling on their own: one of them (the lowest id) rolls freely and the others keep to it, so a
+            //coupled group moves as one (1.12 put a spring between them, and they bounced back and forth)
+            driver = consistReference();
+        }
+        if (driver == this) {
             return;
         }
 

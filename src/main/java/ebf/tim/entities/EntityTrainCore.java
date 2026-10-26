@@ -79,10 +79,38 @@ public class EntityTrainCore extends GenericRailTransport {
      * <h2>Calculate speed increase rate</h2>
      * this has a direct relation to GenericRailTransport#applyDrag
      */
-    public void calculateAcceleration(){
-        //core accel speed from TC4
-        float accel=0.0025f* getAcceleratorPercentage();
-        //buff to match engine type
+    /** another locomotive of this consist is being driven (its controls lead, ours are not used) */
+    private boolean otherCabLeads() {
+        GenericRailTransport d = consistDriver();
+        return d != null && d != this && d.getAccelerator() != 0;
+    }
+
+    /** the controls of this locomotive were used: it leads the consist's locomotives from now on */
+    private void takeLead() {
+        for (GenericRailTransport t : getConsist()) t.muLeadID = getId();
+    }
+
+    /**
+     * multiple units: every running locomotive coupled to the leading one gets its throttle (turned round for one
+     * coupled the other way), so all of them pull, burn fuel and make smoke and sound
+     */
+    private void driveFollowers() {
+        double fx = frontBogie.posX - backBogie.posX, fz = frontBogie.posZ - backBogie.posZ;
+        for (GenericRailTransport t : getConsist()) {
+            if (t == this || !(t instanceof EntityTrainCore f) || f.frontBogie == null || f.backBogie == null) continue;
+            if (!f.getBoolean(boolValues.RUNNING)) continue;
+            double same = fx * (f.frontBogie.posX - f.backBogie.posX) + fz * (f.frontBogie.posZ - f.backBogie.posZ);
+            int a = same >= 0 ? accelerator : -accelerator;
+            if (f.accelerator != a) {
+                f.accelerator = a;
+                f.entityData().set(ACCELERATOR, a);
+            }
+        }
+    }
+
+    /** this locomotive's own push for its throttle (the TC4 formula, before the speed limits) */
+    private float ownAcceleration() {
+        float accel=0.0025f* Math.abs(getAcceleratorPercentage());
         if(getTypes().contains(STEAM)){
             accel*=0.35f;
         } else if(getTypes().contains(DIESEL)){
@@ -90,8 +118,22 @@ public class EntityTrainCore extends GenericRailTransport {
         } else if(getTypes().contains(ELECTRIC)){
             accel*=0.7f;
         }
-        //scale based on power and velocity
-        cachedVectors[2].xCoord=accel* (10000f * (float)Math.pow(8f,((2.35f * -(0.3557/getPower()))-2.35f)));
+        return accel* (10000f * (float)Math.pow(8f,((2.35f * -(0.3557/getPower()))-2.35f)));
+    }
+
+    public void calculateAcceleration(){
+        //a = the pushes of all the running locomotives (as forces: each one's acceleration on its own times its
+        //mass) over the mass of the whole train. One locomotive alone accelerates as before; cars slow it down,
+        //a second locomotive helps (1.12 gave every train the leading locomotive's acceleration, whatever it pulled)
+        double force = 0, mass = 0;
+        for (GenericRailTransport t : getConsist()) {
+            mass += Math.max(1000, t.weightKg());
+            if (t instanceof EntityTrainCore l && l.getBoolean(boolValues.RUNNING) && l.getAccelerator() != 0 && !l.getBoolean(boolValues.DERAILED)) {
+                force += l.ownAcceleration() * Math.max(1000, l.weightKg());
+            }
+        }
+        if (mass <= 0) mass = Math.max(1000, weightKg());
+        cachedVectors[2].xCoord = (float) (Math.signum(getAcceleratorPercentage()) * force / mass);
         //if speed is greater than top speed from km/h to m/s divided by 20 to get per tick
         //(forwards is a negative accelerator here; 1.12 had the two limits swapped, so locomotives went forwards
         //at their reverse top speed and backwards at their full one)
@@ -134,8 +176,16 @@ public class EntityTrainCore extends GenericRailTransport {
         if(!level().isClientSide && backBogie != null && frontBogie != null) {
             cachedVectors[2].xCoord = 0;
             //twice a second, re-calculate the speed.
+            boolean leads = consistDriver() == this;
+            if (leads && muLeadID == null && getAccelerator() != 0) {
+                takeLead();
+            }
+            //the leading locomotive's throttle, also back to 0, goes to the others
+            if (muLeadID != null && muLeadID == getId()) {
+                driveFollowers();
+            }
             if (getAccelerator()!=0 && getBoolean(boolValues.RUNNING)) {
-                if(Math.abs(getAccelerator())!=8 && tickCount % 10 == 0) {
+                if(leads && Math.abs(getAccelerator())!=8 && tickCount % 10 == 0) {
                     calculateAcceleration();
                 }
             } else {
@@ -145,7 +195,8 @@ public class EntityTrainCore extends GenericRailTransport {
             if(getAccelerator()==0 && getBoolean(boolValues.BRAKE) && getVelocity()==0){
                 backBogie.setVelocity(0,0,0);
                 frontBogie.setVelocity(0,0,0);
-            } else if(getAccelerator()!=0){
+            } else if(getAccelerator()!=0 && leads){
+                //the followers' pull is in the leader's acceleration
                 appendMovement(cachedVectors[2].xCoord);
             }
         }
@@ -288,9 +339,10 @@ public class EntityTrainCore extends GenericRailTransport {
                     }
                     return true;
                 }case 2:{ //decrease speed
+                    if (!otherCabLeads()) takeLead();
                     if (getBoolean(boolValues.RUNNING)) {
                         //if a linked transport is running, dont update
-                        if(consistLeadID!=null && consistLeadID!=getId()){
+                        if(otherCabLeads()){
                             return true;
                         }
                         if(accelerator<=-6){
@@ -303,9 +355,10 @@ public class EntityTrainCore extends GenericRailTransport {
                     }
                     return true;
                 }case 3:{ //increase speed
+                    if (!otherCabLeads()) takeLead();
                     if (getBoolean(boolValues.RUNNING)) {
                         //if a linked transport is running, dont update
-                        if(consistLeadID!=null && consistLeadID!=getId()){
+                        if(otherCabLeads()){
                             return true;
                         }
                         if(accelerator>=6){
@@ -318,9 +371,10 @@ public class EntityTrainCore extends GenericRailTransport {
                     }
                     return true;
                 } case 16:{//reset speed
+                    if (!otherCabLeads()) takeLead();
                     if (getBoolean(boolValues.RUNNING)) {
                         //if a linked transport is running, dont update
-                        if (consistLeadID != null && consistLeadID != getId()) {
+                        if (otherCabLeads()) {
                             return true;
                         }
                         accelerator = 0;
@@ -329,6 +383,7 @@ public class EntityTrainCore extends GenericRailTransport {
                     }
                     return true;
                 } case 11:{//TC control forward
+                    if (!otherCabLeads()) takeLead();
                     if(getBoolean(boolValues.RUNNING)) {
                         accelerator = 7;
                         entityData().set(ACCELERATOR, accelerator);
@@ -336,6 +391,7 @@ public class EntityTrainCore extends GenericRailTransport {
                     updateLinks();
                     return true;
                 }case 12:{//TC control reverse
+                    if (!otherCabLeads()) takeLead();
                     if(getBoolean(boolValues.RUNNING)) {
                         accelerator = -7;
                         entityData().set(ACCELERATOR, accelerator);
@@ -343,6 +399,7 @@ public class EntityTrainCore extends GenericRailTransport {
                     updateLinks();
                     return true;
                 }case 4: {//TC control, keep speed
+                    if (!otherCabLeads()) takeLead();
                     if(getBoolean(boolValues.RUNNING)) {
                         accelerator = (int)Math.copySign(8,accelerator);
                         entityData().set(ACCELERATOR, accelerator);

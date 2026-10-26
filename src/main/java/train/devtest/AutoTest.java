@@ -346,6 +346,17 @@ public class AutoTest {
                 log("jukebox t=" + tick + " playing=" + cj.isPlaying() + " url=" + cj.getStreamURL() + " " + JukeboxClient.status(cj));
             }
         }
+        if (p.containsKey("fuelall")) {
+            //fuelall=1  fuel for every placed locomotive at 30, engines on at 40 (no driving)
+            if (tick == 30) server.execute(() -> {
+                for (GenericRailTransport t : placed) {
+                    if (t.getTypes().contains(ebf.tim.TrainsInMotion.transportTypes.DIESEL)) put(t, 400, new net.minecraft.world.item.ItemStack(ebf.tim.registry.TiMItems.dieselCanister.get(), 16));
+                }
+            });
+            if (tick == 40) server.execute(() -> {
+                for (GenericRailTransport t : placed) if (t instanceof EntityTrainCore && t != train && !t.getBoolean(GenericRailTransport.boolValues.RUNNING)) t.interact(sp, false, false, 8);
+            });
+        }
         if (p.containsKey("fleet") && base != null) {
             //fleet=accel,startTick  every locomotive placed (gallery) gets its fuel at 30, starts at 40 and drives
             //from startTick on; logs at the end what each did
