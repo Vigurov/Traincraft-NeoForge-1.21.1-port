@@ -77,6 +77,9 @@ public class AutoTest {
             throw new RuntimeException(e);
         }
         NeoForge.EVENT_BUS.addListener(AutoTest::onTick);
+        //the integrated server stops while the game is paused: a run whose window lost focus (someone working in
+        //another window) had every train standing still
+        Minecraft.getInstance().options.pauseOnLostFocus = false;
         GenericRailTransport.debugCollide = p.containsKey("debugcollide");
         //what hurts the player during a test
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.living.LivingDamageEvent.Post e) -> {
@@ -207,6 +210,7 @@ public class AutoTest {
             return;
         }
         tick++;
+        if (mc.isPaused() && tick % 20 == 0) log("paused at " + tick + ": the server is not ticking");
         ServerLevel level = mc.getSingleplayerServer().overworld();
         ServerPlayer sp = mc.getSingleplayerServer().getPlayerList().getPlayer(mc.player.getUUID());
         if (sp == null) {
@@ -800,6 +804,54 @@ public class AutoTest {
                 mc.options.hideGui = true;
             }
             if (tick == t0 + 30) log(String.format("stand: feet at y=%.4f above the ground, onGround=%s", mc.player.getY() - base.getY(), mc.player.onGround()));
+        }
+        if (p.containsKey("breaktest") && base != null) {
+            //breaktest=tick  a survival player hits every placed transport (its collision part, as a click does) once
+            //every 12 ticks, 8 times; breakat=x,y,z;... blocks it then breaks by hand; then the items on the ground
+            int t0 = Integer.parseInt(p.getProperty("breaktest"));
+            if (tick == t0) server.execute(() -> {
+                sp.setGameMode(GameType.SURVIVAL);
+                log("survival");
+            });
+            if (tick > t0 && tick <= t0 + 96 && (tick - t0) % 12 == 0) server.execute(() -> {
+                for (GenericRailTransport t : placed) {
+                    if (t.isRemoved()) continue;
+                    var parts = t.getParts();
+                    net.minecraft.world.entity.Entity target = parts != null && parts.length > 0 ? parts[0] : t;
+                    sp.teleportTo(t.getX(), t.getY(), t.getZ() - 2.5);
+                    sp.resetAttackStrengthTicker();
+                    sp.attack(target);
+                    log(String.format("hit %s via %s removed=%s", t.getClass().getSimpleName(), target.getClass().getSimpleName(), t.isRemoved()));
+                }
+            });
+            if (tick == t0 + 110 && p.containsKey("breakat")) server.execute(() -> {
+                for (String q : p.getProperty("breakat").split(";")) {
+                    String[] c = q.split(",");
+                    BlockPos at = base.offset(Integer.parseInt(c[0]), Integer.parseInt(c[1]), Integer.parseInt(c[2]));
+                    var before = level.getBlockState(at).getBlock();
+                    sp.teleportTo(at.getX() + 0.5, at.getY(), at.getZ() - 1.5);
+                    boolean ok = sp.gameMode.destroyBlock(at);
+                    log("break " + q + " " + before + " -> " + ok + " now " + level.getBlockState(at).getBlock());
+                }
+            });
+            if (tick == t0 + 140) server.execute(() -> {
+                var items = level.getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class, new net.minecraft.world.phys.AABB(base).inflate(60));
+                java.util.Map<String, Integer> sum = new java.util.TreeMap<>();
+                for (var it : items) sum.merge(BuiltInRegistries.ITEM.getKey(it.getItem().getItem()).toString(), it.getItem().getCount(), Integer::sum);
+                log("dropped " + sum);
+                long left = level.getEntitiesOfClass(GenericRailTransport.class, new net.minecraft.world.phys.AABB(base).inflate(60)).size();
+                log("transports left " + left);
+            });
+        }
+        if (p.containsKey("tickcheck") && base != null && tick == Integer.parseInt(p.getProperty("tickcheck"))) {
+            //tickcheck=tick  how many ticks each placed transport has lived, and whether its spot is entity-ticking
+            server.execute(() -> {
+                for (GenericRailTransport t : placed) {
+                    log(String.format("tickcheck %s tickCount=%d entityTicking=%s inLevel=%s removed=%s chunk=%s", t.getClass().getSimpleName(), t.tickCount,
+                            level.isPositionEntityTicking(t.blockPosition()), level.getEntity(t.getId()) == t, t.isRemoved(),
+                            level.getChunkSource().getChunkNow(t.blockPosition().getX() >> 4, t.blockPosition().getZ() >> 4) != null));
+                }
+            });
         }
         if (p.containsKey("statedump") && base != null) {
             //statedump=tick[,tick...]  every placed transport: where, which way, coupled to which (by uuid), engine,
