@@ -73,6 +73,7 @@ public class AutoTest {
             throw new RuntimeException(e);
         }
         NeoForge.EVENT_BUS.addListener(AutoTest::onTick);
+        GenericRailTransport.debugCollide = p.containsKey("debugcollide");
         //what hurts the player during a test
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.living.LivingDamageEvent.Post e) -> {
             if (e.getEntity() instanceof net.minecraft.world.entity.player.Player) {
@@ -401,6 +402,9 @@ public class AutoTest {
                 log("fleet moved " + moved + " of " + total);
             });
         }
+        if (tick == 30 && p.containsKey("measure")) {
+            measureAll(mc);
+        }
         if (tick == 30 && p.containsKey("recipeaudit")) {
             server.execute(() -> recipeAudit(level));
         }
@@ -529,6 +533,14 @@ public class AutoTest {
                 log("couplers open on " + placed.size());
             });
         }
+        if (p.containsKey("stop") && tick == Integer.parseInt(p.getProperty("stop")) && train instanceof EntityTrainCore core) {
+            //stop=tick  throttle off and the brake on
+            server.execute(() -> {
+                core.accelerator = 0;
+                if (!core.getBoolean(GenericRailTransport.boolValues.BRAKE)) core.interact(sp, false, false, 15);
+                log("stop");
+            });
+        }
         if (p.containsKey("reverse") && tick == Integer.parseInt(p.getProperty("reverse")) && train instanceof EntityTrainCore) {
             server.execute(() -> {
                 ((EntityTrainCore) train).accelerator = -((EntityTrainCore) train).accelerator;
@@ -551,6 +563,14 @@ public class AutoTest {
                         t.getX() - base.getX(), t.getVelocity(), t.frontLinkedID, t.backLinkedID, t.getConsist().size()));
             }
             log("consist t=" + tick + b);
+            //what the client draws: the rendered (interpolated) positions of the same transports
+            StringBuilder cb = new StringBuilder();
+            float pt = mc.getTimer().getGameTimeDeltaPartialTick(false);
+            for (GenericRailTransport t : placed) {
+                var ce = mc.level.getEntity(t.getId());
+                cb.append(String.format(" x=%.3f", ce == null ? Double.NaN : net.minecraft.util.Mth.lerp(pt, ce.xo, ce.getX()) - base.getX()));
+            }
+            log("client t=" + tick + cb);
         }
         if (train != null && base != null && tick >= 20 && tick % every == 0) {
             GenericRailTransport client = (GenericRailTransport) mc.level.getEntity(train.getId());
@@ -596,6 +616,62 @@ public class AutoTest {
                 }
             }
         }
+        if (p.containsKey("kick") && tick == Integer.parseInt(p.getProperty("kick").split(",")[2])) {
+            //kick=index,speed,tick  gives that placed transport a speed along +x
+            String[] k = p.getProperty("kick").split(",");
+            server.execute(() -> {
+                var t = placed.get(Integer.parseInt(k[0]));
+                double v = Double.parseDouble(k[1]);
+                t.frontBogie.velocity[0] = v; t.frontBogie.velocity[1] = 0;
+                t.backBogie.velocity[0] = v; t.backBogie.velocity[1] = 0;
+                log("kick " + t.getType() + " " + v);
+            });
+        }
+        if (p.containsKey("standon") && train != null) {
+            //standon=tick  drops the player (not flying) onto the middle of the first transport, then tries to walk
+            //it sideways through the next one; logs where it ends up
+            int t0 = Integer.parseInt(p.getProperty("standon"));
+            if (tick == t0) server.execute(() -> {
+                sp.setGameMode(GameType.SURVIVAL);
+                sp.getAbilities().flying = false;
+                sp.onUpdateAbilities();
+                sp.teleportTo(level, train.getX(), train.getY() + 5, train.getZ(), 0, 0);
+            });
+            if (tick == t0 + 40) server.execute(() -> log(String.format("standon: player y above transport %.2f (on it if > 1)", sp.getY() - train.getY())));
+            if (tick >= t0 && tick <= t0 + 100 && tick % 10 == 0) {
+                var ct = (GenericRailTransport) mc.level.getEntity(train.getId());
+                StringBuilder bb = new StringBuilder();
+                if (ct != null && ct.getParts() != null) for (var part : ct.getParts()) bb.append(String.format(" [%.2f..%.2f y%.2f..%.2f z%.2f..%.2f]", part.getBoundingBox().minX - ct.getX(), part.getBoundingBox().maxX - ct.getX(),
+                        part.getBoundingBox().minY - ct.getY(), part.getBoundingBox().maxY - ct.getY(), part.getBoundingBox().minZ - ct.getZ(), part.getBoundingBox().maxZ - ct.getZ()));
+                log(String.format("standon t=%d client player rel (%.2f,%.2f,%.2f) boxes%s collidable=%s", tick, mc.player.getX() - train.getX(), mc.player.getY() - train.getY(), mc.player.getZ() - train.getZ(), bb,
+                        ct == null || ct.getParts().length == 0 ? "-" : ct.getParts()[0].canBeCollidedWith()));
+            }
+            if (tick == t0 + 45) server.execute(() -> sp.teleportTo(level, train.getX(), train.getY(), train.getZ() - 3, 0, 0));
+            if (tick > t0 + 50 && tick < t0 + 100) {
+                mc.options.keyUp.setDown(true);
+            }
+            if (tick == t0 + 100) {
+                mc.options.keyUp.setDown(false);
+                server.execute(() -> log(String.format("standon: walked from z-3 towards it, now z %.2f relative (blocked if < -0.5)", sp.getZ() - train.getZ())));
+            }
+        }
+        if (p.containsKey("camjoint") && base != null) {
+            //camjoint=k,tick  the camera beside the joint between the k-th and the next placed transport
+            String[] cj = p.getProperty("camjoint").split(",");
+            int k = Integer.parseInt(cj[0]);
+            if (tick == Integer.parseInt(cj[1]) && placed.size() > k + 1) server.execute(() -> {
+                var a = placed.get(k);
+                var b2 = placed.get(k + 1);
+                double mx = (a.getX() + b2.getX()) / 2, mz = (a.getZ() + b2.getZ()) / 2;
+                double dx = b2.getX() - a.getX(), dz = b2.getZ() - a.getZ(), l = Math.max(1e-3, Math.sqrt(dx * dx + dz * dz));
+                //off to the side of the joint, looking at it
+                double cx = mx - dz / l * 3.2, cz = mz + dx / l * 3.2;
+                float yaw = (float) (Math.toDegrees(Math.atan2(cz - mz, cx - mx)) + 90);
+                sp.getAbilities().flying = true;
+                sp.onUpdateAbilities();
+                sp.teleportTo(level, cx, a.getY() - 1.0, cz, yaw, 8);
+            });
+        }
         if (p.containsKey("shots")) {
             String[] s = p.getProperty("shots").split(",");
             int from = Integer.parseInt(s[0]), to = Integer.parseInt(s[1]), step = Integer.parseInt(s[2]);
@@ -610,6 +686,111 @@ public class AutoTest {
     }
 
     private static BlockPos machineAt;
+
+    /**
+     * measure=1: every transport drawn into nothing on the client, its vertices collected: the lowest point (as
+     * a + s * the bogie height, from two heights) and how far the model reaches past the centre to the front and
+     * the back (along the line between the bogies). Written as tools/transport_dims.json.
+     */
+    private static void measureAll(Minecraft mc) {
+        StringBuilder json = new StringBuilder("{\n");
+        int n = 0;
+        for (var holder : TiMGenericRegistry.TRANSPORTS) {
+            String id = BuiltInRegistries.ENTITY_TYPE.getKey(holder.get()).getPath();
+            try {
+                GenericRailTransport t = holder.get().create(mc.level);
+                t.setPos(0, 0, 0);
+                float[] rp = t.rotationPoints();
+                t.frontBogie = new ebf.tim.entities.EntityBogie(t, rp[1], 0, 0, true);
+                t.backBogie = new ebf.tim.entities.EntityBogie(t, rp[0], 0, 0, false);
+                double fx = rp[1] - rp[0];
+                double dir = fx >= 0 ? 1 : -1;
+                float[] minY = new float[2];
+                double front = 0, back = 0;
+                float[] hs = {0.3f, 0.4f};
+                for (int k = 0; k < 2; k++) {
+                    t.frontBogie.yOffset = t.backBogie.yOffset = hs[k];
+                    t.renderData.needsModelUpdate = true;
+                    var verts = new java.util.ArrayList<org.joml.Vector3f>();
+                    fexcraft.tmt.slim.RenderContext.begin(new com.mojang.blaze3d.vertex.PoseStack(), null, 0, null);
+                    fexcraft.tmt.slim.RenderContext.measure = verts;
+                    ebf.tim.render.RenderWagon.measuring = true;
+                    try {
+                        ebf.tim.render.RenderWagon.doRender(t, t.getYRot(), 0, t.backBogie.yOffset, false, null);
+                    } finally {
+                        ebf.tim.render.RenderWagon.measuring = false;
+                        fexcraft.tmt.slim.RenderContext.measure = null;
+                        fexcraft.tmt.slim.RenderContext.end();
+                    }
+                    float lo = Float.MAX_VALUE;
+                    double f = -Double.MAX_VALUE, b = -Double.MAX_VALUE;
+                    for (var v : verts) {
+                        lo = Math.min(lo, v.y);
+                        f = Math.max(f, v.x * dir);
+                        b = Math.max(b, -v.x * dir);
+                    }
+                    minY[k] = lo;
+                    if (k == 0 && p.getProperty("measure").equals(id)) {
+                        //what is at the ends: the vertices within 0.1 of the front/back, by height
+                        StringBuilder eb = new StringBuilder();
+                        for (var v : verts) if (v.x * dir > f - 0.1 || -v.x * dir > b - 0.1) eb.append(String.format(java.util.Locale.ROOT, " (%.2f,%.2f,%.2f)", v.x * dir, v.y, v.z));
+                        log("ends of " + id + ":" + eb);
+                        java.util.TreeMap<Integer, float[]> rows = new java.util.TreeMap<>();
+                        for (var v : verts) { int yb = (int) Math.floor(v.y * 4); float[] r = rows.computeIfAbsent(yb, q -> new float[]{9, -9}); r[0] = (float) Math.min(r[0], v.x * dir); r[1] = (float) Math.max(r[1], v.x * dir); }
+                        StringBuilder rb = new StringBuilder();
+                        for (var e : rows.entrySet()) rb.append(String.format(java.util.Locale.ROOT, " y%.2f:[%.2f..%.2f]", e.getKey() / 4f, e.getValue()[0], e.getValue()[1]));
+                        log("extent by height " + id + ":" + rb);
+                    }
+                    front = f;
+                    back = b;
+                    if (verts.isEmpty()) throw new IllegalStateException("no vertices");
+                }
+                double s = (minY[1] - minY[0]) / (hs[1] - hs[0]), a = minY[0] - s * hs[0];
+                json.append(String.format(java.util.Locale.ROOT, "%s\"%s\": {\"a\": %.4f, \"s\": %.4f, \"front\": %.4f, \"back\": %.4f}",
+                        n++ == 0 ? "" : ",\n", id, a, s, front, back));
+                log(String.format(java.util.Locale.ROOT, "measure %-32s a=%.3f s=%.3f front=%.3f back=%.3f hitbox=%.2f", id, a, s, front, back, t.getHitboxSize()[0]));
+            } catch (Throwable e) {
+                log("measure " + id + " failed: " + e);
+            }
+        }
+        //the rails: the highest point of their geometry (the top of the railheads), block-relative
+        json.append(",\n\"_rails\": {");
+        int rn = 0;
+        var cam = mc.gameRenderer.getMainCamera();
+        for (BlockPos q : BlockPos.betweenClosed(base.offset(-2, -1, -2), base.offset(40, 2, 6))) {
+            var be = mc.level.getBlockEntity(q);
+            if (be == null) continue;
+            var rend = mc.getBlockEntityRenderDispatcher().getRenderer(be);
+            if (rend == null) continue;
+            float[] hi = {-Float.MAX_VALUE}, lo = {Float.MAX_VALUE};
+            net.minecraft.client.renderer.MultiBufferSource cap = type -> new com.mojang.blaze3d.vertex.VertexConsumer() {
+                public com.mojang.blaze3d.vertex.VertexConsumer addVertex(float x, float y, float z) { hi[0] = Math.max(hi[0], y); lo[0] = Math.min(lo[0], y); return this; }
+                public com.mojang.blaze3d.vertex.VertexConsumer setColor(int r, int g, int b, int a) { return this; }
+                public com.mojang.blaze3d.vertex.VertexConsumer setUv(float u, float v) { return this; }
+                public com.mojang.blaze3d.vertex.VertexConsumer setUv1(int u, int v) { return this; }
+                public com.mojang.blaze3d.vertex.VertexConsumer setUv2(int u, int v) { return this; }
+                public com.mojang.blaze3d.vertex.VertexConsumer setNormal(float x, float y, float z) { return this; }
+            };
+            try {
+                ((net.minecraft.client.renderer.blockentity.BlockEntityRenderer) rend).render(be, 0, new com.mojang.blaze3d.vertex.PoseStack(), cap, 0xF000F0, 0);
+            } catch (Throwable e) {
+                log("rail measure failed " + be + " " + e);
+                continue;
+            }
+            if (hi[0] == -Float.MAX_VALUE) continue;
+            String kind = BuiltInRegistries.BLOCK_ENTITY_TYPE.getKey(be.getType()).getPath();
+            log(String.format(java.util.Locale.ROOT, "rail %s at %s top=%.4f bottom=%.4f", kind, q.subtract(base), hi[0], lo[0]));
+            json.append(String.format(java.util.Locale.ROOT, "%s\"%s\": %.4f", rn++ == 0 ? "" : ", ", kind + "@" + q.subtract(base).toShortString().replace(", ", "_"), hi[0]));
+        }
+        json.append("}");
+        json.append("\n}\n");
+        try {
+            Files.writeString(Path.of(System.getProperty("user.home"), "src/tc-neo/tools/transport_dims.json"), json.toString());
+        } catch (Exception e) {
+            log("measure write failed " + e);
+        }
+        log("measured " + n);
+    }
     private static final java.util.Map<GenericRailTransport, net.minecraft.world.phys.Vec3> driftStart = new java.util.HashMap<>();
     private static final java.util.List<String> rowNames = new java.util.ArrayList<>();
     private static final java.util.List<Integer> rowX = new java.util.ArrayList<>();

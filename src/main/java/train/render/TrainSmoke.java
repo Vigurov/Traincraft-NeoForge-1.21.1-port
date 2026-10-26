@@ -140,11 +140,6 @@ public final class TrainSmoke {
         });
     }
 
-    /** RenderWagon.bogieRenderYOffset */
-    private static float bogieRenderYOffset(float input) {
-        return input > 0.4F ? input - 0.095F : input;
-    }
-
     /** called every client tick of a locomotive */
     public static void tick(EntityTrainCore loco) {
         FX data = BY_CLASS.get(loco.getClass());
@@ -158,8 +153,8 @@ public final class TrainSmoke {
         if (len < 1.0E-4) return;
         fx /= len;
         fz /= len;
-        //RenderWagon: the model stands on 1.5 + the rails' offset, upside down
-        float rail = (bogieRenderYOffset(loco.frontBogie.yOffset) + bogieRenderYOffset(loco.backBogie.yOffset)) * 0.5F + loco.backBogie.yOffset;
+        //RenderWagon: where the model's origin is, upside down
+        double base = ebf.tim.render.RenderWagon.modelBaseY(loco, (loco.frontBogie.yOffset + loco.backBogie.yOffset) * 0.5f);
         Placed at = placed(loco, data);
         //TC4 getSpeed was km/h
         double speed = loco.getVelocity() * 72;
@@ -167,15 +162,15 @@ public final class TrainSmoke {
             if (data.smoke != null && data.smokeIterations > 0
                     && random.nextInt(10 * data.smokeIterations) < data.smokeIterations * 4 + speed * 5) {
                 for (int j = 0; j < data.smokeIterations; j++) {
-                    for (Vector3f p : at.smoke) spawn(loco, data.smoke, p, 1, rail, fx, fz);
+                    for (Vector3f p : at.smoke) spawn(loco, data.smoke, p, 1, base, fx, fz);
                 }
             }
             //steam: both sides of the locomotive (TC4 mirrored z for its four fixed yaws)
             if (data.explosion != null && random.nextInt(300) < data.explosionIterations * 10) {
                 for (int j = 0; j < data.explosionIterations; j++) {
                     for (Vector3f p : at.explosion) {
-                        spawn(loco, data.explosion, p, 1, rail, fx, fz);
-                        spawn(loco, data.explosion, p, -1, rail, fx, fz);
+                        spawn(loco, data.explosion, p, 1, base, fx, fz);
+                        spawn(loco, data.explosion, p, -1, base, fx, fz);
                     }
                 }
             }
@@ -183,8 +178,8 @@ public final class TrainSmoke {
     }
 
     /** a model-frame point to the world: turned upside down at 1.5 + rail height, x along the bogies */
-    private static void spawn(EntityTrainCore loco, ParticleOptions type, Vector3f p, int side, float rail, double fx, double fz) {
-        double x = -p.x, y = 1.5 - rail - p.y, z = p.z * side;
+    private static void spawn(EntityTrainCore loco, ParticleOptions type, Vector3f p, int side, double base, double fx, double fz) {
+        double x = -p.x, y = base - p.y, z = p.z * side;
         loco.level().addParticle(type, loco.getX() + x * fx - z * fz, loco.getY() + y, loco.getZ() + x * fz + z * fx, 0, 0, 0);
     }
 }

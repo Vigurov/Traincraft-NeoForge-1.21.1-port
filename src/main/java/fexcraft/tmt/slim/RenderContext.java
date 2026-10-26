@@ -22,6 +22,8 @@ public final class RenderContext {
     public static boolean fullBright;
     /**the transport being drawn has its lamps on: its "lamp" parts glow (TC 4.5 ModelRenderHelper)*/
     public static boolean lampsOn;
+    /**when set, polygons are not drawn: their vertices (in the pose stack's base space) are collected here*/
+    public static java.util.List<org.joml.Vector3f> measure;
     /**GL_TEXTURE_2D disabled: draw with the vertex colour on a white part of the block atlas*/
     public static boolean untextured;
     private static ResourceLocation boundBeforeUntextured;

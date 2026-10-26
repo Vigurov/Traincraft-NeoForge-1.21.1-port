@@ -47,6 +47,13 @@ public class CollisionBox extends PartEntity<GenericRailTransport> {
         return true;
     }
 
+    /** solid, like a boat: players and mobs walk into it and can stand on it (1.12 only pushed them away, so they
+     * got through with a little effort) */
+    @Override
+    public boolean canBeCollidedWith() {
+        return true;
+    }
+
     @Override
     public boolean shouldBeSaved() {
         return false;

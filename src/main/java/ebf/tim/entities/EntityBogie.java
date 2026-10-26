@@ -54,14 +54,13 @@ public class EntityBogie {
     /**0/1 own motion x/z, 2/3 coupling pull x/z (reset every tick), 4/5 the cached direction*/
     public double[] velocity = new double[]{0,0,0,0,0,0};
     /**normally this variable exists already in 1.7, this additional declaration of it is support for 1.8.9+*/
-    public float yOffset=0.425f;
+    public float yOffset=0.125f;
     /**
-     * the render heights of the rails (the renderer lifts the model by these). 1.12 used 0.425 for TiM and classic
-     * track, which left the wheels a little above the railheads (0.04 and 0.07 blocks); these put them on top
+     * the height of the top of the rails above the rail block's floor, measured from their geometry (autotest
+     * measure=1): the renderer stands the model's wheels there. 1.12 used one guessed render lift per rail kind,
+     * which left most trains hovering a little and raised them further off the rails
      */
-    public static final float TIM_RAIL_Y = 0.405f, CLASSIC_TRACK_Y = 0.3425f, VANILLA_RAIL_Y = 0.3425f;
-    /** off the rails the wheels stand on the ground, the rail's height (1/16 of a block) lower than on a vanilla rail */
-    public static final float GROUND_Y = VANILLA_RAIL_Y - 0.0625f;
+    public static final float TIM_RAIL_Y = 0.125f, CLASSIC_TRACK_Y = 0.0858f, VANILLA_RAIL_Y = 0.0625f, GROUND_Y = 0f;
     /**what 1.12 kept in the minecart's entity data: the TiM rails read the last used rail shape from here*/
     public final CompoundTag entityData = new CompoundTag();
 
@@ -381,7 +380,6 @@ public class EntityBogie {
 
     private void moveOffRail(){
         //ploughing through the ground: a derailed train comes to a stop within a second or so
-        //(1.12 kept the rail's height here, so a train that ran off the end of the track hovered above the grass)
         yOffset = GROUND_Y;
         velocity[0]*=0.85;
         velocity[1]*=0.85;

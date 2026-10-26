@@ -108,6 +108,11 @@ public class Tessellator {
 
     /** quads as they are, triangles with the last vertex twice, larger polygons as a fan of quads */
     private static void emit(List<float[]> pts, float unused, float nx, float ny, float nz) {
+        if (RenderContext.measure != null) {
+            org.joml.Matrix4f m = RenderContext.pose.last().pose();
+            for (float[] p : pts) RenderContext.measure.add(m.transformPosition(p[0], p[1], p[2], new org.joml.Vector3f()));
+            return;
+        }
         VertexConsumer c = RenderContext.consumerNow();
         if (c == null) return;
         PoseStack.Pose pose = RenderContext.pose.last();

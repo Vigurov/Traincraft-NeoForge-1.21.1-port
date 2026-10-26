@@ -68,6 +68,60 @@ public class RenderWagon extends EntityRenderer<GenericRailTransport> {
             RenderContext.lampsOn = false;
             RenderContext.end();
         }
+        renderCouplers(entity, partialTick, pose, buffers, packedLight);
+    }
+
+    private static final ResourceLocation COUPLER_TEX = ResourceLocation.withDefaultNamespace("textures/block/anvil.png");
+    /** the coupler's height above the rail's floor, and its thickness */
+    private static final float COUPLER_Y = 0.5f, COUPLER_SIZE = 0.14f;
+
+    /**
+     * the couplers between this transport and the ones coupled to it: a dark bar from one body's end to the
+     * other's at frame height (the models have none, and the cars a coupler apart looked like they did not touch).
+     * Each pair is drawn once, by the one with the lower entity id.
+     */
+    private static void renderCouplers(GenericRailTransport entity, float partialTick, PoseStack pose, MultiBufferSource buffers, int light) {
+        if (entity.frontBogie == null || entity.backBogie == null) return;
+        double ex = Mth.lerp(partialTick, entity.xo, entity.getX()), ey = Mth.lerp(partialTick, entity.yo, entity.getY()), ez = Mth.lerp(partialTick, entity.zo, entity.getZ());
+        for (Integer id : new Integer[]{entity.frontLinkedID, entity.backLinkedID}) {
+            if (id == null || id <= entity.getId() || !(entity.level().getEntity(id) instanceof GenericRailTransport other) || other.frontBogie == null) continue;
+            double ox = Mth.lerp(partialTick, other.xo, other.getX()), oy = Mth.lerp(partialTick, other.yo, other.getY()), oz = Mth.lerp(partialTick, other.zo, other.getZ());
+            double dx = ox - ex, dz = oz - ez, len = Math.sqrt(dx * dx + dz * dz);
+            if (len < 0.1 || len > 12) continue;
+            double ux = dx / len, uz = dz / len;
+            double a = entity.reachTowards(other) - 0.1, b = len - other.reachTowards(entity) + 0.1;
+            if (b <= a) continue;
+            float y0 = (float) (entity.backBogie.yOffset + COUPLER_Y), y1 = (float) (oy - ey + other.backBogie.yOffset + COUPLER_Y);
+            box(buffers.getBuffer(net.minecraft.client.renderer.RenderType.entitySolid(COUPLER_TEX)), pose.last(),
+                    (float) (ux * a), y0, (float) (uz * a), (float) (ux * b), y1, (float) (uz * b), (float) -uz, (float) ux, light);
+        }
+    }
+
+    /** a square bar from p to q, nx/nz its horizontal side direction */
+    private static void box(com.mojang.blaze3d.vertex.VertexConsumer c, PoseStack.Pose pose, float px, float py, float pz, float qx, float qy, float qz, float nx, float nz, int light) {
+        float h = COUPLER_SIZE / 2;
+        float[][] corner = {{-1, -1}, {1, -1}, {1, 1}, {-1, 1}};
+        float[][] p = new float[4][3], q = new float[4][3];
+        for (int i = 0; i < 4; i++) {
+            float sx = corner[i][0] * h, sy = corner[i][1] * h;
+            p[i] = new float[]{px + nx * sx, py + sy, pz + nz * sx};
+            q[i] = new float[]{qx + nx * sx, qy + sy, qz + nz * sx};
+        }
+        for (int i = 0; i < 4; i++) {
+            int j = (i + 1) % 4;
+            quad(c, pose, p[i], p[j], q[j], q[i], light);
+        }
+        quad(c, pose, p[3], p[2], p[1], p[0], light);
+        quad(c, pose, q[0], q[1], q[2], q[3], light);
+    }
+
+    private static void quad(com.mojang.blaze3d.vertex.VertexConsumer c, PoseStack.Pose pose, float[] a, float[] b, float[] d, float[] e, int light) {
+        float[][] v = {a, b, d, e};
+        float[][] uv = {{0, 0}, {1, 0}, {1, 0.15f}, {0, 0.15f}};
+        for (int i = 0; i < 4; i++) {
+            c.addVertex(pose, v[i][0], v[i][1], v[i][2]).setColor(110, 110, 110, 255).setUv(uv[i][0], uv[i][1])
+                    .setOverlay(net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY).setLight(light).setNormal(pose, 0, 1, 0);
+        }
     }
 
     private static final java.util.Set<Class<?>> FAILED = new java.util.HashSet<>();
@@ -119,15 +173,21 @@ public class RenderWagon extends EntityRenderer<GenericRailTransport> {
 
         //apply an additional offset based on the rails.
         //do this in render not in entity, otherwise it breaks Y position on client.
+        float railTop;
         if(entity.frontBogie!=null && entity.backBogie!=null) {
-            railOffset=bogieRenderYOffset(entity.frontBogie.yOffset);
-            railOffset+=bogieRenderYOffset(entity.backBogie.yOffset);
-            railOffset*=0.5f;
+            railTop = (entity.frontBogie.yOffset + entity.backBogie.yOffset) * 0.5f;
         } else if(entity.level()!=null && !isPaintBucket){
             return;
+        } else {
+            railTop = ebf.tim.entities.EntityBogie.TIM_RAIL_Y;
         }
+        //the model's pivots stay the 1.12 ones (as for a lift of PIVOT), and the whole model is moved so its lowest
+        //point, the wheels, lies on the top of the rails (measured: transport_dims.json)
+        railOffset = measuring ? railTop : PIVOT;
+        bogieOffset = measuring ? railTop : (float) PIVOT;
 
         GL11.glPushMatrix();
+        if (!measuring) GL11.glTranslated(0, lift(entity, railTop), 0);
 
         //set the render position
         GL11.glTranslated(0, railOffset +bogieOffset+1.5, 0);
@@ -280,6 +340,24 @@ public class RenderWagon extends EntityRenderer<GenericRailTransport> {
             entity.renderData.animatedPart.add(StaticModelAnimator.initPart(render, entity));
             render.animated=true;
         }
+    }
+
+    /** the autotest's measure=1: draw as 1.12 did, the bogie height as the lift and no correction */
+    public static boolean measuring;
+
+    /** the 1.12 render lift the pivots are worked out for */
+    public static final double PIVOT = 0.35;
+
+    /** how far to move the model up so its lowest point is at railTop (blocks above the rail block's floor) */
+    public static double lift(GenericRailTransport entity, float railTop) {
+        ebf.tim.utility.TransportDims.Dims d = ebf.tim.utility.TransportDims.of(entity);
+        double a = d == null ? 0.87 : d.a(), s = d == null ? -2 : d.s();
+        return railTop - (a + s * PIVOT);
+    }
+
+    /** where the model's origin is above the entity, after the lift (TrainSmoke places its smoke from there) */
+    public static double modelBaseY(GenericRailTransport entity, float railTop) {
+        return 1.5 - 2 * PIVOT + lift(entity, railTop);
     }
 
     private static float bogieRenderYOffset(float input){

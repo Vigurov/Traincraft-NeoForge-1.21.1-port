@@ -219,7 +219,7 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
         builder.define(SKIN, "");
         builder.define(FRONT_BOGIE, new org.joml.Vector3f());
         builder.define(BACK_BOGIE, new org.joml.Vector3f());
-        builder.define(BOGIE_Y_OFFSET, 0.425f);
+        builder.define(BOGIE_Y_OFFSET, ebf.tim.entities.EntityBogie.TIM_RAIL_Y);
         builder.define(TANKS, new CompoundTag());
         builder.define(FUEL_CONSUMPTION, 0);
         builder.define(BOILER_HEAT, 0);
@@ -1000,12 +1000,12 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
     }
 
     public void manageCollision(Entity e){
-        //on client we need to push away players.
+        //the boxes are solid, so someone standing by a still train just stands there; a moving train shoves them
+        //aside, away from the track (1.12 pushed always, along the train and up as well: people slid to the ends
+        //and walked round, or floated up at the couplings)
         if(level().isClientSide){
             if (e instanceof Player) {
-                double[] motion = CommonUtil.rotatePoint(0.1, 0,
-                        CommonUtil.atan2degreesf(e.getZ()- getZ(), e.getX()-getX()));
-                e.push(motion[0], 0.05, motion[2]);
+                pushAside(e);
             }
         } else {
             if (e instanceof ItemEntity) {
@@ -1054,17 +1054,7 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
                 if (colliding.host != null && getConsist().contains(colliding.host)) {
                     return;
                 }
-                if (getBoolean(boolValues.BRAKE)) {
-                    appendMovement(-(Math.max(Math.abs(getVelocity()), (Math.abs(colliding.host.getVelocity()))*0.25)+0.05)*0.5);
-                } else {
-                    appendMovement(-(Math.max(Math.abs(getVelocity()), (Math.abs(colliding.host.getVelocity()))*0.25)+0.05));
-                }
-
-                if (colliding.host.getBoolean(boolValues.BRAKE)) {
-                    appendMovement((Math.max(Math.abs(getVelocity()), (Math.abs(colliding.host.getVelocity()))*0.25)+0.05)*0.5);
-                } else {
-                    appendMovement((Math.max(Math.abs(getVelocity()), (Math.abs(colliding.host.getVelocity()))*0.25)+0.05));
-                }
+                collide(colliding.host);
 
             } else if (e instanceof LivingEntity) {
                 if (!getBoolean(boolValues.BRAKE) && collisionHandler.front!=null) {
@@ -1074,6 +1064,13 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
                             pushable = false;
                             break;
                         }
+                    }
+                    //only someone at an end, on the ground, rolls it; standing at its side or on its roof does not
+                    //(1.12 rolled it from any side, out from under someone standing on it)
+                    double ax = frontBogie.posX - backBogie.posX, az = frontBogie.posZ - backBogie.posZ, al = Math.sqrt(ax * ax + az * az);
+                    double along = al < 1e-3 ? 0 : Math.abs(((e.getX() - getX()) * ax + (e.getZ() - getZ()) * az) / al);
+                    if (along < getHitboxSize()[0] * 0.5 - 0.2 || e.getY() > getY() + 0.5) {
+                        pushable = false;
                     }
                     if (pushable) {
                         double distanceFront = e.distanceToSqr(collisionHandler.front);
@@ -1086,10 +1083,7 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
                     }
                 }
 
-                double[] motion = CommonUtil.rotatePoint(0.025, 0,
-                        CommonUtil.atan2degreesf(getZ() - e.getZ(), getX() - e.getX()));
-                e.push(motion[0], 0.05, motion[2]);
-                if (e instanceof ServerPlayer sp) {
+                if (pushAside(e) && e instanceof ServerPlayer sp) {
                     sp.hurtMarked = true;
                 }
 
@@ -1099,6 +1093,76 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
                 }
             }
         }
+    }
+
+    /** how hard cars bounce off each other: 0 they stay together, 1 they swap their speeds */
+    private static final double RESTITUTION = 0.35;
+    /** the autotest's debugcollide=1 */
+    public static boolean debugCollide;
+
+    /**
+     * two transports not coupled to each other touch: a buffer collision along the track. Their speeds along the
+     * line between them change as for two bodies of their masses (a train being driven counts as immovable: its
+     * locomotive keeps it at its speed); with that they part again by themselves. 1.12 pushed this one back and
+     * then forwards by the same amount, so cars ran through one another.
+     */
+    private void collide(GenericRailTransport other) {
+        if (other == null || other.frontBogie == null || frontBogie == null || getId() > other.getId()) return;
+        double dx = other.getX() - getX(), dz = other.getZ() - getZ(), d = Math.sqrt(dx * dx + dz * dz);
+        if (d < 1e-3) return;
+        double ux = dx / d, uz = dz / d;
+        boolean thisDriven = consistDriver() != null && consistDriver().getAccelerator() != 0;
+        boolean otherDriven = other.consistDriver() != null && other.consistDriver().getAccelerator() != 0;
+        double m1 = thisDriven ? Double.POSITIVE_INFINITY : consistMass(), m2 = otherDriven ? Double.POSITIVE_INFINITY : other.consistMass();
+        if (Double.isInfinite(m1) && Double.isInfinite(m2)) return;
+        //speeds along the line between them, from how far each really moved last tick (the bogies' velocity
+        //vectors only get their direction when they move)
+        double v1 = (getX() - xo) * ux + (getZ() - zo) * uz;
+        double v2 = (other.getX() - other.xo) * ux + (other.getZ() - other.zo) * uz;
+        double closing = v1 - v2;
+        if (debugCollide) org.slf4j.LoggerFactory.getLogger("traincraft").info(String.format(
+                "collide t=%d %s->%s d=%.2f v1=%.3f v2=%.3f closing=%.3f m1=%.0f m2=%.0f", tickCount, getId(), other.getId(), d, v1, v2, closing, m1, m2));
+        if (closing <= 0.001) return;
+        double inv1 = Double.isInfinite(m1) ? 0 : 1 / m1, inv2 = Double.isInfinite(m2) ? 0 : 1 / m2;
+        double jimp = (1 + RESTITUTION) * closing / (inv1 + inv2);
+        double n1 = v1 - jimp * inv1, n2 = v2 + jimp * inv2;
+        if (inv1 > 0) for (GenericRailTransport t : getConsist()) t.setSpeedAlong(n1, ux, uz);
+        if (inv2 > 0) for (GenericRailTransport t : other.getConsist()) t.setSpeedAlong(n2, ux, uz);
+    }
+
+    /** the mass of everything coupled to this (weights in kg, as the transports give them) */
+    private double consistMass() {
+        double m = 0;
+        for (GenericRailTransport t : getConsist()) m += Math.max(1000, t.weightKg());
+        return m;
+    }
+
+    /** sets the speed to v along the world direction (ux, uz) (negative: the other way), on both bogies */
+    private void setSpeedAlong(double v, double ux, double uz) {
+        if (frontBogie == null || backBogie == null) return;
+        for (EntityBogie b : new EntityBogie[]{frontBogie, backBogie}) {
+            b.velocity[0] = v * ux;
+            b.velocity[1] = v * uz;
+            b.velocity[2] = 0;
+            b.velocity[3] = 0;
+        }
+    }
+
+    /** +1 if the other transport is towards our back (the direction addLinkingMove counts as positive) */
+    private double towardsSign(GenericRailTransport other) {
+        double bx = backBogie.posX - frontBogie.posX, bz = backBogie.posZ - frontBogie.posZ;
+        return (other.getX() - getX()) * bx + (other.getZ() - getZ()) * bz >= 0 ? 1 : -1;
+    }
+
+    /** while moving: the entity is pushed sideways off the track; returns whether it was */
+    private boolean pushAside(Entity e) {
+        if (Math.abs(getVelocity()) < 0.01 || frontBogie == null || backBogie == null) return false;
+        double ax = frontBogie.posX - backBogie.posX, az = frontBogie.posZ - backBogie.posZ, l = Math.sqrt(ax * ax + az * az);
+        if (l < 1e-3) return false;
+        double nx = -az / l, nz = ax / l;
+        double side = (e.getX() - getX()) * nx + (e.getZ() - getZ()) * nz >= 0 ? 1 : -1;
+        e.push(nx * side * 0.15, 0, nz * side * 0.15);
+        return true;
     }
 
     private static double distSq(EntityBogie a, Entity b){
@@ -1235,6 +1299,23 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
         return getHitboxSize()[0] * 0.5f;
     }
 
+    /** the gap between two coupled cars' bodies, where the couplers are */
+    public static final double COUPLER_GAP = 0.08;
+    /** how much of the spacing error a car makes up per tick (the rest of the tick's lag is in the prediction) */
+    private static final double GAIN = 0.5;
+
+    /**
+     * how far this transport's model reaches from its centre towards the other one (measured, see TransportDims;
+     * the hitbox half length if it was not measured, which is what 1.12 used and left gaps or overlaps)
+     */
+    public double reachTowards(GenericRailTransport other) {
+        ebf.tim.utility.TransportDims.Dims d = ebf.tim.utility.TransportDims.of(this);
+        if (d == null || frontBogie == null || backBogie == null) return getOptimalDistance(other);
+        double fx = frontBogie.posX - backBogie.posX, fz = frontBogie.posZ - backBogie.posZ;
+        boolean front = fx * (other.getX() - getX()) + fz * (other.getZ() - getZ()) > 0;
+        return front ? d.front() : d.back();
+    }
+
     /**
      * <h2>manage links</h2>
      */
@@ -1289,9 +1370,9 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
         double dist = Math.sqrt(vecX * vecX + vecZ * vecZ);
         Double rest = linkRest.get(other.getId());
         if (rest == null) {
-            //the ends just touch (half of each one's length); 1.12 kept the distance at the moment of coupling when that
-            //was shorter, so cars that ran into each other stayed partly inside one another
-            rest = (double)(getOptimalDistance(other) + other.getOptimalDistance(this));
+            //the bodies' ends a coupler apart; 1.12 kept the distance at which they ran into each other when that
+            //was shorter (cars stayed partly inside one another), and the hitbox lengths are not the models' lengths
+            rest = reachTowards(other) + other.reachTowards(this) + COUPLER_GAP;
             linkRest.put(other.getId(), rest);
         }
         //moving towards our back (positive, the yaw vector points front -> back) closes up on a neighbour behind us.
@@ -1324,13 +1405,17 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
                 lvx = driver.frontBogie.velocity[0];
                 lvz = driver.frontBogie.velocity[1];
             }
-            double leadSpeed = Math.abs(lvx) + Math.abs(lvz);
-            double pull = (lvx * (driver.getX() - getX()) + lvz * (driver.getZ() - getZ())) >= 0 ? 1 : -1;
+            //where the neighbour will be when our own move is made (next tick: the linking move is used by the
+            //bogies on their next update): its position now, plus the locomotive's move per tick once if it has
+            //not moved yet this tick, and once more for next tick. Following where it was (1.12 and before) left
+            //every car a tick behind, and the spacing stretched with the speed
+            boolean otherMoved = other.tickCount >= tickCount;
+            double ahead = otherMoved ? 1 : 2;
+            double px = other.getX() + lvx * ahead - getX(), pz = other.getZ() + lvz * ahead - getZ();
+            double predicted = Math.sqrt(px * px + pz * pz);
             frontBogie.velocity[0] = frontBogie.velocity[1] = 0;
             backBogie.velocity[0] = backBogie.velocity[1] = 0;
-            //... and trim the spacing softly: positions show a move one tick late, a full correction overshoots
-            double trim = Math.max(-0.5, Math.min(0.5, (dist - rest) * 0.4));
-            double move = pull * leadSpeed + trim;
+            double move = Math.max(-1, Math.min(1, (predicted - rest) * GAIN));
             if (Math.abs(move) > 0.0005) {
                 addLinkingMove(towardsOther * move);
             }
