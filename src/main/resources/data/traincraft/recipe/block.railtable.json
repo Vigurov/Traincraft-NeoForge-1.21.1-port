@@ -1,0 +1,27 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "misc",
+ "pattern": [
+  "IRI",
+  "WCW",
+  "WWW"
+ ],
+ "key": {
+  "I": {
+   "item": "minecraft:iron_ingot"
+  },
+  "W": {
+   "tag": "minecraft:planks"
+  },
+  "C": {
+   "item": "minecraft:crafting_table"
+  },
+  "R": {
+   "item": "minecraft:rail"
+  }
+ },
+ "result": {
+  "id": "traincraft:block.railtable",
+  "count": 1
+ }
+}

@@ -1,0 +1,12 @@
+{
+ "parent": "block/cube",
+ "textures": {
+  "particle": "traincraft:block/assembly_2_north",
+  "north": "traincraft:block/assembly_2_north",
+  "south": "traincraft:block/assembly_2_south",
+  "east": "traincraft:block/assembly_2_east",
+  "west": "traincraft:block/assembly_2_west",
+  "up": "traincraft:block/assembly_2_up",
+  "down": "traincraft:block/assembly_2_down"
+ }
+}

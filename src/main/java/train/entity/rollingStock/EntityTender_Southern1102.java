@@ -4,6 +4,7 @@ import ebf.tim.TrainsInMotion;
 import ebf.tim.api.SkinRegistry;
 import ebf.tim.api.TransportSkin;
 import ebf.tim.entities.GenericRailTransport;
+import ebf.tim.registry.TiMItems;
 import fexcraft.tmt.slim.ModelBase;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.Item;
@@ -61,6 +62,12 @@ public class EntityTender_Southern1102 extends GenericRailTransport {
 
 
     //recipe
+    @Override
+    public ItemStack[] getRecipe() {
+        return new ItemStack[]{
+                new ItemStack(Items.IRON_INGOT, 2), new ItemStack(TiMItems.wheelIron.get(), 2), new ItemStack(TiMItems.frameIron.get(), 2),
+                new ItemStack(Items.IRON_INGOT, 2), null, null, null, null, new ItemStack(Items.COAL, 2)        };
+    }
 
 
     //these are separated for being fiddly.

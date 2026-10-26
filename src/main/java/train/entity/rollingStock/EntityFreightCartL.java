@@ -4,6 +4,8 @@ import ebf.tim.TrainsInMotion;
 import ebf.tim.api.SkinRegistry;
 import ebf.tim.api.TransportSkin;
 import ebf.tim.entities.GenericRailTransport;
+import ebf.tim.registry.TiMItems;
+import ebf.tim.registry.TiMOres;
 import fexcraft.tmt.slim.ModelBase;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.item.Item;
@@ -63,6 +65,12 @@ public class EntityFreightCartL extends GenericRailTransport {
 
 
     //recipe
+    @Override
+    public ItemStack[] getRecipie() {
+        return new ItemStack[]{
+                new ItemStack(TiMOres.ingotSteel.get(), 4), new ItemStack(TiMItems.wheelWood.get(), 2), new ItemStack(TiMItems.frameSteel.get(), 2),
+                new ItemStack(TiMOres.ingotSteel.get(), 2), null, null, null, null, new ItemStack(Blocks.CHEST, 1)        };
+    }
 
 
     //these are separated for being fiddly.

@@ -1271,5 +1271,13 @@
  "item.traincraft.bucket_heavysteam": "Heavy Steam Bucket",
  "fluid.redstone": "RF",
  "block.traincraft.redstone": "RF",
- "item.traincraft.bucket_redstone": "Redstone Bucket"
+ "item.traincraft.bucket_redstone": "Redstone Bucket",
+ "block.traincraft.block.traintable": "Train Crafting Table",
+ "block.traincraft.block.railtable": "Track Crafting Table",
+ "block.traincraft.block.traintabletier1": "Assembly Table I",
+ "block.traincraft.block.traintabletier2": "Assembly Table II",
+ "block.traincraft.block.traintabletier3": "Assembly Table III",
+ "container.storage": "Storage",
+ "container.output": "Output",
+ "itemGroup.timcrafting": "Trains in Motion: parts"
 }

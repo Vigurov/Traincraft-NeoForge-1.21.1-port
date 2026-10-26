@@ -5,6 +5,7 @@ import ebf.tim.TrainsInMotion;
 import ebf.tim.api.SkinRegistry;
 import ebf.tim.api.TransportSkin;
 import ebf.tim.entities.EntityTrainCore;
+import ebf.tim.registry.TiMItems;
 import ebf.tim.utility.ItemStackSlot;
 import fexcraft.tmt.slim.ModelBase;
 import net.minecraft.world.level.block.Blocks;
@@ -63,6 +64,12 @@ public class EntityLocoSteam040VB extends EntityTrainCore {
 
 
     //recipe
+    @Override
+    public ItemStack[] getRecipe() {
+        return new ItemStack[]{
+                new ItemStack(Blocks.OAK_PLANKS, 4), new ItemStack(TiMItems.wheelIron.get(), 2), new ItemStack(TiMItems.frameWood.get(), 1),
+                null, new ItemStack(TiMItems.chimneyIron.get(), 1), null, new ItemStack(TiMItems.boilerIron.get(), 1), new ItemStack(TiMItems.fireboxSteel.get(), 1), null        };
+    }
 
 
     //these are separated for being fiddly.

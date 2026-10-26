@@ -74,6 +74,17 @@ public class TiMGenericRegistry {
         return factory == null ? null : factory.create((EntityType<T>) TYPE_BY_CLASS.get(clazz).get(), null);
     }
 
+    /**a world-less instance of every transport*/
+    @SuppressWarnings("unchecked")
+    public static List<GenericRailTransport> definitions() {
+        List<GenericRailTransport> l = new ArrayList<>();
+        for (Class<?> c : FACTORY_BY_CLASS.keySet()) {
+            GenericRailTransport t = definition((Class<? extends GenericRailTransport>) c);
+            if (t != null) l.add(t);
+        }
+        return l;
+    }
+
     /**1.12 registered the skins while registering each transport: do it once the types exist*/
     public static void registerSkins() {
         for (Class<?> c : FACTORY_BY_CLASS.keySet()) {

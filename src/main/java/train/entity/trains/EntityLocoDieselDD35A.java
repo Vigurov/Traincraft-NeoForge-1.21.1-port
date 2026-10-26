@@ -5,6 +5,8 @@ import ebf.tim.TrainsInMotion;
 import ebf.tim.api.SkinRegistry;
 import ebf.tim.api.TransportSkin;
 import ebf.tim.entities.EntityTrainCore;
+import ebf.tim.registry.TiMItems;
+import ebf.tim.registry.TiMOres;
 import ebf.tim.utility.ItemStackSlot;
 import fexcraft.tmt.slim.ModelBase;
 import net.minecraft.world.item.Item;
@@ -64,6 +66,13 @@ public class EntityLocoDieselDD35A extends EntityTrainCore {
 
 
     //recipe
+    @Override
+    public ItemStack[] getRecipe() {
+        return new ItemStack[]{
+                new ItemStack(TiMItems.controlPanel.get(), 2), new ItemStack(TiMItems.wheelSteel.get(), 8), new ItemStack(TiMItems.frameSteel.get(), 3),
+                new ItemStack(TiMOres.ingotSteel.get(), 2), new ItemStack(TiMItems.chimneySteel.get(), 2), new ItemStack(TiMItems.cabinSteel.get(), 1),
+                new ItemStack(TiMItems.smallElectricEngine.get(), 8), new ItemStack(TiMItems.mediumDieselEngine.get(), 11), new ItemStack(TiMItems.generator.get(), 4)        };
+    }
 
 
     //these are separated for being fiddly.

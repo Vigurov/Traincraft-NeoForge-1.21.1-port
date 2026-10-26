@@ -60,6 +60,10 @@ public class PassengerIC4_DSB_FH extends GenericRailTransport {
 
 
     //recipe
+    @Override
+    public ItemStack[] getRecipe() {
+        return null;
+    }
 
 
     //these are separated for being fiddly.

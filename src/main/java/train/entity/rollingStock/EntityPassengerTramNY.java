@@ -4,6 +4,8 @@ import ebf.tim.TrainsInMotion;
 import ebf.tim.api.SkinRegistry;
 import ebf.tim.api.TransportSkin;
 import ebf.tim.entities.GenericRailTransport;
+import ebf.tim.registry.TiMItems;
+import ebf.tim.registry.TiMOres;
 import fexcraft.tmt.slim.ModelBase;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -60,6 +62,13 @@ public class EntityPassengerTramNY extends GenericRailTransport {
 
 
     //recipe
+    @Override
+    public ItemStack[] getRecipe() {
+        return new ItemStack[]{
+                null, new ItemStack(TiMItems.wheelWood.get(), 2), new ItemStack(TiMItems.frameSteel.get(), 1),
+                new ItemStack(TiMOres.ingotSteel.get(), 1), null, new ItemStack(TiMItems.cabinSteel.get(), 1),
+                null, null, null        };
+    }
 
 
     //these are separated for being fiddly.

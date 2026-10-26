@@ -218,5 +218,13 @@
  "item.traincraft.tcrailembeddedlargeparallelswitch": "Стрілка на паралельну колію в покритті (4x17)",
  "item.traincraft.tcrailembeddedmedium45degreeswitch": "Стрілка 45° в покритті (3x5)",
  "item.traincraft.tcrailembeddedlarge45degreeswitch": "Стрілка 45° в покритті (4x8)",
- "item.traincraft.tcrail20x2scurve": "Зсув колії (2x20)"
+ "item.traincraft.tcrail20x2scurve": "Зсув колії (2x20)",
+ "block.traincraft.block.traintable": "Верстат потягів",
+ "block.traincraft.block.railtable": "Верстат рейок",
+ "block.traincraft.block.traintabletier1": "Складальний стіл I",
+ "block.traincraft.block.traintabletier2": "Складальний стіл II",
+ "block.traincraft.block.traintabletier3": "Складальний стіл III",
+ "container.storage": "Сховище",
+ "container.output": "Вихід",
+ "itemGroup.timcrafting": "Trains in Motion: деталі"
 }

@@ -5,6 +5,8 @@ import ebf.tim.TrainsInMotion;
 import ebf.tim.api.SkinRegistry;
 import ebf.tim.api.TransportSkin;
 import ebf.tim.entities.EntityTrainCore;
+import ebf.tim.registry.TiMItems;
+import ebf.tim.registry.TiMOres;
 import ebf.tim.utility.ItemStackSlot;
 import fexcraft.tmt.slim.ModelBase;
 import net.minecraft.world.level.block.Block;
@@ -63,7 +65,18 @@ public class EntityLocoSteamUSATCUS extends EntityTrainCore {
     }
 
 
+    @Override
+    public String getCraftingTable() {
+        return "traintabletier2";
+    }
 
+    @Override
+    public ItemStack[] getRecipe() {
+        return new ItemStack[]{
+                null, new ItemStack(TiMItems.wheelIron.get(), 3), new ItemStack(TiMItems.frameSteel.get(), 2), new ItemStack(Items.BLACK_DYE, 8),
+                new ItemStack(TiMOres.ingotSteel.get(), 2), new ItemStack(TiMItems.chimneySteel.get(), 1), new ItemStack(TiMItems.cabinSteel.get(), 1),
+                new ItemStack(TiMItems.boilerIron.get(), 1), new ItemStack(TiMItems.fireboxIron.get(), 1), new ItemStack(Items.COAL, 1)        };
+    }
 
 
     //these are separated for being fiddly.

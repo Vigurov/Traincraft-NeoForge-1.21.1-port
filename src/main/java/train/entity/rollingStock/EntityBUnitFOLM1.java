@@ -4,6 +4,7 @@ import ebf.tim.TrainsInMotion;
 import ebf.tim.api.SkinRegistry;
 import ebf.tim.api.TransportSkin;
 import ebf.tim.entities.GenericRailTransport;
+import ebf.tim.registry.TiMItems;
 import fexcraft.tmt.slim.ModelBase;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -63,6 +64,13 @@ public class EntityBUnitFOLM1 extends GenericRailTransport {
 
 
     //recipe: the A unit's, without the cab and controls
+    @Override
+    public ItemStack[] getRecipe() {
+        return new ItemStack[]{
+                null, new ItemStack(TiMItems.wheelSteel.get(), 8), new ItemStack(TiMItems.frameSteel.get(), 3),
+                null, null, null,
+                new ItemStack(TiMItems.smallElectricEngine.get(), 2), new ItemStack(TiMItems.mediumDieselEngine.get(), 4), new ItemStack(TiMItems.generator.get(), 4)        };
+    }
 
 
     //these are separated for being fiddly.

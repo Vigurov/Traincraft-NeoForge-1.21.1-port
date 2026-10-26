@@ -4,6 +4,7 @@ import ebf.tim.TrainsInMotion;
 import ebf.tim.api.SkinRegistry;
 import ebf.tim.api.TransportSkin;
 import ebf.tim.entities.GenericRailTransport;
+import ebf.tim.registry.TiMItems;
 import fexcraft.tmt.slim.ModelBase;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.item.Items;
@@ -64,6 +65,12 @@ public class EntityCabooseLogging extends GenericRailTransport {
 
 
     //recipe
+    @Override
+    public ItemStack[] getRecipie() {
+        return new ItemStack[]{
+                new ItemStack(Blocks.OAK_PLANKS, 3), new ItemStack(TiMItems.wheelWood.get(), 2), new ItemStack(TiMItems.frameWood.get(), 2),
+                new ItemStack(Items.IRON_INGOT, 1), null, null, null, null, new ItemStack(Blocks.CRAFTING_TABLE, 1)        };
+    }
 
 
     //these are separated for being fiddly.

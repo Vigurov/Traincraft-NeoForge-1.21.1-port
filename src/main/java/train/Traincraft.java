@@ -26,6 +26,7 @@ public class Traincraft {
             .icon(() -> TiMGenericRegistry.TRANSPORT_ITEMS.isEmpty() ? new ItemStack(TiMGenericRegistry.STAKE.get()) : new ItemStack(TiMGenericRegistry.TRANSPORT_ITEMS.get(0).get()))
             .displayItems((params, output) -> {
                 output.accept(TiMGenericRegistry.STAKE.get());
+                for (var t : ebf.tim.registry.TiMBlocks.TABLE_ITEMS) output.accept(t.get());
                 ebf.tim.items.ItemRail.addCreativeVariants(output::accept);
                 for (train.common.library.ItemIDs id : train.common.library.ItemIDs.values()) {
                     if (id.item != null) output.accept(id.item);
@@ -64,6 +65,7 @@ public class Traincraft {
         TABS.register(modBus);
         train.common.ClassicTracks.register(modBus);
         modBus.addListener(this::commonSetup);
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.TagsUpdatedEvent e) -> ebf.tim.utility.RecipeManager.tagsChanged());
         modBus.addListener(this::registerPayloads);
     }
 

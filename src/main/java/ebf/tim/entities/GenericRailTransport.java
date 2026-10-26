@@ -1821,7 +1821,14 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
 
     public float weightKg(){return 907.18474f;}
 
-    public ItemStack[] getRecipe(){return null;}
+    /**the parts, one stack per input slot of the table (1.12 TC: 9 of the assembly table's 10 slots)*/
+    public ItemStack[] getRecipe(){return getRecipie();}
+
+    /**1.12 misspelt name some transports override*/
+    public ItemStack[] getRecipie(){return null;}
+
+    /**the table this is made on: "traintable" (TiM) or "traintabletier1".."3" (Traincraft assembly tables)*/
+    public String getCraftingTable(){return "traintabletier1";}
 
     public String transportName(){return "Fugidsnot";}
 

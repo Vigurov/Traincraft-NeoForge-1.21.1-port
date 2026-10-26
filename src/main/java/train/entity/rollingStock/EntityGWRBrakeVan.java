@@ -4,6 +4,7 @@ import ebf.tim.TrainsInMotion;
 import ebf.tim.api.SkinRegistry;
 import ebf.tim.api.TransportSkin;
 import ebf.tim.entities.GenericRailTransport;
+import ebf.tim.registry.TiMItems;
 import fexcraft.tmt.slim.ModelBase;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.item.Item;
@@ -61,6 +62,13 @@ public class EntityGWRBrakeVan extends GenericRailTransport {
 
 
     //recipe
+    @Override
+    public ItemStack[] getRecipie() {
+        return new ItemStack[]{
+                new ItemStack(Blocks.CRAFTING_TABLE, 1), new ItemStack(TiMItems.wheelIron.get(), 2), new ItemStack(TiMItems.frameWood.get(), 1),
+                new ItemStack(Blocks.OAK_PLANKS, 8), null, new ItemStack(TiMItems.cabinWood.get(), 1),
+                null, null, new ItemStack(Blocks.FURNACE, 1)        };
+    }
 
 
     //these are separated for being fiddly.

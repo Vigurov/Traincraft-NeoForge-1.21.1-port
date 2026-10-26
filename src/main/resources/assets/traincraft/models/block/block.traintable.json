@@ -1,0 +1,12 @@
+{
+ "parent": "block/cube",
+ "textures": {
+  "particle": "trainsinmotion:blocks/train_table_north",
+  "north": "trainsinmotion:blocks/train_table_north",
+  "south": "trainsinmotion:blocks/train_table_south",
+  "east": "trainsinmotion:blocks/train_table_east",
+  "west": "trainsinmotion:blocks/train_table_west",
+  "up": "trainsinmotion:blocks/train_table_up",
+  "down": "trainsinmotion:blocks/train_table_down"
+ }
+}

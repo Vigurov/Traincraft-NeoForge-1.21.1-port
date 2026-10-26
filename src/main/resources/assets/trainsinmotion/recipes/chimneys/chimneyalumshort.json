@@ -1,0 +1,16 @@
+{
+  "type": "trainsinmotion:table",
+  "pattern": [
+    "# #",
+    "# #"
+  ],
+  "key": {
+    "#": {
+      "type": "forge:ore_dict",
+      "ore": "ingotAluminum"
+    }
+  },
+  "result": {
+    "item": "trainsinmotion:chimney.aluminium.short"
+  }
+}

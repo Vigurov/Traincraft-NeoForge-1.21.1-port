@@ -5,6 +5,7 @@ import ebf.tim.TrainsInMotion;
 import ebf.tim.api.SkinRegistry;
 import ebf.tim.api.TransportSkin;
 import ebf.tim.entities.EntityTrainCore;
+import ebf.tim.registry.TiMItems;
 import ebf.tim.utility.ItemStackSlot;
 import fexcraft.tmt.slim.ModelBase;
 import net.minecraft.world.item.Items;
@@ -63,6 +64,13 @@ public class EntityLocoElectricICE1 extends EntityTrainCore {
 
 
     //recipe
+    @Override
+    public ItemStack[] getRecipe() {
+        return new ItemStack[]{
+                new ItemStack(TiMItems.controlPanel.get(), 2), new ItemStack(TiMItems.wheelSteel.get(), 2), new ItemStack(TiMItems.frameSteel.get(), 2),
+                null, null, new ItemStack(TiMItems.cabinSteel.get(), 1),
+                new ItemStack(TiMItems.transformer.get(), 4), new ItemStack(TiMItems.smallElectricEngine.get(), 4), new ItemStack(Items.REDSTONE, 4)        };
+    }
 
 
     //these are separated for being fiddly.

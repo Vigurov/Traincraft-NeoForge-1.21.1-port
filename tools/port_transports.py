@@ -39,7 +39,7 @@ def port(s, cls):
     }
     for a, b in imports.items():
         s = s.replace(a, b)
-    for dead in ['import ebf.tim.items.ItemTransport;', 'import ebf.tim.registry.TiMItems;', 'import ebf.tim.registry.TiMOres;',
+    for dead in ['import ebf.tim.items.ItemTransport;',
                  'import train.Traincraft;', 'import java.util.UUID;', 'import train.blocks.TCBlocks;',
                  'import net.minecraftforge.fml.relauncher.SideOnly;', 'import net.minecraftforge.fml.relauncher.Side;',
                  'import ebf.tim.utility.FuelHandler;']:
@@ -55,11 +55,18 @@ def port(s, cls):
     # the item lives in the registry now
     s = re.sub(r'[ \t]*public static final Item thisItem\s*=[^;]*;\n', '', s)
     s = strip_method(s, r'public Item getItem\(\)')
-    # recipes need the crafting tables and parts: later
-    s = strip_method(s, r'public ItemStack\[\] getRecipe\(\)')
-    s = strip_method(s, r'public ItemStack\[\] getRecipie\(\)')
+    # recipes: 1.12 items that changed name or lost their metadata in 1.21 (dyes: plain Items.DYE was ink, black)
+    dyes = ['BLACK', 'RED', 'GREEN', 'BROWN', 'BLUE', 'PURPLE', 'CYAN', 'LIGHT_GRAY', 'GRAY', 'PINK', 'LIME', 'YELLOW',
+            'LIGHT_BLUE', 'MAGENTA', 'ORANGE', 'WHITE']
+    s = re.sub(r'new ItemStack\(Items\.DYE,\s*(\d+),\s*(\d+)\)', lambda m: 'new ItemStack(Items.%s_DYE, %s)' % (dyes[int(m.group(2))], m.group(1)), s)
+    s = s.replace('Items.DYE', 'Items.BLACK_DYE').replace('Blocks.PLANKS', 'Blocks.OAK_PLANKS').replace('Blocks.LOG', 'Blocks.OAK_LOG')
+    s = s.replace('Items.BOAT', 'Items.OAK_BOAT')
+    # the TiM items are registry entries now (both an ItemLike and a Holder: name the item)
+    s = re.sub(r'\b(TiMItems|TiMOres)\.(\w+)\b(?!\s*[.(])', r'\1.\2.get()', s)
     s = re.sub(r'\bthis\.rotationYaw\b', 'this.getYRot()', s)
-    s = strip_method(s, r'public Block getCraftingTable\(\)')
+    # the table it is made on, by name (1.12: the block)
+    s = re.sub(r'public Block getCraftingTable\(\)\s*\{\s*return TCBlocks\.trainTable(Tier\d);\s*\}',
+               lambda m: 'public String getCraftingTable() {\n        return "traintable%s";\n    }' % m.group(1).lower(), s)
     s = resource_locations(s)
     s = re.sub(r'(?<![\w.])world\s*==\s*null', 'level()==null', s)
     s = re.sub(r'(?<![\w.])world\s*!=\s*null', 'level()!=null', s)

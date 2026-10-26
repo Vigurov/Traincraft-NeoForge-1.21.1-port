@@ -5,6 +5,7 @@ import ebf.tim.api.SkinRegistry;
 import ebf.tim.api.TransportSkin;
 import ebf.tim.entities.EntityTrainCore;
 import ebf.tim.entities.GenericRailTransport;
+import ebf.tim.registry.TiMItems;
 import ebf.tim.utility.ItemStackSlot;
 import fexcraft.tmt.slim.ModelBase;
 import net.minecraft.world.item.Items;
@@ -169,6 +170,20 @@ public class EntityLocoSteam4_4_0 extends EntityTrainCore {
      * All ore directory support is automatically figured out by
      * @see ebf.tim.utility.RecipeManager#ODC(ItemStack)
      */
+    @Override
+    public ItemStack[] getRecipe() {
+        return new ItemStack[]{
+                new ItemStack(TiMItems.chimneyIron.get(), 1), new ItemStack(Items.STICK, 2), null,
+                new ItemStack(TiMItems.boilerIron.get(), 1), new ItemStack(TiMItems.fireboxIron.get(), 1), new ItemStack(TiMItems.cabinWood.get(), 1),
+                new ItemStack(TiMItems.wheelIron.get(), 3), new ItemStack(TiMItems.frameWood.get(), 2), null
+        };
+
+//        return new ItemStack[]{
+//                new ItemStack(TiMItems.chimneyIron.get(), 1), new ItemStack(Items.STICK, 2), null,
+//                new ItemStack(TiMItems.boilerIron.get(), 1), new ItemStack(TiMItems.fireboxIron.get(), 1), new ItemStack(TiMItems.cabinWood.get(), 1),
+//                new ItemStack(TiMItems.wheelIron.get(), 3), new ItemStack(TiMItems.frameWood.get(), 2), null
+//        };
+    }
 
 
     /**

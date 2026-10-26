@@ -151,6 +151,39 @@ public class AutoTest {
                 mc.options.setCameraType(net.minecraft.client.CameraType.THIRD_PERSON_BACK);
             }
         }
+        if (tick == 30 && p.containsKey("craft")) {
+            //craft=table:transport-or-item:take  fills the table's inputs from the recipe of the given result,
+            //lists the outputs, takes the first one and shows what is left in the inputs
+            server.execute(() -> {
+                String[] a = p.getProperty("craft").split(";");
+                for (String c : a) {
+                    String[] x = c.split("@");
+                    var block = BuiltInRegistries.BLOCK.get(ResourceLocation.parse("traincraft:block." + x[0]));
+                    BlockPos at = base.offset(-3, 0, 2 + java.util.Arrays.asList(a).indexOf(c) * 2);
+                    level.setBlock(at, block.defaultBlockState(), 3);
+                    var te = (ebf.tim.blocks.TileEntityStorage) level.getBlockEntity(at);
+                    var result = new net.minecraft.world.item.ItemStack(BuiltInRegistries.ITEM.get(ResourceLocation.parse(x[1])));
+                    var recipe = ebf.tim.utility.RecipeManager.getRecipe(result, x[0]);
+                    log("craft " + c + " recipe " + (recipe == null ? "NONE" : recipe.input.stream().map(l -> l == null ? "-" : l.get(0).toString()).toList()));
+                    if (recipe == null) continue;
+                    int i = 0;
+                    for (var slot : te.inventory) {
+                        if (!slot.isCraftingInput()) continue;
+                        if (i < recipe.input.size() && recipe.input.get(i) != null) slot.setStack(recipe.input.get(i).get(0).copyWithCount(recipe.input.get(i).get(0).getCount() * 2));
+                        i++;
+                    }
+                    te.markDirty();
+                    log("outputs " + te.inventory.stream().filter(ebf.tim.utility.ItemStackSlot::isCraftingOutput).map(s2 -> s2.getStackOrEmpty().toString()).toList());
+                    var out = te.inventory.stream().filter(s2 -> s2.isCraftingOutput() && s2.getHasStack()).findFirst();
+                    if (out.isPresent()) {
+                        var taken = out.get().getStackOrEmpty().copy();
+                        out.get().setStack(net.minecraft.world.item.ItemStack.EMPTY);
+                        te.onCrafting(taken);
+                        log("took " + taken + ", inputs left " + te.inventory.stream().filter(ebf.tim.utility.ItemStackSlot::isCraftingInput).map(s2 -> s2.getStackOrEmpty().toString()).toList());
+                    }
+                }
+            });
+        }
         if (tick == start - 15 && p.containsKey("give") && train != null) {
             //give=slotId:item:count;... into the driven transport's inventory
             server.execute(() -> {

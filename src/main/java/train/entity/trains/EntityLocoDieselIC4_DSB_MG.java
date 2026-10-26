@@ -64,6 +64,10 @@ public class EntityLocoDieselIC4_DSB_MG extends EntityTrainCore {
 
 
     //recipe
+    @Override
+    public ItemStack[] getRecipe() {
+        return null;
+    }
 
 
     //these are separated for being fiddly.

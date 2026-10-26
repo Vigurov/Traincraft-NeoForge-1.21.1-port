@@ -13,4 +13,7 @@ public class TiMMenus {
 
     public static final DeferredHolder<MenuType<?>, MenuType<TransportMenu>> TRANSPORT =
             MENUS.register("transport", () -> IMenuTypeExtension.create(TransportMenu::fromNetwork));
+
+    public static final DeferredHolder<MenuType<?>, MenuType<ebf.tim.gui.TableMenu>> TABLE =
+            MENUS.register("table", () -> IMenuTypeExtension.create(ebf.tim.gui.TableMenu::fromNetwork));
 }

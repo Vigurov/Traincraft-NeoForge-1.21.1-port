@@ -1,0 +1,30 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "misc",
+ "pattern": [
+  "GPG",
+  "DLD",
+  "OPO"
+ ],
+ "key": {
+  "O": {
+   "item": "minecraft:obsidian"
+  },
+  "G": {
+   "item": "minecraft:gold_ingot"
+  },
+  "P": {
+   "item": "minecraft:piston"
+  },
+  "D": {
+   "item": "minecraft:diamond"
+  },
+  "L": {
+   "item": "minecraft:glowstone"
+  }
+ },
+ "result": {
+  "id": "traincraft:block.traintabletier3",
+  "count": 1
+ }
+}

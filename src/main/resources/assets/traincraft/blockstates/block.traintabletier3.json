@@ -1,0 +1,20 @@
+{
+ "variants": {
+  "facing=north": {
+   "model": "traincraft:block/block.traintabletier3",
+   "y": 0
+  },
+  "facing=east": {
+   "model": "traincraft:block/block.traintabletier3",
+   "y": 90
+  },
+  "facing=south": {
+   "model": "traincraft:block/block.traintabletier3",
+   "y": 180
+  },
+  "facing=west": {
+   "model": "traincraft:block/block.traintabletier3",
+   "y": 270
+  }
+ }
+}
