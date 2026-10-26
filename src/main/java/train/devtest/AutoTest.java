@@ -1,6 +1,7 @@
 package train.devtest;
 
 import train.blocks.TCBlocks;
+import train.core.handlers.ConfigHandler;
 import train.blocks.bench.BlockTrainWorkbench;
 import train.blocks.bench.TrainWorkbenchMenu;
 import train.blocks.machines.MachineMenu;
@@ -130,6 +131,12 @@ public class AutoTest {
                 level.setDayTime(i("time", 6000));
                 base = BlockPos.containing(sp.getX(), sp.getY(), sp.getZ());
                 log("base " + base);
+                var mods = level.registryAccess().registryOrThrow(net.neoforged.neoforge.registries.NeoForgeRegistries.Keys.BIOME_MODIFIERS);
+                log("config: biome modifiers " + mods.keySet().stream().filter(k -> k.getNamespace().equals("traincraft")).sorted().toList()
+                        + ", steam recipes " + ebf.tim.utility.RecipeManager.getRecipes("traintabletier1").stream()
+                        .filter(r -> r.getresult().get(0).getItem() instanceof ebf.tim.items.ItemTransport it && it.info() != null
+                                && it.info().getTypes().contains(ebf.tim.TrainsInMotion.transportTypes.STEAM)).count()
+                        + ", windmill radius " + ConfigHandler.windmillCheckRadius());
                 for (String use : p.getProperty("use", "").split(";")) {
                     if (!use.isBlank()) run(level, sp, use.trim());
                 }

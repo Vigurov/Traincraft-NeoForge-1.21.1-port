@@ -186,7 +186,7 @@ public class EntityTrainCore extends GenericRailTransport {
      */
     private void runningSounds() {
         train.library.EnumSounds s = getSoundRecord();
-        if (s == null || !getBoolean(boolValues.RUNNING) || hornDelay != 0) {
+        if (s == null || !train.core.handlers.ConfigHandler.sounds() || !getBoolean(boolValues.RUNNING) || hornDelay != 0) {
             return;
         }
         double speed = getVelocity();

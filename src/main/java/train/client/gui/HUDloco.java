@@ -74,8 +74,9 @@ public class HUDloco {
 
         int h = steam ? 15 : 13;
         g.drawString(mc.font, "Speed:", 106, windowHeight + 7 + h, 0xFFFFFF);
-        g.drawString(mc.font, "  " + (int) speed, 106, windowHeight + 18 + h, 0xFFFFFF);
-        g.drawString(mc.font, " Km/h", 106, windowHeight + 29 + h, 0xFFFFFF);
+        boolean kmh = train.core.handlers.ConfigHandler.speedInKmh();
+        g.drawString(mc.font, "  " + (int) (kmh ? speed : speed * 0.621371), 106, windowHeight + 18 + h, 0xFFFFFF);
+        g.drawString(mc.font, kmh ? " Km/h" : " mph", 106, windowHeight + 29 + h, 0xFFFFFF);
         if (steam) {
             float heat = loco.entityData().get(GenericRailTransport.BOILER_HEAT) / 100f;
             g.drawString(mc.font, "State: " + (heat < 100 ? "cold" : heat < 0.5f * loco.getMaxFuel() * 750 ? "warm" : "hot"), 50, windowHeight + 80, 0xFFFFFF);

@@ -35,6 +35,7 @@ public class Traincraft {
                     if (id.item != null) output.accept(id.item);
                 }
                 for (var item : TiMGenericRegistry.TRANSPORT_ITEMS) {
+                    if (!train.core.handlers.ConfigHandler.enabled(item.get().info())) continue;
                     output.accept(item.get());
                 }
             })
@@ -53,7 +54,8 @@ public class Traincraft {
             })
             .build());
 
-    public Traincraft(IEventBus modBus) {
+    public Traincraft(IEventBus modBus, net.neoforged.fml.ModContainer container) {
+        train.core.handlers.ConfigHandler.register(container, modBus);
         TrainRegistry.register();
         ebf.tim.registry.TiMItems.init();
         ebf.tim.registry.TiMOres.init();

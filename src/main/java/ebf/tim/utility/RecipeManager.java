@@ -113,7 +113,7 @@ public class RecipeManager {
         //transports
         for (GenericRailTransport t : TiMGenericRegistry.definitions()) {
             ItemStack[] r = t.getRecipe();
-            if (r == null || t.getItem() == null) continue;
+            if (r == null || t.getItem() == null || !train.core.handlers.ConfigHandler.enabled(t)) continue;
             pending.add(new Object[]{List.of(new ItemStack(t.getItem())), new ArrayList<Object>(Arrays.asList(r)), t.getCraftingTable()});
         }
         //JSON table recipes

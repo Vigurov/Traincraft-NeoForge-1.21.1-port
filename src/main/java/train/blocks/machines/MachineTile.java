@@ -367,6 +367,23 @@ public class MachineTile extends BlockEntity implements ItemStackSlot.Host {
         }
     }
 
+    private Boolean skyOpen;
+
+    /**
+     * the windmill catches wind only where the area above it sees the sky (config WINDMILL_CHECK_RADIUS; 1.12
+     * meant to look at that area but looked at the windmill only)
+     */
+    private boolean skyOpen(BlockPos above) {
+        int r = train.core.handlers.ConfigHandler.windmillCheckRadius();
+        if (r < 0) return true;
+        for (int x = -r; x <= r; x++) {
+            for (int z = -r; z <= r; z++) {
+                if (!level.canSeeSky(above.offset(x, 0, z))) return false;
+            }
+        }
+        return true;
+    }
+
     /** gives the stored energy to the blocks around that take it (1.12: the four sides; the water wheel all six) */
     private void pushEnergy() {
         for (Direction side : Direction.values()) {
@@ -397,7 +414,10 @@ public class MachineTile extends BlockEntity implements ItemStackSlot.Host {
             //the blades turn in the block above: whatever is there breaks
             level.destroyBlock(above, true);
         }
-        if (tickCount2 % 4 == 0 && level.canSeeSky(above)) {
+        if (tickCount2 % 120 == 0 || skyOpen == null) {
+            skyOpen = skyOpen(above);
+        }
+        if (tickCount2 % 4 == 0 && skyOpen) {
             //1.12 worlds start at y 0: below that the height adds nothing
             energy.receiveEnergy(windStrength + Math.round(Math.max(0, worldPosition.getY()) * 0.25f) * 10, false);
             if (level.isThundering()) {
