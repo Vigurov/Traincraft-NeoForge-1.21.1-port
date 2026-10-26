@@ -92,6 +92,10 @@ public class XmlBuilder {
     public XmlBuilder getXml(String k) { return containsXml(k) ? new XmlBuilder(tag.getCompound("x:" + k)) : null; }
     public boolean containsXml(String k) { return tag.contains("x:" + k, Tag.TAG_COMPOUND); }
 
+    public XmlBuilder putFluidStack(String k, FluidStack v) { if (v != null) tag.put("fl:" + k, v.save()); return this; }
+    public FluidStack getFluidStack(String k) { return containsFluidStack(k) ? FluidStack.load(tag.getCompound("fl:" + k)) : null; }
+    public boolean containsFluidStack(String k) { return tag.contains("fl:" + k, Tag.TAG_COMPOUND); }
+
     public boolean isEmpty() { return tag.isEmpty(); }
 
     public XmlBuilder copy() { return new XmlBuilder(tag.copy()); }

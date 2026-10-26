@@ -16,6 +16,8 @@ public class TraincraftClient {
         modBus.addListener(ClientKeyHandler::register);
         modBus.addListener(this::registerRenderers);
         modBus.addListener(ebf.tim.registry.TiMFluids::registerClient);
+        modBus.addListener((net.neoforged.neoforge.client.event.RegisterMenuScreensEvent e) ->
+                e.register(ebf.tim.registry.TiMMenus.TRANSPORT.get(), ebf.tim.gui.TransportScreen::new));
         modBus.addListener((net.neoforged.fml.event.lifecycle.FMLClientSetupEvent e) -> train.devtest.AutoTest.init());
         NeoForge.EVENT_BUS.addListener(ClientKeyHandler::onClientTick);
     }

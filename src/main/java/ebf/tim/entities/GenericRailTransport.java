@@ -11,6 +11,7 @@ import ebf.tim.utility.CollisionBox;
 import ebf.tim.utility.CommonUtil;
 import ebf.tim.utility.HitboxDynamic;
 import ebf.tim.utility.ItemStackSlot;
+import ebf.tim.utility.FluidStack;
 import ebf.tim.utility.XmlBuilder;
 import fexcraft.tmt.slim.ModelBase;
 import fexcraft.tmt.slim.Vec3f;
@@ -59,7 +60,7 @@ import static ebf.tim.utility.CommonUtil.radianF;
  * linking and drag code is the 1.12 one.
  * @author Eternal Blue Flame
  */
-public class GenericRailTransport extends Entity implements IEntityWithComplexSpawn {
+public class GenericRailTransport extends Entity implements IEntityWithComplexSpawn, ItemStackSlot.Host {
 
     /*
      * <h2>variables</h2>
@@ -203,6 +204,9 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
     public static final EntityDataAccessor<org.joml.Vector3f> FRONT_BOGIE = SynchedEntityData.defineId(GenericRailTransport.class, EntityDataSerializers.VECTOR3);
     public static final EntityDataAccessor<org.joml.Vector3f> BACK_BOGIE = SynchedEntityData.defineId(GenericRailTransport.class, EntityDataSerializers.VECTOR3);
     /**the bogies' heights above the rail block (yOffset), used by the renderer*/
+    public static final EntityDataAccessor<CompoundTag> TANKS = SynchedEntityData.defineId(GenericRailTransport.class, EntityDataSerializers.COMPOUND_TAG);
+    public static final EntityDataAccessor<Integer> FUEL_CONSUMPTION = SynchedEntityData.defineId(GenericRailTransport.class, EntityDataSerializers.INT);
+    public static final EntityDataAccessor<Integer> BOILER_HEAT = SynchedEntityData.defineId(GenericRailTransport.class, EntityDataSerializers.INT);
     public static final EntityDataAccessor<Float> BOGIE_Y_OFFSET = SynchedEntityData.defineId(GenericRailTransport.class, EntityDataSerializers.FLOAT);
 
     @Override
@@ -216,6 +220,9 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
         builder.define(FRONT_BOGIE, new org.joml.Vector3f());
         builder.define(BACK_BOGIE, new org.joml.Vector3f());
         builder.define(BOGIE_Y_OFFSET, 0.425f);
+        builder.define(TANKS, new CompoundTag());
+        builder.define(FUEL_CONSUMPTION, 0);
+        builder.define(BOILER_HEAT, 0);
     }
 
     /**1.12 name of the synced data; vanilla's own entityData field is the XML data here*/
@@ -253,6 +260,9 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
     public ItemStackSlot fuelSlot(){
         if(getTypes().contains(STEAM)) {
             return new ItemStackSlot(this, 400, 114, 32).setOverlay(Items.COAL);
+        }
+        if(getTypes().contains(DIESEL)) {
+            return new ItemStackSlot(this, 400, 114, 32).setOverlay(ebf.tim.registry.TiMFluids.fluidOil.bucket.get());
         }
         if(getTypes().contains(ELECTRIC)) {
             return new ItemStackSlot(this, 400, 114, 32).setOverlay(Items.REDSTONE);
@@ -347,6 +357,16 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
                     return false;
                 }
                 return false;
+            }
+            case 1:{ //open GUI
+                if (p instanceof ServerPlayer sp) {
+                    GenericRailTransport self = this;
+                    sp.openMenu(new net.minecraft.world.SimpleMenuProvider(
+                            (id, inv, pl) -> new ebf.tim.gui.TransportMenu(id, inv, self),
+                            getItem() == null ? net.minecraft.network.chat.Component.literal(transportName()) : getItem().getDescription()),
+                            buf -> buf.writeVarInt(getId()));
+                }
+                return true;
             }
             case 15: {//toggle brake
                 setBoolean(boolValues.BRAKE, !getBoolean(boolValues.BRAKE));
@@ -514,6 +534,14 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
             entityData = new XmlBuilder(tag.getCompound("timdata"));
         }
         bools.set(tag.getByteArray("bools"));
+        net.minecraft.nbt.ListTag inv = tag.getList("inventory", net.minecraft.nbt.Tag.TAG_COMPOUND);
+        for (int i = 0; i < inv.size(); i++) {
+            CompoundTag it = inv.getCompound(i);
+            ItemStackSlot slot = getSlotIndexByID(it.getInt("Slot"));
+            if (slot != null) {
+                slot.setStack(ItemStack.parse(registryAccess(), it).orElse(ItemStack.EMPTY));
+            }
+        }
         //load links
         if (tag.hasUUID("frontLink")) {
             frontLinkedTransport = tag.getUUID("frontLink");
@@ -542,12 +570,22 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
         health = tag.contains("health") ? tag.getInt("health") : 20;
 
         updateWatchers = true;
+        markDirty();
     }
 
     /**saves the entity to server world*/
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
         tag.put("timdata", entityData.tag);
+        net.minecraft.nbt.ListTag inv = new net.minecraft.nbt.ListTag();
+        for (ItemStackSlot slot : inventory) {
+            if (slot.getHasStack()) {
+                CompoundTag it = (CompoundTag) slot.getStackOrEmpty().save(registryAccess());
+                it.putInt("Slot", slot.getSlotID());
+                inv.add(it);
+            }
+        }
+        tag.put("inventory", inv);
         tag.putByteArray("bools", bools.getBits());
         //frontLinkedTransport and backLinkedTransport bogies
         if (frontLinkedTransport != null){
@@ -1392,7 +1430,7 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
 
     /*
      * <h2>inventory</h2>
-     * todo: the 1.12 inventory, GUI and fluid tanks
+     * the slots are ItemStackSlots (cargo from id 40, fuel 400, water 401); the menu puts vanilla slots on them
      */
     public int getInventoryRowCount() {
         /** multiplying by 0.276 is the inverse of dividing by 3.669 Multiplication is more efficient
@@ -1415,21 +1453,55 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
         return inventory.size();
     }
 
+    public ItemStackSlot getSlotIndexByID(int id){
+        for(ItemStackSlot slot : inventory){
+            if(slot.getSlotID()==id){
+                return slot;
+            }
+        }
+        return null;
+    }
+
     public ItemStack getCartItem(){
         return new ItemStack(getItem());
     }
 
+    @Override
     public boolean isItemValidForSlot(int slot, ItemStack itemStack) {
+        if (itemStack == null || itemStack.isEmpty()){return true;}
+        //compensate for specific rollingstock
+        for(TrainsInMotion.transportTypes type : getTypes()){
+            if(type==LOGCAR && (itemStack.is(net.minecraft.tags.ItemTags.LOGS) || itemStack.is(net.minecraft.tags.ItemTags.PLANKS))){
+                return true;
+            }
+            if (type==COALHOPPER && itemStack.is(net.minecraft.tags.ItemTags.COALS)){
+                return true;
+            }
+            if (type==STEAM){
+                if (slot == 400) {
+                    return itemStack.getBurnTime(null) > 0;
+                } else if (slot ==401) {
+                    return ebf.tim.utility.FuelHandler.getUseableFluid(itemStack, this) != null;
+                }
+            }
+            if ((type==ELECTRIC || type == DIESEL) && slot==400){
+                return ebf.tim.utility.FuelHandler.getUseableFluid(itemStack, this) != null;
+            }
+        }
         return true;
     }
 
+    /**puts the stack in the inventory, what doesn't fit is dropped*/
     public void addItem(ItemStack item){
-        for (ItemStackSlot s : inventory) {
-            if (!s.getHasStack() && s.getSlotID() >= 40 && s.getSlotID() < 400) {
-                s.setStack(item.copy());
+        for(ItemStackSlot slot : inventory){
+            item = slot.mergeStack(item,inventory,0);
+            if (item == null || item.isEmpty()){
+                markDirty();
                 return;
             }
         }
+        spawnAtLocation(item, 1);
+        markDirty();
     }
 
     public int calculatePercentageOfSlotsUsed(int indexes){
@@ -1450,26 +1522,244 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
     public void dropAllItems() {
         for (ItemStackSlot s : inventory) {
             if (s.getHasStack()) {
-                spawnAtLocation(s.getStack(), 1);
+                spawnAtLocation(s.getStackOrEmpty(), 1);
                 s.setStack(ItemStack.EMPTY);
             }
         }
     }
 
-    /**1.12 fluid tank info, none yet*/
+    /**the inventory or the tanks changed: save, and tell the clients about the tanks*/
+    @Override
+    public void markDirty() {
+        if (level() != null && !level().isClientSide && getTankCapacity() != null) {
+            entityData().set(TANKS, tanksTag());
+        }
+    }
+
+    public boolean stillValid(Player p) {
+        return !isRemoved() && (p.getVehicle() == this || p.distanceToSqr(this) < 32 * 32) && getPermissions(p, false, false);
+    }
+
+    /*
+     * <h1>Fluid Management</h1>
+     * the tanks are "tanks.N" in the entity data (fluid id and amount); clients get them through the TANKS data
+     */
+    private CompoundTag tanksTag() {
+        CompoundTag t = new CompoundTag();
+        for (int i = 0; i < getTankCapacity().length; i++) {
+            FluidStack f = entityData.getFluidStack("tanks." + i);
+            if (f != null) t.put("tanks." + i, f.save());
+        }
+        return t;
+    }
+
+    /**a tank's content: on the client from the synced data*/
+    public FluidStack getTank(int i) {
+        if (level() != null && level().isClientSide) {
+            CompoundTag t = entityData().get(TANKS);
+            return t.contains("tanks." + i) ? FluidStack.load(t.getCompound("tanks." + i)) : null;
+        }
+        return entityData.getFluidStack("tanks." + i);
+    }
+
+    private static final net.minecraft.world.level.material.Fluid NULL_FLUID = net.minecraft.world.level.material.Fluids.EMPTY;
+
+    //attempt to drain a set amount
+    public FluidStack drain(int drain, boolean doDrain){
+        return drain(new FluidStack(NULL_FLUID,drain), doDrain);
+    }
+
+    /**Returns true if the given fluid can be extracted.*/
+    public boolean canDrain(FluidStack resource){
+        for(int i=0;i<getTankCapacity().length;i++) {
+            FluidStack t = entityData.getFluidStack("tanks."+i);
+            if (t != null && t.amount > 0 && (resource == null || t.getFluid() == resource.getFluid())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**drain with a fluidStack, filtered for fluid type (the empty fluid drains anything)*/
+    public FluidStack drain(FluidStack resource, boolean doDrain){
+        int leftoverDrain=resource.amount;
+        FluidStack stack=null;
+        if(getTankCapacity()==null){
+            return null;
+        }
+        getTankInfo();
+        for(int i=0;i<getTankCapacity().length;i++) {
+            stack=entityData.getFluidStack("tanks."+i);
+            if (stack.amount > 0 && (resource.getFluid()==NULL_FLUID || stack.getFluid() == resource.getFluid())) {
+                if(leftoverDrain>stack.amount){
+                    leftoverDrain-=stack.amount;
+                    if(doDrain){
+                        entityData.putFluidStack("tanks."+i,new FluidStack(stack.getFluid(),0));
+                        markDirty();
+                    }
+                } else {
+                    if(doDrain){
+                        entityData.putFluidStack("tanks."+i,new FluidStack(stack.getFluid(),stack.amount-leftoverDrain));
+                        markDirty();
+                    }
+                    return stack;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**drains a tank; returns what could not be drained (0 when it all came out)*/
+    public int drain(int tankID, int amount, boolean doDrain){
+        int leftoverDrain=amount;
+        getTankInfo();
+        FluidStack stack = entityData.getFluidStack("tanks."+tankID);
+        if (stack!=null && stack.amount > 0) {
+            if(leftoverDrain>stack.amount){
+                leftoverDrain-=stack.amount;
+                if(doDrain){
+                    entityData.putFluidStack("tanks."+tankID,new FluidStack(NULL_FLUID,0));
+                    markDirty();
+                }
+            } else {
+                if(doDrain){
+                    entityData.putFluidStack("tanks."+tankID,new FluidStack(stack.getFluid(),stack.amount-leftoverDrain));
+                    markDirty();
+                }
+                return 0;
+            }
+        }
+        return leftoverDrain;
+    }
+
+    /**if the tank's filter lets the fluid in*/
+    private boolean filterAllows(int tank, FluidStack resource){
+        if(getTankFilters()!=null && getTankFilters().length>tank && getTankFilters()[tank]!=null) {
+            for (String filter : getTankFilters()[tank]) {
+                if (filter.length()==0 || CommonUtil.stringContains(filter,resource.getName())){
+                    return true;
+                }
+            }
+            return false;
+        }
+        return true;
+    }
+
+    /**checks if the fluid can be put into the tank, and if doFill is true, will actually attempt to add the fluid to the tank.
+     * @return the amount of fluid that was or could be put into the tank.*/
+    public int fill(FluidStack resource, boolean doFill){
+        if(resource==null){return 1000;}
+        if(getTankCapacity()==null){return resource.amount;}
+        getTankInfo();
+        int leftoverDrain=resource.amount;
+        FluidStack fluid;
+        for(int stack =0; stack<getTankCapacity().length;stack++) {
+            if(!filterAllows(stack, resource)){
+                continue;
+            }
+            fluid=entityData.getFluidStack("tanks."+stack);
+            if (fluid!=null && (fluid.getFluid() == resource.getFluid() || fluid.amount ==0)) {
+                if(leftoverDrain+fluid.amount>getTankCapacity()[stack]){
+                    leftoverDrain-=getTankCapacity()[stack]-fluid.amount;
+                    if(doFill){
+                        entityData.putFluidStack("tanks."+stack,new FluidStack(resource.getFluid(),getTankCapacity()[stack]));
+                        markDirty();
+                    }
+                } else if (leftoverDrain+fluid.amount<0){
+                    leftoverDrain-=fluid.amount-resource.amount;
+                    if(doFill){
+                        entityData.putFluidStack("tanks."+stack,new FluidStack(resource.getFluid(),0));
+                        markDirty();
+                    }
+                } else {
+                    if(doFill){
+                        entityData.putFluidStack("tanks."+stack,new FluidStack(resource.getFluid(),fluid.amount+leftoverDrain));
+                        markDirty();
+                    }
+                    leftoverDrain=0;
+                }
+                if(leftoverDrain==0){
+                    return resource.amount;
+                }
+            }
+        }
+        return resource.amount-leftoverDrain;
+    }
+
+    /**
+     * forced fill method, attempts to fill containers with the entire amount.
+     * @return true if the tank was able to fill with the entire stack, false if not.
+     */
+    public boolean fill(FluidStack resource){
+        if(getTankCapacity()==null || resource==null ||resource.amount<1){return false;}
+        getTankInfo();
+        for(int stack =0; stack<getTankCapacity().length;stack++) {
+            if(!filterAllows(stack, resource)){
+                continue;
+            }
+            FluidStack t = entityData.getFluidStack("tanks."+stack);
+            if (t != null && (t.getFluid() == resource.getFluid() || t.amount ==0)) {
+                if(resource.amount+t.amount<=getTankCapacity()[stack]){
+                    entityData.putFluidStack("tanks."+stack,new FluidStack(resource.getFluid(), t.amount+resource.amount));
+                    markDirty();
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**returns the list of fluid tanks and their capacity. READ ONLY!!! (makes empty tanks first time round)*/
     public FluidTankInfo[] getTankInfo(){
-        return new FluidTankInfo[]{null};
+        if(getTankCapacity()==null || getTankCapacity().length ==0){
+            return new FluidTankInfo[]{null};
+        }
+        if (level()==null || !level().isClientSide) {
+            for (int i = 0; i < getTankCapacity().length; i++) {
+                if (!entityData.containsFluidStack("tanks." + i)) {
+                    entityData.putFluidStack("tanks." + i, new FluidStack(net.minecraft.world.level.material.Fluids.WATER, 0));
+                }
+            }
+        }
+        FluidTankInfo[] tanks = new FluidTankInfo[getTankCapacity().length];
+        for(int i=0;i<getTankCapacity().length;i++){
+            tanks[i]= new FluidTankInfo(getTank(i), getTankCapacity()[i]);
+        }
+        return tanks;
     }
 
+    /**a tank, as the 1.12 FluidTankInfo: its fluid (may be null) and capacity*/
     public static class FluidTankInfo {
-        public FluidAmount fluid;
+        public final FluidStack fluid;
+        public final int capacity;
+        public FluidTankInfo(FluidStack fluid, int capacity) {
+            this.fluid = fluid;
+            this.capacity = capacity;
+        }
     }
 
-    public static class FluidAmount {
-        public int amount;
+    public String[][] getTankFilters(){
+        if(getTypes()==null){return null;}
+        //multi types first
+        if(getTypes().contains(DIESEL) && getTypes().contains(ELECTRIC)){
+            return ebf.tim.utility.FuelHandler.DefaultTanks.DIESEL_ELECTRIC.value();
+        }
+        //then handle for individuals.
+        else if(getTypes().contains(DIESEL)){
+            return ebf.tim.utility.FuelHandler.DefaultTanks.DIESEL.value();
+        } else if (getTypes().contains(STEAM)){
+            return ebf.tim.utility.FuelHandler.DefaultTanks.STEAM.value();
+        } else if(getTypes().contains(ELECTRIC)){
+            return ebf.tim.utility.FuelHandler.DefaultTanks.ELECTRIC.value();
+        }
+        return null;
     }
 
-    public void manageFuel(){}
+    public void manageFuel(){
+        if(getTypes().contains(TANKER) || getTypes().contains(TENDER)){
+            ebf.tim.utility.FuelHandler.manageTanker(this);
+        }
+    }
 
     /*
      * <h2>Inherited variables</h2>

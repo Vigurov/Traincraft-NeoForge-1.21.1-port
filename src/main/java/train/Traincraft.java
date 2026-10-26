@@ -56,6 +56,7 @@ public class Traincraft {
         ebf.tim.registry.TiMFluids.init();
         ebf.tim.registry.TiMFluids.TYPES.register(modBus);
         ebf.tim.registry.TiMFluids.FLUIDS.register(modBus);
+        ebf.tim.registry.TiMMenus.MENUS.register(modBus);
         TiMGenericRegistry.ENTITIES.register(modBus);
         ebf.tim.registry.TiMBlocks.BLOCKS.register(modBus);
         ebf.tim.registry.TiMBlocks.TILES.register(modBus);

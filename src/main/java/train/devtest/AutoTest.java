@@ -151,6 +151,27 @@ public class AutoTest {
                 mc.options.setCameraType(net.minecraft.client.CameraType.THIRD_PERSON_BACK);
             }
         }
+        if (tick == start - 15 && p.containsKey("give") && train != null) {
+            //give=slotId:item:count;... into the driven transport's inventory
+            server.execute(() -> {
+                for (String gv : p.getProperty("give").split(";")) {
+                    String[] a = gv.split(":");
+                    var slot = train.getSlotIndexByID(Integer.parseInt(a[0]));
+                    var item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(a[1] + ":" + a[2]));
+                    if (slot != null) slot.setStack(new net.minecraft.world.item.ItemStack(item, Integer.parseInt(a[3])));
+                    log("give " + gv + " -> " + (slot == null ? "no slot" : slot.getStackOrEmpty()));
+                }
+            });
+        }
+        if (p.containsKey("gui") && tick == Integer.parseInt(p.getProperty("gui")) && train != null) {
+            server.execute(() -> train.interact(sp, false, false, 1));
+        }
+        if (train != null && base != null && tick % 20 == 0 && train.getTankCapacity() != null && p.containsKey("tanks")) {
+            StringBuilder b = new StringBuilder();
+            for (var t : train.getTankInfo()) b.append(t == null || t.fluid == null ? " -" : " " + t.fluid.getName() + "=" + t.fluid.amount + "/" + t.capacity);
+            log("tanks t=" + tick + b + " running=" + train.getBoolean(GenericRailTransport.boolValues.RUNNING)
+                    + " boiler=" + train.entityData().get(GenericRailTransport.BOILER_HEAT) + " slots=" + train.inventory.stream().map(x -> x.getSlotID() + ":" + x.getStackOrEmpty()).toList());
+        }
         if (tick == start - 10 && p.containsKey("couple")) {
             //open the couplers of everything placed
             server.execute(() -> {

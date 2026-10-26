@@ -18,6 +18,8 @@ import static ebf.tim.TrainsInMotion.transportTypes.*;
  */
 public class EntityTrainCore extends GenericRailTransport {
 
+    /**manages the items for burnHeat, and the burnHeat itself.*/
+    public ebf.tim.utility.FuelHandler fuelHandler = new ebf.tim.utility.FuelHandler();
     /**defines the speed percentage the user is attempting to apply.*/
     public int accelerator =0;
 
@@ -133,6 +135,19 @@ public class EntityTrainCore extends GenericRailTransport {
         super.tick();
         if(hornDelay >0) {
             hornDelay--;
+        }
+    }
+
+    @Override
+    public void manageFuel(){
+        if(getTypes().contains(STEAM)) {
+            fuelHandler.manageSteam(this);
+        }
+        if(getTypes().contains(DIESEL)){
+            ebf.tim.utility.FuelHandler.manageDieselFuel(this);
+        }
+        if(getTypes().contains(ELECTRIC)){
+            ebf.tim.utility.FuelHandler.manageElectricFuel(this);
         }
     }
 
