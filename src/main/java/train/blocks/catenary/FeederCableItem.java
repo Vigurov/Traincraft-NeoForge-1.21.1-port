@@ -62,7 +62,7 @@ public class FeederCableItem extends Item {
             return InteractionResult.CONSUME;
         }
         if (generator) {
-            //a power line in from a generator, to one of the substation's three bushings
+            //a power line in from a generator, to a bay of the substation's incoming gantry
             if (s.inputs.contains(other) || s.inputs.size() >= SubstationTile.MAX_INPUTS) {
                 say(player, "message.traincraft.feeder.full");
                 return InteractionResult.CONSUME;

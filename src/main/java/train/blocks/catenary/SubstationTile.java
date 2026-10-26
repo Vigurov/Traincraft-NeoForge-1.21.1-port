@@ -28,8 +28,8 @@ public class SubstationTile extends BlockEntity {
     public final Set<BlockPos> feeders = new LinkedHashSet<>();
     /** the generators (any block giving energy) its power cables come from */
     public final Set<BlockPos> inputs = new LinkedHashSet<>();
-    /** the most power cables in: one to each of its three high voltage bushings */
-    public static final int MAX_INPUTS = 3;
+    /** the most power lines in: each ends on the incoming gantry's beam (bays side by side) */
+    public static final int MAX_INPUTS = 16;
     public final Buffer energy = new Buffer();
 
     public final class Buffer extends EnergyStorage {
@@ -131,19 +131,27 @@ public class SubstationTile extends BlockEntity {
         return new Vec3(worldPosition.getX() + 1 + wx, worldPosition.getY() + py / 16.0, worldPosition.getZ() + 1 + wz);
     }
 
+    /** where the conductor leaves the rectifier hall for the outgoing gantry */
+    public Vec3 hallPoint() {
+        return modelPoint(9.5f, 21, 9.2f);
+    }
+
     /** where the feeders leave it: under the glass string on top of its gantry */
     public Vec3 feederPoint() {
         return modelPoint(FEEDER_X, FEEDER_Y, FEEDER_Z);
     }
 
-    /** where the i-th power cable comes in: the top of a high voltage bushing */
-    public Vec3 inputPoint(int i) {
-        return modelPoint(BUSHING_X[Math.floorMod(i, 3)], BUSHING_TOP, BUSHING_Z);
+    /** where the i-th of n power lines comes in: on the incoming gantry's beam, the bays spread along it */
+    public Vec3 inputPoint(int i, int n) {
+        return modelPoint(inputX(i, n), IN_Y, IN_Z);
+    }
+
+    public static float inputX(int i, int n) {
+        return -IN_HALF + 2 * IN_HALF * (i + 0.5f) / Math.max(1, n);
     }
 
     /** the model's points (pixels, from its middle; RenderSubstation draws them there) */
-    public static final float FEEDER_X = 0, FEEDER_Y = 30.8f, FEEDER_Z = 13.5f, BUSHING_TOP = 31.5f, BUSHING_Z = -6;
-    public static final float[] BUSHING_X = {-6, 0, 6};
+    public static final float FEEDER_X = 0, FEEDER_Y = 26.6f, FEEDER_Z = 13.5f, IN_Y = 35.2f, IN_Z = -13.5f, IN_HALF = 12.5f;
 
     public void addInput(BlockPos p) {
         if (inputs.add(p.immutable())) changed();
