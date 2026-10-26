@@ -18,8 +18,9 @@ import java.util.Set;
 import java.util.WeakHashMap;
 
 /**
- * Electrics raise their pantographs under a contact wire: the model's folded pantograph is left out and a raised
- * one is drawn in its place, its collector up against the wire; it goes up and down in about a second. Where each
+ * Electrics raise their pantographs under a contact wire: the model's own pantograph is left out and one is drawn in
+ * its place, folded on the roof, raised with its collector up against the wire; it goes up and down in about a
+ * second. Where each
  * locomotive's pantographs are was measured from its model (along it from its middle, the roof's height over the
  * rails, how far along the folded one reaches); the models only have them folded, as Traincraft had no wires.
  */
@@ -74,7 +75,8 @@ public final class Pantographs {
         s.last = now;
         //up or down in about a second
         s.lift += Math.copySign(Math.min(Math.abs(target - s.lift), dt * 1.1f), target - s.lift);
-        if (s.lift <= 0.001f) return false;
+        //the model's own (folded) pantograph is never drawn: this one stands in for it, folded down on the roof too,
+        //so it is the same one going up and down (it was swapped for the model's when down)
         if (s.hidden == null) {
             RenderContext.classify = new HashMap<>();
             RenderContext.classifyFrame = frameInverse;
@@ -135,7 +137,7 @@ public final class Pantographs {
     static void draw(GenericRailTransport t) {
         Panto[] ps = of(t);
         State s = ps == null ? null : STATES.get(t);
-        if (s == null || s.hidden == null || s.lift <= 0.001f || RenderContext.buffers == null) return;
+        if (s == null || s.hidden == null || RenderContext.buffers == null) return;
         float wire = t.entityData().get(GenericRailTransport.WIRE_HEIGHT);
         if (wire <= 0) wire = 3.03f;
         VertexConsumer vc = RenderContext.buffers.getBuffer(RenderType.entityCutoutNoCull(TEX));
@@ -164,17 +166,21 @@ public final class Pantographs {
                 bar(pose, vc, x - w, ym, -0.22f, x - w, ym, 0.22f, 0.03f, u, t);
                 bar(pose, vc, x + w, ym, -0.22f, x + w, ym, 0.22f, 0.03f, u, t);
             } else {
-                //one arm: from the hinge at the frame's end up to the knee, back up to the collector over the middle
-                float hx = x - 0.3f, hy = roof + 0.04f, cx = x + 0.02f;
-                float dx = cx - hx, dy = top - hy, dist = (float) Math.sqrt(dx * dx + dy * dy);
-                float arm = Math.max(0.62f, dist / 2 + 0.02f);
-                float a = dist / 2, hgt = (float) Math.sqrt(Math.max(0, arm * arm - a * a));
+                //one arm: from the hinge at the frame's end up to the knee and on to the collector. Its two halves
+                //are as long as each other; folded they lie along the roof, the collector at the far end of the
+                //frame, and rising it comes back over the frame
+                float arm = 0.62f, hx = x - 0.5f, hy = roof + 0.04f;
+                float dy = top - hy, reach = 1.8f * arm;
+                float dx = (float) Math.sqrt(Math.max(0.0025f, reach * reach - dy * dy));
+                float cx = hx + dx;
+                float dist = (float) Math.sqrt(dx * dx + dy * dy), half = dist / 2;
+                float len = Math.max(arm, half + 0.01f), hgt = (float) Math.sqrt(Math.max(0, len * len - half * half));
                 float mx = hx + dx / 2, my = hy + dy / 2;
-                //the knee off to the far side of the line from hinge to collector
-                float kx = mx + dy / dist * hgt, ky = my - dx / dist * hgt;
-                if (kx < mx) { kx = mx - dy / dist * hgt; ky = my + dx / dist * hgt; }
+                //the knee above the line from hinge to collector
+                float kx = mx - dy / dist * hgt, ky = my + dx / dist * hgt;
                 for (float z : new float[]{-0.14f, 0.14f}) bar(pose, vc, hx, s.bottom - hy, z, kx, s.bottom - ky, z * 0.4f, 0.055f, u, t);
                 bar(pose, vc, kx, s.bottom - ky, 0, cx, yt, 0, 0.05f, u, t);
+                x = cx;
             }
             //the collector: two strips across, with horns bent down at the ends
             for (float dxs : new float[]{-0.07f, 0.07f}) {
