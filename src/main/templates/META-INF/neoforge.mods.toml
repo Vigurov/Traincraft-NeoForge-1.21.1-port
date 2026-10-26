@@ -33,20 +33,22 @@ displayName="${mod_name}" #mandatory
 #updateJSONURL="https://change.me.example.invalid/updates.json" #optional
 
 # A URL for the "homepage" for this mod, displayed in the mod UI
-#displayURL="https://change.me.to.your.mods.homepage.example.invalid/" #optional
+displayURL="https://github.com/Mrbrutal/Traincraft-5" #optional
 
 # A file name (in the root of the mod JAR) containing a logo for display
 #logoFile="examplemod.png" #optional
 
 # A text field displayed in the mod UI
-#credits="" #optional
+credits="Traincraft by Spitfire4466 & Mrbrutal; Trains in Motion by EternalBlueFlame; with NitroxydeX, canitzp, ComputerButter, DAYdiecast and the Traincraft contributors. NeoForge 1.21.1 port by viguro" #optional
 
 # The authors of the mod, displayed in the mod UI (optional)
-#authors=""
+authors="Spitfire4466, Mrbrutal, EternalBlueFlame, NitroxydeX, canitzp, ComputerButter, DAYdiecast; port: viguro"
 
 # The description text for the mod (multi line!) (#mandatory)
 description='''
-Example mod description.
+An unofficial port of Traincraft (Traincraft 5 / Trains in Motion, Minecraft 1.12.2) to NeoForge 1.21.1:
+steam, diesel and electric locomotives, rolling stock, tracks, and an overhead line to run the electric ones.
+Not made or endorsed by the Traincraft team.
 '''
 
 # The [[mixins]] block allows you to declare your mixin config to FML so that it gets loaded.

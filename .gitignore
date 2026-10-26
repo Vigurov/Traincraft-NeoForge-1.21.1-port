@@ -42,3 +42,7 @@ repo/
 # dev client run directory (worlds, logs, screenshots, autotest settings)
 run/
 run-server/
+
+# Python
+__pycache__/
+*.pyc
