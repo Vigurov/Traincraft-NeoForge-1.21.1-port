@@ -24,20 +24,20 @@ import train.blocks.catenary.CatenaryMastTile;
 
 /**
  * The catenary mast (TMT boxes, Traincraft's old look) and the spans to the masts it is joined to: the messenger
- * wire sagging between the cantilevers, the contact wire level under it on droppers, swinging a little from side
- * to side (the stagger) so a pantograph wears evenly.
+ * wire sagging between the cantilevers, the contact wire level under it on droppers, in the clamps of the
+ * registration arms.
  */
 public class RenderCatenary implements BlockEntityRenderer<CatenaryMastTile> {
     private static final ResourceLocation TEX = ResourceLocation.fromNamespaceAndPath("traincraft", "textures/models/catenary_mast.png");
     private static final int TW = 512, TH = 128;
     /** the cantilever's reach (to the middle of the track beside the mast) and wire heights, in blocks */
-    public static final double REACH = 1.0, CONTACT_Y = 3.03, MESSENGER_Y = 3.98;
+    public static final double REACH = 1.0, CONTACT_Y = 3.03, MESSENGER_Y = 3.955;
     private static ModelRendererTurbo[] parts;
 
     public RenderCatenary(BlockEntityRendererProvider.Context c) {}
 
-    /** texture columns: steel, concrete, insulator, copper, dark steel, plate */
-    private static final int STEEL = 0, CONCRETE = 256, INSULATOR = 320, COPPER = 352, DARK = 384, PLATE = 416;
+    /** texture columns: steel, concrete, insulator, copper, dark steel */
+    private static final int STEEL = 0, CONCRETE = 256, INSULATOR = 320, COPPER = 352, DARK = 384;
 
     private static ModelRendererTurbo box(int u, int v, float x, float y, float z, float w, float h, float d) {
         ModelRendererTurbo m = new ModelRendererTurbo("", u, v, TW, TH);
@@ -104,8 +104,6 @@ public class RenderCatenary implements BlockEntityRenderer<CatenaryMastTile> {
         l.add(bar(INSULATOR, 8, 9, 55.5f, 0, 11, 53.5f, 0, 1.8f));
         l.add(bar(DARK, 4, 11, 53.5f, 0, 16, 48.8f, 0, 0.7f));
         l.add(box(DARK, 8, 15.4f, 47.8f, -0.6f, 1.2f, 1.4f, 1.2f));
-        //number plate on the mast, facing the track
-        l.add(box(PLATE, 0, half(24) + 0.1f, 22, -1.5f, 0.4f, 4, 3));
         return l.toArray(new ModelRendererTurbo[0]);
     }
 
@@ -162,17 +160,13 @@ public class RenderCatenary implements BlockEntityRenderer<CatenaryMastTile> {
         double len = a.distanceTo(b);
         int n = Math.max(4, (int) Math.ceil(len * 2));
         double sag = Math.min(0.45, 0.012 * len * len / 4 + 0.08);
-        //the contact wire's stagger: from one side of the track's middle to the other, over a span
-        double sx = b.z - a.z, sz = -(b.x - a.x), sl = Math.sqrt(sx * sx + sz * sz);
-        sx = sl > 0 ? sx / sl * 0.12 : 0;
-        sz = sl > 0 ? sz / sl * 0.12 : 0;
         Vec3 prevM = null, prevC = null;
         for (int i = 0; i <= n; i++) {
             double t = i / (double) n;
             double x = a.x + (b.x - a.x) * t, z = a.z + (b.z - a.z) * t, y0 = a.y + (b.y - a.y) * t;
             Vec3 m = new Vec3(x, y0 + MESSENGER_Y - 4 * sag * t * (1 - t), z).subtract(base);
-            double st = 1 - 2 * t;
-            Vec3 c = new Vec3(x + sx * st, y0 + CONTACT_Y, z + sz * st).subtract(base);
+            //held in the registration arm's clamp at each mast
+            Vec3 c = new Vec3(x, y0 + CONTACT_Y, z).subtract(base);
             int l = t < 0.5 ? la : lb;
             if (prevM != null) {
                 wire(pose, vc, prevM, m, 0.035, DARK, l);
