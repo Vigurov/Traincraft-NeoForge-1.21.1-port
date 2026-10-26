@@ -243,7 +243,7 @@ public class EntityBogie {
         } else if (train.common.items.TCRailTypes.isTurnTrack(lastTrack)) {
             moveOnTC90TurnRail(j, lastTrack.r, lastTrack.cx, lastTrack.cz);
         } else if (train.common.items.TCRailTypes.isCrossingTrack(lastTrack)) {
-            moveOnTCTwoWaysCrossing();
+            moveOnTCTwoWaysCrossing(j);
         } else if (train.common.items.TCRailTypes.isSlopeTrack(lastTrack)) {
             moveOnTCSlope(j, lastTrack.getBlockPos().getX(), lastTrack.getBlockPos().getZ(), lastTrack.slopeAngle, lastTrack.getBlockMeta());
         } else if (train.common.items.TCRailTypes.isCurvedSlopeTrack(lastTrack)) {
@@ -259,54 +259,61 @@ public class EntityBogie {
                 Math.abs(velocity[0]+velocity[2]) > Math.abs(velocity[1]+velocity[3]) ? 1 : 0);
     }
 
+    /*
+     * On the classic pieces the bogie keeps its own speed (velocity 0/1) and direction; the coupling and
+     * bogie-spacing pull (velocity 2/3) only counts with its part along the rail, signed. TC 4.5 added the sizes
+     * of both, so a pull backwards made the bogie run faster forwards, or turned it round.
+     */
     private void moveOnTCDiagonal(int j) {
-        railPathX=Math.copySign(0.5,velocity[0]+velocity[2]);
-        railPathZ=Math.copySign(0.5,velocity[1]+velocity[3]);
-        motionSqrt = Math.abs(velocity[0])+Math.abs(velocity[1]);
+        //the diagonal's direction from our own motion (the pull could point across it)
+        double ox = velocity[0], oz = velocity[1];
+        if (Math.abs(ox) + Math.abs(oz) < 1.0E-9) {
+            ox = velocity[2];
+            oz = velocity[3];
+        }
+        double sx = Math.copySign(1, ox), sz = Math.copySign(1, oz);
+        railPathX = 0.5 * sx;
+        railPathZ = 0.5 * sz;
+        motionSqrt = Math.abs(velocity[0]) + Math.abs(velocity[1]);
         velocity[0] = motionSqrt * railPathX;
         velocity[1] = motionSqrt * railPathZ;
-        if(velocity[2]!=0 || velocity[3]!=0) {
-            motionSqrt = Math.abs(velocity[2]) + Math.abs(velocity[3]);
-            velocity[2] = motionSqrt * railPathX;
-            velocity[3] = motionSqrt * railPathZ;
-        }
-        centerDiagonal(posX-xFloor,posZ-zFloor);
-        motionSqrt = Math.abs(velocity[0])+Math.abs(velocity[1])+Math.abs(velocity[2])+Math.abs(velocity[3]);
+        double along = motionSqrt + 0.5 * (velocity[2] * sx + velocity[3] * sz);
+        //onto the diagonal through this block's centre, then along it
+        double cx = xFloor + 0.5, cz = zFloor + 0.5;
+        double t = ((posX - cx) * sx + (posZ - cz) * sz) * 0.5;
+        posX = cx + t * sx;
+        posZ = cz + t * sz;
         posY = j;
-        setPositionRelative(railPathX*motionSqrt,0,railPathZ*motionSqrt);
-    }
-
-    private void centerDiagonal(double x, double z) {
-        railPathX2 = x - 0.5;
-        railPathZ2 = z - 0.5;
-        //the nearest 45 degree line through the block centre
-        double nearestAngleRadians = (Math.round(CommonUtil.atan2degreesf(railPathZ2, railPathX2) / 45.0) * 45.0) * CommonUtil.radianF;
-        double distance = Math.sqrt(railPathX2 * railPathX2 + railPathZ2 * railPathZ2);
-        velocity[2]+= x-(0.5 + distance * Math.cos(nearestAngleRadians));
-        velocity[3]+= z-(0.5 + distance * Math.sin(nearestAngleRadians));
+        setPositionRelative(railPathX * along, 0, railPathZ * along);
     }
 
     private void moveOnTCStraight(int j, int meta) {
-        if(meta==2 || meta==0){
-            railPathX=0;
-            railPathZ=Math.copySign(1,velocity[1]+velocity[3]);
-            posX=xFloor+0.5;
+        boolean alongZ = meta == 2 || meta == 0;
+        double own = alongZ ? velocity[1] : velocity[0];
+        double pull = alongZ ? velocity[3] : velocity[2];
+        motionSqrt = Math.abs(velocity[0]) + Math.abs(velocity[1]);
+        //coming off a curve the motion can still be partly across: then the larger part says which way
+        double dir = Math.copySign(1, own != 0 ? own : motionSqrt > 0 ? velocity[0] + velocity[1] : pull);
+        if (alongZ) {
+            posX = xFloor + 0.5;
+            railPathX = 0;
+            railPathZ = dir;
+            velocity[0] = 0;
+            velocity[1] = dir * motionSqrt;
         } else {
-            railPathX=Math.copySign(1,velocity[0]+velocity[2]);
-            railPathZ=0;
-            posZ=zFloor+0.5;
+            posZ = zFloor + 0.5;
+            railPathX = dir;
+            railPathZ = 0;
+            velocity[0] = dir * motionSqrt;
+            velocity[1] = 0;
         }
-        motionSqrt = Math.abs(velocity[0])+Math.abs(velocity[1]);
-        velocity[0] = motionSqrt * railPathX;
-        velocity[1] = motionSqrt * railPathZ;
-        if(velocity[2]!=0 || velocity[3]!=0) {
-            motionSqrt = Math.abs(velocity[2]) + Math.abs(velocity[3]);
-            velocity[2] = motionSqrt * railPathX;
-            velocity[3] = motionSqrt * railPathZ;
-        }
-        motionSqrt = Math.abs(velocity[0])+Math.abs(velocity[1])+Math.abs(velocity[2])+Math.abs(velocity[3]);
+        double along = dir * motionSqrt + pull;
         posY = j;
-        setPositionRelative(railPathX*motionSqrt,0,railPathZ*motionSqrt);
+        if (alongZ) {
+            setPositionRelative(0, 0, along);
+        } else {
+            setPositionRelative(along, 0, 0);
+        }
     }
 
     /** the rise of a slope piece at the bogie's position: its angle times the distance from the low end, at most a block */
@@ -334,15 +341,14 @@ public class EntityBogie {
         posY = j + slopeRise(slopeAngle, tilex, tilez, meta);
     }
 
-    private void moveOnTCTwoWaysCrossing() {
-        double norm = Math.abs(velocity[0])+Math.abs(velocity[1])+Math.abs(velocity[2])+Math.abs(velocity[3]);
-        if (Math.abs(velocity[0]+velocity[2]) < Math.abs(velocity[1]+velocity[3])) {
-            posX = xFloor + 0.5;
-            setPositionRelative(0.0D, 0.0D, Math.copySign(norm, velocity[1]+velocity[3]));
-        } else {
-            posZ = zFloor + 0.5;
-            setPositionRelative(Math.copySign(norm, velocity[0]+velocity[2]), 0.0D, 0.0D);
+    private void moveOnTCTwoWaysCrossing(int j) {
+        //straight on along whichever line our own motion follows
+        double ox = velocity[0], oz = velocity[1];
+        if (Math.abs(ox) + Math.abs(oz) < 1.0E-9) {
+            ox = velocity[2];
+            oz = velocity[3];
         }
+        moveOnTCStraight(j, Math.abs(ox) < Math.abs(oz) ? 0 : 1);
     }
 
     private void moveOnTCSlope(int j, int tilex, int tilez, double slopeAngle, int meta) {
@@ -358,20 +364,25 @@ public class EntityBogie {
         double zMotion=velocity[1]+velocity[3];
         double normCpx = controlX / controlNorm;
         double normCpz = controlZ / controlNorm;
-        //which way along the tangent: towards where this tick's motion would take us
         railPathX = (posX + xMotion) - startX;
         railPathZ = (posZ + zMotion) - startZ;
-        double p2cNorm = Math.sqrt((railPathX * railPathX) + (railPathZ * railPathZ));
-        railPathX2 = (startX + ((railPathX / p2cNorm) * radius)) - posX;
-        railPathZ2 = (startZ + ((railPathZ / p2cNorm) * radius)) - posZ;
-        double tx = Math.copySign(normCpz, railPathX2);
-        double tz = Math.copySign(normCpx, railPathZ2);
+        //the arc's tangent here, and which way along it our own motion goes
+        double tx = -normCpz, tz = normCpx;
+        double own = velocity[0] * tx + velocity[1] * tz;
+        if (own < 0) {
+            tx = -tx;
+            tz = -tz;
+        }
         //TiM measures speed as |x|+|z| (exact on its straight rails); keep that measure on the arc too, or every
         //curve <-> straight joint changes the speed (wagons then ran into the locomotive)
         double l1 = Math.abs(tx) + Math.abs(tz);
-        double step = Math.abs(xMotion) + Math.abs(zMotion);
         motionSqrt = Math.abs(velocity[0]) + Math.abs(velocity[1]);
-        //onto the arc, then along its tangent in the direction of travel
+        //the coupling and bogie-spacing pull counts only with its share along the rail: its part across the rail
+        //(towards the arc's centre) was taken as speed along it, which shook trains on curves and set a train
+        //standing at the start of one rolling by itself
+        double pull = velocity[2] * tx + velocity[3] * tz;
+        double step = motionSqrt + pull;
+        //onto the arc, then along its tangent
         setPosition(startX + (normCpx * radius), j, startZ + (normCpz * radius));
         setPositionRelative(tx * step, 0.0D, tz * step);
         velocity[0] = motionSqrt * tx / l1;

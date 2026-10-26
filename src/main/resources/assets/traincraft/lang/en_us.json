@@ -1315,5 +1315,7 @@
  "item.traincraft.jacket_suit_paintable": "Composite Suit's Chest (Paintable)",
  "block.traincraft.block.highstar": "High Star Switch Stand",
  "block.traincraft.block.signal": "Signal",
- "description.jukebox.default": "Plays MP3 internet radio from .m3u/.pls links, like Shoutcast"
+ "description.jukebox.default": "Plays MP3 internet radio from .m3u/.pls links, like Shoutcast",
+ "death.attack.traincraft.train": "%1$s was hit by a train",
+ "death.attack.traincraft.train.player": "%1$s was hit by a train whilst fighting %2$s"
 }

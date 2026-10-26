@@ -242,5 +242,7 @@
  "builder.reqElev.name": "Необходимая высота",
  "train.owner.name": "Это не ваш поезд!",
  "train.locked.name": "Заблокирован",
- "train.unlocked.name": "Разблокирован"
+ "train.unlocked.name": "Разблокирован",
+ "death.attack.traincraft.train": "Поезд сбил %1$s",
+ "death.attack.traincraft.train.player": "Поезд сбил %1$s во время боя с %2$s"
 }

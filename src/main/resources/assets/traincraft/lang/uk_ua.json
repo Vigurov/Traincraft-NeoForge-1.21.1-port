@@ -263,5 +263,7 @@
  "block.traincraft.block.highstar": "Стрілочний перевідник",
  "block.traincraft.block.signal": "Світлофор",
  "item.traincraft.jukeboxcart": "Вагон-музичний автомат",
- "description.jukebox.default": "Грає інтернет-радіо MP3 за посиланнями .m3u/.pls, як-от Shoutcast"
+ "description.jukebox.default": "Грає інтернет-радіо MP3 за посиланнями .m3u/.pls, як-от Shoutcast",
+ "death.attack.traincraft.train": "Потяг збив %1$s",
+ "death.attack.traincraft.train.player": "Потяг збив %1$s під час бою з %2$s"
 }

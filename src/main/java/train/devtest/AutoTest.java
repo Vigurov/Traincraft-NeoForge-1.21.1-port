@@ -60,6 +60,8 @@ public class AutoTest {
     private static BlockPos base;
     private static GenericRailTransport train;
     private static final java.util.List<GenericRailTransport> placed = new java.util.ArrayList<>();
+    private static final java.util.List<net.minecraft.world.entity.Mob> MOBS = new java.util.ArrayList<>();
+    private static final java.util.Map<net.minecraft.world.entity.Mob, Float> MOB_HEALTH = new java.util.HashMap<>();
 
     public static void init() {
         File f = new File(Minecraft.getInstance().gameDirectory, "tctest.properties");
@@ -361,7 +363,9 @@ public class AutoTest {
             //fleet=accel,startTick  every locomotive placed (gallery) gets its fuel at 30, starts at 40 and drives
             //from startTick on; logs at the end what each did
             String[] f = p.getProperty("fleet").split(",");
-            int accel = Integer.parseInt(f[0]), go = Integer.parseInt(f[1]);
+            int go = Integer.parseInt(f[1]);
+            //fleet=accel,startTick,coastTick  the throttle is closed again at coastTick (rolling on at a crawl)
+            int accel = f.length > 2 && tick >= Integer.parseInt(f[2]) ? 0 : Integer.parseInt(f[0]);
             if (tick == 30) server.execute(() -> {
                 for (GenericRailTransport t : placed) {
                     if (!(t instanceof EntityTrainCore)) continue;
@@ -593,8 +597,8 @@ public class AutoTest {
         if (train != null && base != null && tick >= 20 && tick % every == 0 && placed.size() > 1) {
             StringBuilder b = new StringBuilder();
             for (GenericRailTransport t : placed) {
-                b.append(String.format(" [%s x=%.2f v=%.3f f=%s b=%s c=%d]", t.getClass().getSimpleName().replace("Entity", ""),
-                        t.getX() - base.getX(), t.getVelocity(), t.frontLinkedID, t.backLinkedID, t.getConsist().size()));
+                b.append(String.format(" [%s x=%.2f z=%.2f v=%.3f f=%s b=%s c=%d]", t.getClass().getSimpleName().replace("Entity", ""),
+                        t.getX() - base.getX(), t.getZ() - base.getZ(), t.getVelocity(), t.frontLinkedID, t.backLinkedID, t.getConsist().size()));
             }
             log("consist t=" + tick + b);
             //what the client draws: the rendered (interpolated) positions of the same transports
@@ -650,15 +654,62 @@ public class AutoTest {
                 }
             }
         }
-        if (p.containsKey("kick") && tick == Integer.parseInt(p.getProperty("kick").split(",")[2])) {
-            //kick=index,speed,tick  gives that placed transport a speed along +x
-            String[] k = p.getProperty("kick").split(",");
-            server.execute(() -> {
-                var t = placed.get(Integer.parseInt(k[0]));
-                double v = Double.parseDouble(k[1]);
-                t.frontBogie.velocity[0] = v; t.frontBogie.velocity[1] = 0;
-                t.backBogie.velocity[0] = v; t.backBogie.velocity[1] = 0;
-                log("kick " + t.getType() + " " + v);
+        if (p.containsKey("walk") && tick >= Integer.parseInt(p.getProperty("walk").split(",")[1])) {
+            //walk=index,fromTick,toTick  the player stands behind that placed transport (on a line along x) and walks
+            //into it, holding forward; its speed is logged every 2 ticks
+            String[] w = p.getProperty("walk").split(",");
+            int from = Integer.parseInt(w[1]), to = Integer.parseInt(w[2]);
+            var t = placed.get(Integer.parseInt(w[0]));
+            if (tick == from) server.execute(() -> {
+                double behind = t.getX() - (ebf.tim.utility.TransportDims.of(t) != null ? ebf.tim.utility.TransportDims.of(t).back() : 3) - 1.0;
+                sp.getAbilities().flying = false;
+                sp.onUpdateAbilities();
+                sp.connection.teleport(behind, t.getY(), t.getZ(), -90, 0);
+                log("walk from " + behind + " to " + t.getX());
+            });
+            if (tick == from + 2) mc.options.keyUp.setDown(true);
+            if (tick == to) mc.options.keyUp.setDown(false);
+            if (tick >= from && tick <= to + 40 && tick % 2 == 0) server.execute(() ->
+                    log(String.format("walk t=%d car x=%.3f dx=%.4f player x=%.3f", tick, t.getX() - base.getX(), t.getX() - t.xo, sp.getX() - base.getX())));
+        }
+        if (p.containsKey("kick")) {
+            //kick=index,speed,tick[;index,speed,tick...]  gives that placed transport a speed along +x
+            for (String one : p.getProperty("kick").split(";")) {
+                String[] k = one.trim().split(",");
+                if (tick != Integer.parseInt(k[2])) continue;
+                server.execute(() -> {
+                    var t = placed.get(Integer.parseInt(k[0]));
+                    double v = Double.parseDouble(k[1]);
+                    t.frontBogie.velocity[0] = v; t.frontBogie.velocity[1] = 0;
+                    t.backBogie.velocity[0] = v; t.backBogie.velocity[1] = 0;
+                    log("kick " + t.getType() + " " + v);
+                });
+            }
+        }
+        if (p.containsKey("mobs") && base != null) {
+            //mobs=type@x,z;...  mobs that cannot walk standing there from tick 30; their health is logged as it changes
+            if (tick == 30) server.execute(() -> {
+                for (String m : p.getProperty("mobs").split(";")) {
+                    String[] a = m.trim().split("@");
+                    String[] xz = a[1].split(",");
+                    var type = BuiltInRegistries.ENTITY_TYPE.get(ResourceLocation.parse(a[0]));
+                    if (type.create(level) instanceof net.minecraft.world.entity.Mob mob) {
+                        //it keeps its AI (a mob without one is not moved by pushes) but cannot walk off
+                        mob.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.MOVEMENT_SLOWDOWN, 100000, 255, false, false));
+                        mob.moveTo(base.getX() + Double.parseDouble(xz[0]) + 0.5, base.getY(), base.getZ() + Double.parseDouble(xz[1]) + 0.5, 0, 0);
+                        level.addFreshEntity(mob);
+                        MOBS.add(mob);
+                        log("mob " + a[0] + " at " + a[1] + " health " + mob.getHealth());
+                    }
+                }
+            });
+            if (tick > 30) server.execute(() -> {
+                for (var mob : MOBS) {
+                    float h = mob.isAlive() ? mob.getHealth() : 0;
+                    Float was = MOB_HEALTH.put(mob, h);
+                    if (was == null || was != h) log(String.format("mob t=%d %s z=%.0f health %.1f -> %.1f at x=%.2f y=%.2f",
+                            tick, mob.getType().toShortString(), mob.getZ() - base.getZ(), was == null ? Float.NaN : was, h, mob.getX() - base.getX(), mob.getY() - base.getY()));
+                }
             });
         }
         if (p.containsKey("standon") && train != null) {

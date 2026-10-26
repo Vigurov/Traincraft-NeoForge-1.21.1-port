@@ -1075,29 +1075,39 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
                     if (along < getHitboxSize()[0] * 0.5 - 0.2 || e.getY() > getY() + 0.5) {
                         pushable = false;
                     }
-                    if (pushable) {
-                        double distanceFront = e.distanceToSqr(collisionHandler.front);
-                        double distanceBack = e.distanceToSqr(collisionHandler.back);
-                        if (distanceFront < distanceBack) {
-                            appendMovement(-0.005);
-                        } else {
-                            appendMovement(0.005);
+                    if (pushable && al > 1e-3) {
+                        //someone at an end facing it pushes it up to a slow walk, slower than they walk, so they stay
+                        //against it and it goes smoothly (a kick on every tick of touching made it run ahead, the
+                        //player catch up, and it went in jerks); heavier trains give way slower
+                        double ux = ax / al, uz = az / al;
+                        double roll = (getX() - xo) * ux + (getZ() - zo) * uz;
+                        double rel = (e.getX() - getX()) * ux + (e.getZ() - getZ()) * uz;
+                        Vec3 look = e.getLookAngle();
+                        boolean into = (look.x * ux + look.z * uz) * rel < -0.3;
+                        //speed away from the pusher
+                        double away = rel > 0 ? -roll : roll;
+                        double gap = PUSH_TOP_SPEED - away;
+                        if (into && gap > 0) {
+                            double give = Math.min(gap, 0.005 * Math.min(1, PUSH_MASS / consistMass()));
+                            double distanceFront = e.distanceToSqr(collisionHandler.front);
+                            double distanceBack = e.distanceToSqr(collisionHandler.back);
+                            appendMovement(distanceFront < distanceBack ? -give : give);
                         }
                     }
                 }
 
-                if (pushAside(e) && e instanceof ServerPlayer sp) {
+                //run into by an end: hurt and thrown ahead; anyone at the side is shoved off the track
+                if (!level().isClientSide && !hitByEnd((LivingEntity) e) && pushAside(e) && e instanceof ServerPlayer sp) {
                     sp.hurtMarked = true;
-                }
-
-                //hurt entity if going fast
-                if (getVelocity() > 0.25f) {
-                    e.hurt(damageSources().generic(), getVelocity() * 0.5f);
                 }
             }
         }
     }
 
+    /** the fastest a player pushes a train (blocks per tick, a slow walk) */
+    private static final double PUSH_TOP_SPEED = 0.06;
+    /** up to this mass (kg) a push gives way at the full rate; a heavier train in proportion less */
+    private static final double PUSH_MASS = 30000;
     /** how hard cars bounce off each other: 0 they stay together, 1 they swap their speeds */
     private static final double RESTITUTION = 0.35;
     /** the autotest's debugcollide=1 */
@@ -1184,11 +1194,70 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
         return (other.getX() - getX()) * bx + (other.getZ() - getZ()) * bz >= 0 ? 1 : -1;
     }
 
+    /** below this speed (blocks per tick, about 4 km/h) a train only pushes; above it, it hurts */
+    private static final double HIT_SPEED = 0.05;
+
+    /**
+     * someone in front of the end that moves towards them is hit: the hurt grows with the speed squared (the energy)
+     * and with the train's mass up to a loaded wagon's (about 7 km/h a heart, 18 km/h six, from 30 km/h deadly),
+     * and they are thrown ahead of it. 1.12 hurt anyone touching it above 18 km/h by a quarter of a heart.
+     * Returns whether they were hit.
+     */
+    private boolean hitByEnd(LivingEntity e) {
+        if (frontBogie == null || backBogie == null || e.isPassenger() || e.getY() > getY() + 0.5) return false;
+        double ax = frontBogie.posX - backBogie.posX, az = frontBogie.posZ - backBogie.posZ, al = Math.sqrt(ax * ax + az * az);
+        if (al < 1e-3) return false;
+        double ux = ax / al, uz = az / al;
+        double rel = (e.getX() - getX()) * ux + (e.getZ() - getZ()) * uz;
+        double roll = (getX() - xo) * ux + (getZ() - zo) * uz;
+        //the end that leads, and them past the bogies on that side
+        if (rel * roll <= 0 || Math.abs(rel) < getHitboxSize()[0] * 0.5 - 0.5) return false;
+        //and in its way, not beside the track
+        double side = (e.getX() - getX()) * -uz + (e.getZ() - getZ()) * ux;
+        if (Math.abs(side) > getHitboxSize()[2] * 0.5 + e.getBbWidth() * 0.5 - 0.1) return false;
+        double speed = Math.abs(roll);
+        if (speed < 0.002) return false;
+        double dir = Math.signum(roll);
+        if (speed >= HIT_SPEED) {
+            double ms = speed * 20;
+            float damage = (float) (0.5 * ms * ms * Math.min(1, consistMass() / 20000));
+            e.hurt(damageSources().source(TRAIN_HIT, this), damage);
+        }
+        //never left inside it: ahead of the end at least at its speed; a hit throws them off the track as well, to
+        //the side they stood on (straight ahead the train caught up with them and hit them again and again)
+        Vec3 m = e.getDeltaMovement();
+        double ahead = (m.x * ux + m.z * uz) * dir;
+        boolean hit = speed >= HIT_SPEED;
+        double want = hit ? speed * 1.2 : speed * 1.1;
+        double addAhead = Math.max(0, want - ahead);
+        double sx = 0, sz = 0;
+        if (hit) {
+            double s = side != 0 ? Math.signum(side) : (getRandom().nextBoolean() ? 1 : -1);
+            double out = Math.min(1.2, Math.max(0.35, speed * 1.5));
+            sx = -uz * s * out;
+            sz = ux * s * out;
+        }
+        if (addAhead > 0 || hit) {
+            e.setDeltaMovement(m.x + ux * dir * addAhead + sx, hit ? Math.max(m.y, Math.min(0.5, 0.2 + speed)) : m.y, m.z + uz * dir * addAhead + sz);
+            e.hasImpulse = true;
+            if (e instanceof ServerPlayer sp) sp.hurtMarked = true;
+        }
+        return true;
+    }
+
+    /** data/traincraft/damage_type/train.json: "was hit by a train" */
+    public static final net.minecraft.resources.ResourceKey<net.minecraft.world.damagesource.DamageType> TRAIN_HIT =
+            net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DAMAGE_TYPE,
+                    net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("traincraft", "train"));
+
     /** while moving: the entity is pushed sideways off the track; returns whether it was */
     private boolean pushAside(Entity e) {
         if (Math.abs(getVelocity()) < 0.01 || frontBogie == null || backBogie == null) return false;
         double ax = frontBogie.posX - backBogie.posX, az = frontBogie.posZ - backBogie.posZ, l = Math.sqrt(ax * ax + az * az);
         if (l < 1e-3) return false;
+        //someone at an end (pushing it, or it backing off from them) stays there
+        double along = ((e.getX() - getX()) * ax + (e.getZ() - getZ()) * az) / l;
+        if (Math.abs(along) > getHitboxSize()[0] * 0.5 - 0.3) return false;
         double nx = -az / l, nz = ax / l;
         double side = (e.getX() - getX()) * nx + (e.getZ() - getZ()) * nz >= 0 ? 1 : -1;
         e.push(nx * side * 0.15, 0, nz * side * 0.15);
