@@ -26,11 +26,16 @@ public class Traincraft {
             .icon(() -> TiMGenericRegistry.TRANSPORT_ITEMS.isEmpty() ? new ItemStack(TiMGenericRegistry.STAKE.get()) : new ItemStack(TiMGenericRegistry.TRANSPORT_ITEMS.get(0).get()))
             .displayItems((params, output) -> {
                 output.accept(TiMGenericRegistry.STAKE.get());
-                for (var t : ebf.tim.registry.TiMBlocks.TABLE_ITEMS) output.accept(t.get());
-                for (var t : train.blocks.TCBlocks.ITEMS) output.accept(t.get());
+                //TiM's own rails (the rail table, its rails and the copper and steel rail they are made of) are left
+                //out: the tracks are Traincraft's; they stay registered for old worlds
+                for (var t : ebf.tim.registry.TiMBlocks.TABLE_ITEMS) {
+                    if (t.get() != ebf.tim.registry.TiMBlocks.RAIL_TABLE.get().asItem()) output.accept(t.get());
+                }
+                for (var t : train.blocks.TCBlocks.ITEMS) {
+                    if (t != train.blocks.TCBlocks.COPPER_RAIL && t != train.blocks.TCBlocks.STEEL_RAIL) output.accept(t.get());
+                }
                 output.accept(train.items.TCItems.recipeBook.get());
                 for (var t : train.items.TCItems.ARMOUR) output.accept(t.get());
-                ebf.tim.items.ItemRail.addCreativeVariants(output::accept);
                 for (train.common.library.ItemIDs id : train.common.library.ItemIDs.values()) {
                     if (id.item != null && !train.common.library.ItemIDs.isRetired(id)) output.accept(id.item);
                 }

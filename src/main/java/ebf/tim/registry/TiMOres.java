@@ -13,20 +13,18 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * TiM materials: steel, copper and aluminium ores, blocks and ingots, plastic and coal dust.
+ * TiM materials: steel and aluminium ores, blocks and ingots, plastic and coal dust.
  * Smelting, storage block recipes, item tags and ore generation are data files (data/traincraft, data/c).
- * Copper: vanilla 1.21 has its own; the TiM one stays (old recipes name it) and the tags take both.
+ * Copper is the vanilla one: every recipe takes c:ingots/copper.
  */
 public class TiMOres {
     public static final List<DeferredItem<?>> MATERIALS = new ArrayList<>();
 
-    public static DeferredItem<Item> ingotSteel = material("ingot.steel"), ingotCopper = material("ingot.copper"),
+    public static DeferredItem<Item> ingotSteel = material("ingot.steel"),
             ingotAluminum = material("ingot.aluminum"), dustPlastic = material("dust.plastic"), dustCoal = material("dust.coal");
 
-    public static DeferredBlock<Block> blockCopper = block("blockcopper", 4.0F, MapColor.COLOR_ORANGE, SoundType.METAL),
-            blockAluminum = block("blockaluminum", 4.0F, MapColor.METAL, SoundType.METAL),
+    public static DeferredBlock<Block> blockAluminum = block("blockaluminum", 4.0F, MapColor.METAL, SoundType.METAL),
             blockSteel = block("blocksteel", 5.0F, MapColor.METAL, SoundType.METAL),
-            oreCopper = block("orecopper", 3.0F, MapColor.STONE, SoundType.STONE),
             oreAluminum = block("orealuminum", 3.0F, MapColor.STONE, SoundType.STONE),
             oreSteel = block("oresteel", 3.0F, MapColor.NETHER, SoundType.NETHER_ORE);
 

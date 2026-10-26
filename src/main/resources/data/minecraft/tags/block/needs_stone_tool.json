@@ -3,8 +3,6 @@
  "values": [
   "traincraft:block.petroleum",
   "traincraft:blockaluminum",
-  "traincraft:blockcopper",
-  "traincraft:orealuminum",
-  "traincraft:orecopper"
+  "traincraft:orealuminum"
  ]
 }
