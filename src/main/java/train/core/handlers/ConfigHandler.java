@@ -17,7 +17,7 @@ import net.neoforged.neoforge.registries.NeoForgeRegistries;
 /**
  * Traincraft's settings (1.12 ConfigHandler), in config/traincraft-common.toml and traincraft-client.toml.
  * Left out: what 1.12 had no use for any more (render flickering, villager id, energy track, remasters) or what
- * is not ported yet (the tracks builder; the zeppelins come with them).
+ * is not ported (the tracks builder; the zeppelins are left out on purpose).
  */
 public final class ConfigHandler {
     private ConfigHandler() {}
