@@ -42,6 +42,7 @@ import train.client.RoofRideClient;
 import train.blocks.TCBlocks;
 import train.blocks.catenary.CatenaryMastBlock;
 import train.blocks.catenary.CatenaryMastTile;
+import train.blocks.catenary.Wires;
 import java.io.FileReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -920,6 +921,58 @@ public class AutoTest {
                 }
                 log("cat t=" + tick + b);
             });
+        }
+        if (p.containsKey("hitat") && base != null) {
+            //hitat=tick:x,y,z:px,py,pz  the player stands at p (relative, survival) looking at x,y,z and attacks once
+            for (String h : p.getProperty("hitat").split(";")) {
+                String[] q = h.split(":");
+                int at = Integer.parseInt(q[0]);
+                String[] t = q[1].split(","), f = q[2].split(",");
+                net.minecraft.world.phys.Vec3 target = net.minecraft.world.phys.Vec3.atLowerCornerOf(base).add(Double.parseDouble(t[0]), Double.parseDouble(t[1]), Double.parseDouble(t[2]));
+                net.minecraft.world.phys.Vec3 feet = net.minecraft.world.phys.Vec3.atLowerCornerOf(base).add(Double.parseDouble(f[0]), Double.parseDouble(f[1]), Double.parseDouble(f[2]));
+                if (tick == at) server.execute(() -> {
+                    sp.setGameMode(GameType.SURVIVAL);
+                    net.minecraft.world.phys.Vec3 d = target.subtract(feet.add(0, sp.getEyeHeight(), 0));
+                    float yaw = (float) Math.toDegrees(Math.atan2(-d.x, d.z)), pitch = (float) -Math.toDegrees(Math.atan2(d.y, Math.sqrt(d.x * d.x + d.z * d.z)));
+                    sp.connection.teleport(feet.x, feet.y, feet.z, yaw, pitch);
+                });
+                if (tick == at + 10) {
+                    net.minecraft.client.KeyMapping.click(mc.options.keyAttack.getKey());
+                    log("attack at " + q[1]);
+                }
+            }
+        }
+        if (p.containsKey("breakblock") && base != null) {
+            //breakblock=tick:x,y,z;...  the (survival) player breaks that block, as if mined
+            for (String h : p.getProperty("breakblock").split(";")) {
+                String[] q = h.split(":"), c = q[1].split(",");
+                if (tick != Integer.parseInt(q[0])) continue;
+                BlockPos at = base.offset(Integer.parseInt(c[0]), Integer.parseInt(c[1]), Integer.parseInt(c[2]));
+                server.execute(() -> {
+                    sp.setGameMode(GameType.SURVIVAL);
+                    var before = level.getBlockState(at).getBlock();
+                    log("break " + q[1] + " " + before + " -> " + sp.gameMode.destroyBlock(at));
+                });
+            }
+        }
+        if (p.containsKey("wiredump") && base != null) {
+            //wiredump=tick,tick  every wire, and the wire items lying about
+            for (String at : p.getProperty("wiredump").split(",")) {
+                if (Integer.parseInt(at.trim()) != tick) continue;
+                server.execute(() -> {
+                    var ws = Wires.near(level, net.minecraft.world.phys.Vec3.atCenterOf(base), 64);
+                    StringBuilder b = new StringBuilder();
+                    for (var w : ws) {
+                        var mid = w.points().get(w.kind() == Wires.Kind.SPAN ? w.points().size() / 4 : w.points().size() / 2);
+                        b.append(String.format(java.util.Locale.ROOT, " %s(%d..%d mid %.2f,%.2f,%.2f)", w.kind(), w.a().getX() - base.getX(), w.b().getX() - base.getX(),
+                                mid.x - base.getX(), mid.y - base.getY(), mid.z - base.getZ()));
+                    }
+                    int items = level.getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class, new net.minecraft.world.phys.AABB(base).inflate(40)).size();
+                    StringBuilder parts = new StringBuilder();
+                    for (int y = 0; y <= 5; y++) parts.append(' ').append(BuiltInRegistries.BLOCK.getKey(level.getBlockState(base.offset(4, y, -1)).getBlock()).getPath());
+                    log("wires t=" + tick + b + " | items on the ground " + items + " | over mast 4:" + parts);
+                });
+            }
         }
         if (p.containsKey("statedump") && base != null) {
             //statedump=tick[,tick...]  every placed transport: where, which way, coupled to which (by uuid), engine,

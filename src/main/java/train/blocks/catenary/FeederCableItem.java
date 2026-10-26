@@ -28,6 +28,10 @@ public class FeederCableItem extends Item {
     public InteractionResult useOn(UseOnContext c) {
         Level level = c.getLevel();
         BlockPos pos = c.getClickedPos();
+        if (level.getBlockState(pos).getBlock() instanceof CatenaryMastPartBlock) {
+            BlockPos m = CatenaryMastPartBlock.master(level, pos);
+            if (m != null) pos = m;
+        }
         if (level.getBlockState(pos).getBlock() instanceof SubstationPartBlock) {
             BlockPos m = SubstationPartBlock.master(level, pos);
             if (m != null) pos = m;

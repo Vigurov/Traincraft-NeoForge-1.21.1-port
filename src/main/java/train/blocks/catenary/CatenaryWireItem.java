@@ -25,6 +25,10 @@ public class CatenaryWireItem extends Item {
     public InteractionResult useOn(UseOnContext c) {
         Level level = c.getLevel();
         BlockPos pos = c.getClickedPos();
+        if (level.getBlockState(pos).getBlock() instanceof CatenaryMastPartBlock) {
+            BlockPos m = CatenaryMastPartBlock.master(level, pos);
+            if (m != null) pos = m;
+        }
         if (!(level.getBlockEntity(pos) instanceof CatenaryMastTile mast)) return InteractionResult.PASS;
         if (level.isClientSide) return InteractionResult.SUCCESS;
         ItemStack stack = c.getItemInHand();

@@ -17,8 +17,11 @@ import net.neoforged.neoforge.energy.EnergyStorage;
 import net.neoforged.neoforge.energy.IEnergyStorage;
 import train.blocks.TCBlocks;
 
+import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
+import java.util.WeakHashMap;
 
 /** a substation: what it has taken in and not yet given to the line, and the masts its feeders go to */
 public class SubstationTile extends BlockEntity {
@@ -54,6 +57,31 @@ public class SubstationTile extends BlockEntity {
             //it gives to the line only, not back to the cables around it
             return false;
         }
+    }
+
+    /** the substations loaded, per level (both sides) */
+    private static final Map<net.minecraft.world.level.Level, Set<SubstationTile>> LOADED = new WeakHashMap<>();
+
+    public static Set<SubstationTile> loaded(net.minecraft.world.level.Level level) {
+        return LOADED.getOrDefault(level, Collections.emptySet());
+    }
+
+    @Override
+    public void onLoad() {
+        super.onLoad();
+        if (level != null) LOADED.computeIfAbsent(level, l -> Collections.newSetFromMap(new WeakHashMap<>())).add(this);
+    }
+
+    @Override
+    public void setRemoved() {
+        super.setRemoved();
+        if (level != null) loaded(level).remove(this);
+    }
+
+    @Override
+    public void onChunkUnloaded() {
+        super.onChunkUnloaded();
+        if (level != null) loaded(level).remove(this);
     }
 
     public SubstationTile(BlockPos pos, BlockState state) {

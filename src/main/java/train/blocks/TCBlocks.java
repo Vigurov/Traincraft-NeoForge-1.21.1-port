@@ -63,6 +63,9 @@ public class TCBlocks {
     /** catenary: masts beside the track and the wire strung between them */
     public static final DeferredBlock<train.blocks.catenary.CatenaryMastBlock> CATENARY_MAST = block("catenary_mast", () -> new train.blocks.catenary.CatenaryMastBlock(
             BlockBehaviour.Properties.of().mapColor(MapColor.METAL).strength(3.0F, 6.0F).sound(SoundType.METAL).noOcclusion().requiresCorrectToolForDrops()));
+    public static final DeferredBlock<train.blocks.catenary.CatenaryMastPartBlock> CATENARY_MAST_PART = TiMBlocks.BLOCKS.register("catenary_mast_part",
+            () -> new train.blocks.catenary.CatenaryMastPartBlock(BlockBehaviour.Properties.of().mapColor(MapColor.METAL).strength(3.0F, 6.0F)
+                    .sound(SoundType.METAL).noOcclusion().noLootTable()));
     public static final DeferredItem<train.blocks.catenary.CatenaryWireItem> CATENARY_WIRE = TiMGenericRegistry.ITEMS.register("catenary_wire",
             () -> new train.blocks.catenary.CatenaryWireItem(new Item.Properties()));
     /** a traction substation and the feeder cable from it to a mast */

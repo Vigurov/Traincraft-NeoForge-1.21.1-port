@@ -39,9 +39,26 @@ public class CatenaryMastBlock extends HorizontalDirectionalBlock implements Ent
         b.add(FACING);
     }
 
+    /** the blocks above it the mast stands in (about 4.4 high) */
+    public static final int PARTS = 4;
+
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext c) {
+        for (int i = 1; i <= PARTS; i++) {
+            if (!c.getLevel().getBlockState(c.getClickedPos().above(i)).canBeReplaced()) return null;
+        }
         return defaultBlockState().setValue(FACING, c.getHorizontalDirection().getOpposite());
+    }
+
+    @Override
+    protected void onPlace(BlockState state, Level level, BlockPos pos, BlockState old, boolean moved) {
+        super.onPlace(state, level, pos, old, moved);
+        if (level.isClientSide || old.is(this)) return;
+        for (int i = 1; i <= PARTS; i++) {
+            if (level.getBlockState(pos.above(i)).canBeReplaced()) {
+                level.setBlock(pos.above(i), train.blocks.TCBlocks.CATENARY_MAST_PART.get().defaultBlockState(), 3);
+            }
+        }
     }
 
     @Override
@@ -66,5 +83,10 @@ public class CatenaryMastBlock extends HorizontalDirectionalBlock implements Ent
             t.dropAllSpans();
         }
         super.onRemove(state, level, pos, newState, moved);
+        if (!state.is(newState.getBlock()) && !level.isClientSide) {
+            for (int i = 1; i <= PARTS; i++) {
+                if (level.getBlockState(pos.above(i)).is(train.blocks.TCBlocks.CATENARY_MAST_PART.get())) level.removeBlock(pos.above(i), false);
+            }
+        }
     }
 }

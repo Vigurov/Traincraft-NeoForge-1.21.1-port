@@ -47,7 +47,8 @@ public class CatenaryMastTile extends BlockEntity {
     @Override
     public void onLoad() {
         super.onLoad();
-        if (level != null && !level.isClientSide) {
+        //on both sides: the server feeds trains from it, the client finds the wires to cut
+        if (level != null) {
             LOADED.computeIfAbsent(level, l -> Collections.newSetFromMap(new WeakHashMap<>())).add(this);
         }
     }
