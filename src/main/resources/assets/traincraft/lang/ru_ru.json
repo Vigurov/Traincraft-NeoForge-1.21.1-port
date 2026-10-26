@@ -253,6 +253,7 @@
  "message.traincraft.catenary.toofar": "Слишком далеко: между опорами не больше 24 блоков",
  "message.traincraft.catenary.already": "Эти опоры уже соединены",
  "message.traincraft.catenary.strung": "Провод натянут",
+ "message.traincraft.catenary.offtrack": "Провод натянут, но между этими опорами он уходит от пути: поставь опору ближе",
  "block.traincraft.substation": "Тяговая подстанция",
  "item.traincraft.feeder_cable": "Силовой кабель",
  "message.traincraft.feeder.start": "Кабель тянется: нажми на опору (или подстанцию)",

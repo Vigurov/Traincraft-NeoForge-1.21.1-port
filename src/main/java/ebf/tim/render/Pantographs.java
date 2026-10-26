@@ -133,6 +133,25 @@ public final class Pantographs {
     private static final ResourceLocation TEX = ResourceLocation.fromNamespaceAndPath("traincraft", "textures/models/catenary_mast.png");
     private static final int TW = 512, TH = 128, RED = 464, DARK = 496;
 
+    /**
+     * the height of the contact wire over the wheels' level at a pantograph (its base at x, y0 in the model's frame),
+     * from the spans the client has; the one over the train's middle when none is found there (or out of the world,
+     * as in an inventory)
+     */
+    private static float wireOver(GenericRailTransport t, PoseStack pose, float x, float y0, float roof, float fallback) {
+        if (t.level() == null || pose == null) return fallback;
+        org.joml.Vector4f v = pose.last().pose().transform(new org.joml.Vector4f(x, y0, 0, 1));
+        var cam = net.minecraft.client.Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
+        double wx = v.x() + cam.x, wy = v.y() + cam.y, wz = v.z() + cam.z;
+        //the base is roof over the rails
+        var span = train.blocks.catenary.CatenaryMastTile.spanOver(t.level(), wx, wy - roof, wz);
+        if (span == null) return fallback;
+        float h = (float) (span.wireY() - wy) + roof;
+        if (debug && t.tickCount % 20 == 0) System.out.println(String.format("[TCTEST] panto %s x=%.2f at (%.2f,%.2f,%.2f) wire %.2f (middle %.2f)",
+                t.getClass().getSimpleName(), x, wx, wy, wz, h, fallback));
+        return h;
+    }
+
     /** the raised pantographs, in the model's frame (y down from the wheels' level) */
     static void draw(GenericRailTransport t) {
         Panto[] ps = of(t);
@@ -145,10 +164,13 @@ public final class Pantographs {
         for (Panto p : ps) {
             int u = p.red() ? RED : DARK;
             float roof = p.roof();
-            //the collector's height: from just over the roof up to the underside of the wire
-            float top = roof + 0.18f + s.lift * (wire - 0.03f - roof - 0.18f);
-            float y0 = s.bottom - roof, yt = s.bottom - top;
             float x = p.x();
+            float y0 = s.bottom - roof;
+            //the wire over this pantograph, not over the train's middle: where a slope begins or ends they differ
+            float over = wireOver(t, pose, x, y0, roof, wire);
+            //the collector's height: from just over the roof up to the underside of the wire
+            float top = roof + 0.18f + s.lift * (over - 0.03f - roof - 0.18f);
+            float yt = s.bottom - top;
             //base frame on the roof, on its insulators
             for (float z : new float[]{-0.24f, 0.24f}) bar(pose, vc, x - 0.32f, y0, z, x + 0.32f, y0, z, 0.05f, DARK, t);
             bar(pose, vc, x - 0.32f, y0, -0.24f, x - 0.32f, y0, 0.24f, 0.05f, DARK, t);

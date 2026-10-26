@@ -59,6 +59,9 @@ public class CatenaryWireItem extends Item {
             say(player, "message.traincraft.catenary.already");
             return InteractionResult.CONSUME;
         }
+        //the cantilevers made to measure for the track as it is now
+        start.fitReach();
+        mast.fitReach();
         start.link(pos);
         mast.link(from);
         if (player == null || !player.getAbilities().instabuild) stack.shrink(1);
@@ -67,8 +70,42 @@ public class CatenaryWireItem extends Item {
             data.putLong("from", pos.asLong());
             CustomData.set(DataComponents.CUSTOM_DATA, stack, data);
         }
-        say(player, "message.traincraft.catenary.strung");
+        say(player, overTrack(level, start.contactPoint(), mast.contactPoint()) ? "message.traincraft.catenary.strung" : "message.traincraft.catenary.offtrack");
         return InteractionResult.CONSUME;
+    }
+
+    /** how far across a pantograph still reaches the wire */
+    public static final double PANTOGRAPH_REACH = 0.8;
+
+    /**
+     * whether the contact wire from a to b stays over the track all the way, within a pantograph's reach: on a turn
+     * the straight wire between two masts strays inside the arc the more the longer the span
+     */
+    /** for tests: the points of the wire from a to b found off the track, as "x,z=off" */
+    public static String offPoints(Level level, net.minecraft.world.phys.Vec3 a, net.minecraft.world.phys.Vec3 b) {
+        StringBuilder sb = new StringBuilder();
+        double len = Math.hypot(b.x - a.x, b.z - a.z), dx = (b.x - a.x) / len, dz = (b.z - a.z) / len;
+        int n = Math.max(2, (int) Math.ceil(len * 2));
+        for (int i = 0; i <= n; i++) {
+            double t = i / (double) n, x = a.x + (b.x - a.x) * t, z = a.z + (b.z - a.z) * t, y = a.y + (b.y - a.y) * t - 2;
+            double off = CatenaryGeometry.offTrack(level, x, y, z, dx, dz);
+            if (Double.isNaN(off) || off > PANTOGRAPH_REACH) sb.append(String.format(" %.2f,%.2f=%.2f", x, z, off));
+        }
+        return sb.toString();
+    }
+
+    public static boolean overTrack(Level level, net.minecraft.world.phys.Vec3 a, net.minecraft.world.phys.Vec3 b) {
+        double len = Math.hypot(b.x - a.x, b.z - a.z);
+        if (len < 1e-6) return true;
+        double dx = (b.x - a.x) / len, dz = (b.z - a.z) / len;
+        int n = Math.max(2, (int) Math.ceil(len * 2));
+        for (int i = 0; i <= n; i++) {
+            double t = i / (double) n;
+            double x = a.x + (b.x - a.x) * t, z = a.z + (b.z - a.z) * t, y = a.y + (b.y - a.y) * t - 2;
+            double off = CatenaryGeometry.offTrack(level, x, y, z, dx, dz);
+            if (Double.isNaN(off) || off > PANTOGRAPH_REACH) return false;
+        }
+        return true;
     }
 
     @Override

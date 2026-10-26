@@ -32,7 +32,19 @@ public class RenderCatenary implements BlockEntityRenderer<CatenaryMastTile> {
     public static final ResourceLocation TEXTURE = TEX;
     private static final int TW = 512, TH = 128;
     private static final double CONTACT_Y = train.blocks.catenary.CatenaryGeometry.CONTACT_Y, MESSENGER_Y = train.blocks.catenary.CatenaryGeometry.MESSENGER_Y;
-    private static ModelRendererTurbo[] parts, glass, feederParts, feederGlass;
+    private static ModelRendererTurbo[] feederParts, feederGlass;
+    /** the mast and its glass for each cantilever length (in sixteenths of a block) */
+    private static final java.util.Map<Integer, ModelRendererTurbo[][]> MODELS = new java.util.HashMap<>();
+
+    private static ModelRendererTurbo[][] model(float reach) {
+        return MODELS.computeIfAbsent(Math.round(reach * 16), px -> {
+            GLASS_PARTS.clear();
+            ModelRendererTurbo[] p = build(px);
+            ModelRendererTurbo[] g = GLASS_PARTS.toArray(new ModelRendererTurbo[0]);
+            GLASS_PARTS.clear();
+            return new ModelRendererTurbo[][]{p, g};
+        });
+    }
 
     public RenderCatenary(BlockEntityRendererProvider.Context c) {}
 
@@ -94,7 +106,9 @@ public class RenderCatenary implements BlockEntityRenderer<CatenaryMastTile> {
      * corner posts, struts and zig-zag bracing on every face, as the old Soviet line masts); the cantilever a
      * triangle of a top tube and a strut with the wires hung from it on glass insulators
      */
-    private static ModelRendererTurbo[] build() {
+    private static ModelRendererTurbo[] build(float reach) {
+        //the wires hang reach pixels out from the mast's middle (16: one block)
+        float R = reach;
         java.util.List<ModelRendererTurbo> l = new java.util.ArrayList<>();
         l.add(box(CONCRETE, 0, -6, 0, -6, 12, 3, 12));
         float y0 = 3, y1 = 70;
@@ -121,19 +135,19 @@ public class RenderCatenary implements BlockEntityRenderer<CatenaryMastTile> {
         //the track and the strut up to its far end, bolted to the mast; the insulators are where the wires hang
         float ty = 66f, sy = 54f;
         l.add(box(DARK, 16, half(ty) - 0.5f, ty - 1.5f, -1.6f, 1.2f, 3, 3.2f));
-        l.add(bar(STEEL, 16, half(ty), ty, 0, 19.5f, ty, 0, 1.4f));
+        l.add(bar(STEEL, 16, half(ty), ty, 0, R + 3.5f, ty, 0, 1.4f));
         l.add(box(DARK, 16, half(sy) - 0.5f, sy - 1.5f, -1.6f, 1.2f, 3, 3.2f));
         //the strut meets the tube short of the string, so the discs hang clear of it
-        float strutEnd = 12.5f;
+        float strutEnd = R - 3.5f;
         l.add(bar(STEEL, 20, half(sy), sy, 0, strutEnd, ty - 0.5f, 0, 1.2f));
         //the messenger wire hangs under the tube's end on a string of three glass discs, in its clamp
-        insulatorString(l, 16, ty - 0.7f, 16, 60.2f, 3);
-        l.add(box(DARK, 0, 15.3f, 58.7f, -1, 1.4f, 1.5f, 2));
+        insulatorString(l, R, ty - 0.7f, R, 60.2f, 3);
+        l.add(box(DARK, 0, R - 0.7f, 58.7f, -1, 1.4f, 1.5f, 2));
         //registration arm: from the strut through two glass discs, then down and out to the contact wire's clamp
-        float fx0 = 8, fy0 = sy + (ty - 0.5f - sy) * (fx0 - half(sy)) / (strutEnd - half(sy));
+        float fx0 = half(sy) + 0.54f * (strutEnd - half(sy)), fy0 = sy + (ty - 0.5f - sy) * (fx0 - half(sy)) / (strutEnd - half(sy));
         insulatorString(l, fx0, fy0, fx0 + 2.6f, fy0 - 2.6f, 2);
-        l.add(bar(DARK, 4, fx0 + 2.6f, fy0 - 2.6f, 0, 16, 48.8f, 0, 0.7f));
-        l.add(box(DARK, 8, 15.4f, 47.8f, -0.6f, 1.2f, 1.4f, 1.2f));
+        l.add(bar(DARK, 4, fx0 + 2.6f, fy0 - 2.6f, 0, R, 48.8f, 0, 0.7f));
+        l.add(box(DARK, 8, R - 0.6f, 47.8f, -0.6f, 1.2f, 1.4f, 1.2f));
         return l.toArray(new ModelRendererTurbo[0]);
     }
 
@@ -178,20 +192,20 @@ public class RenderCatenary implements BlockEntityRenderer<CatenaryMastTile> {
         };
     }
 
-    private static Vec3 anchor(BlockPos pos, BlockState state, double height) {
-        return train.blocks.catenary.CatenaryGeometry.anchor(pos, state, height);
+    private static Vec3 anchor(net.minecraft.world.level.BlockGetter level, BlockPos pos, BlockState state, double height) {
+        return train.blocks.catenary.CatenaryGeometry.anchor(level, pos, state, height);
     }
 
     @Override
     public void render(CatenaryMastTile tile, float partialTick, PoseStack pose, MultiBufferSource buffers, int light, int overlay) {
-        if (parts == null) {
-            GLASS_PARTS.clear();
-            parts = build();
-            glass = GLASS_PARTS.toArray(new ModelRendererTurbo[0]);
+        if (feederParts == null) {
             GLASS_PARTS.clear();
             feederParts = buildFeederBracket();
             feederGlass = GLASS_PARTS.toArray(new ModelRendererTurbo[0]);
+            GLASS_PARTS.clear();
         }
+        ModelRendererTurbo[][] m = model(tile.reach);
+        ModelRendererTurbo[] parts = m[0], glass = m[1];
         BlockState state = tile.getBlockState();
         Direction facing = state.getValue(CatenaryMastBlock.FACING);
         RenderContext.begin(pose, buffers, light, TEX);
@@ -239,7 +253,7 @@ public class RenderCatenary implements BlockEntityRenderer<CatenaryMastTile> {
             BlockState os = tile.getLevel().getBlockState(o);
             if (!(os.getBlock() instanceof CatenaryMastBlock)) continue;
             int light2 = LevelRenderer.getLightColor(tile.getLevel(), o.above(3));
-            drawSpan(pose, vc, pos, anchor(pos, state, 0), anchor(o, os, 0), light, light2);
+            drawSpan(pose, vc, pos, anchor(tile.getLevel(), pos, state, 0), anchor(tile.getLevel(), o, os, 0), light, light2);
         }
     }
 
@@ -295,7 +309,7 @@ public class RenderCatenary implements BlockEntityRenderer<CatenaryMastTile> {
 
     @Override
     public AABB getRenderBoundingBox(CatenaryMastTile tile) {
-        AABB box = new AABB(tile.getBlockPos()).inflate(1.5, 0, 1.5).expandTowards(0, 4.5, 0);
+        AABB box = new AABB(tile.getBlockPos()).inflate(train.blocks.catenary.CatenaryGeometry.MAX_REACH + 0.5, 0, train.blocks.catenary.CatenaryGeometry.MAX_REACH + 0.5).expandTowards(0, 4.5, 0);
         for (BlockPos o : tile.links) box = box.minmax(new AABB(o).expandTowards(0, 4.5, 0));
         return box;
     }

@@ -1,5 +1,6 @@
 package train.devtest;
 
+import train.blocks.catenary.CatenaryWireItem;
 import train.Traincraft;
 import train.blocks.TCBlocks;
 import train.core.handlers.ConfigHandler;
@@ -928,6 +929,23 @@ public class AutoTest {
                     var hit = new net.minecraft.world.phys.BlockHitResult(net.minecraft.world.phys.Vec3.atCenterOf(at), net.minecraft.core.Direction.UP, at, false);
                     var r = stack.useOn(new net.minecraft.world.item.context.UseOnContext(level, sp, net.minecraft.world.InteractionHand.MAIN_HAND, stack, hit));
                     log("wire click " + q + " -> " + r);
+                }
+                //the cantilevers as made, and whether each span keeps over the track
+                String[] qs = p.getProperty("wire").split(">");
+                for (int i = 0; i < qs.length; i++) {
+                    String[] c = qs[i].split(",");
+                    BlockPos at = base.offset(Integer.parseInt(c[0]), Integer.parseInt(c[1]), Integer.parseInt(c[2]));
+                    if (!(level.getBlockEntity(at) instanceof CatenaryMastTile m)) continue;
+                    String over = "";
+                    if (i + 1 < qs.length) {
+                        String[] d = qs[i + 1].split(",");
+                        if (level.getBlockEntity(base.offset(Integer.parseInt(d[0]), Integer.parseInt(d[1]), Integer.parseInt(d[2]))) instanceof CatenaryMastTile n) {
+                            over = " span to " + qs[i + 1] + " over track=" + CatenaryWireItem.overTrack(level, m.contactPoint(), n.contactPoint())
+                                    + CatenaryWireItem.offPoints(level, m.contactPoint(), n.contactPoint());
+                        }
+                    }
+                    var cp = m.contactPoint();
+                    log(String.format("mast %s reach=%.2f contact=(%.2f,%.2f)%s", qs[i], m.reach, cp.x - base.getX(), cp.z - base.getZ(), over));
                 }
             });
         }

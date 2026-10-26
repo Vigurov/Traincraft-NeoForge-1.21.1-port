@@ -275,6 +275,7 @@
  "message.traincraft.catenary.toofar": "Задалеко: між опорами щонайбільше 24 блоки",
  "message.traincraft.catenary.already": "Ці опори вже з'єднані",
  "message.traincraft.catenary.strung": "Дріт натягнуто",
+ "message.traincraft.catenary.offtrack": "Дріт натягнуто, але між цими опорами він відходить від колії: постав опору ближче",
  "block.traincraft.substation": "Тягова підстанція",
  "item.traincraft.feeder_cable": "Кабель живлення",
  "message.traincraft.feeder.start": "Кабель тягнеться: клацни опору (або підстанцію)",

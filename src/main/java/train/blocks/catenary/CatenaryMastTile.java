@@ -36,6 +36,8 @@ public class CatenaryMastTile extends BlockEntity {
     public final Set<BlockPos> links = new LinkedHashSet<>();
     /** the substation whose feeder cable comes to this mast */
     public BlockPos feeder;
+    /** how far its cantilever reaches out (blocks from its middle): over the middle of the track it stands by */
+    public float reach = (float) CatenaryGeometry.REACH;
 
     /** the masts loaded on the server, per level, for the trains to find the wire over them */
     private static final Map<Level, Set<CatenaryMastTile>> LOADED = new WeakHashMap<>();
@@ -122,7 +124,32 @@ public class CatenaryMastTile extends BlockEntity {
 
     /** the contact wire of a span: where it is held at this mast */
     public Vec3 contactPoint() {
-        return CatenaryGeometry.anchor(worldPosition, getBlockState(), CatenaryGeometry.CONTACT_Y);
+        return CatenaryGeometry.anchor(worldPosition, getBlockState(), CatenaryGeometry.CONTACT_Y, reach);
+    }
+
+    /**
+     * the cantilever made to measure: out to the middle of the track in front of the mast (a classic turn's arc, or a
+     * track block's middle), as far as MAX_REACH; one block when there is no track there
+     */
+    public void fitReach() {
+        if (level == null) return;
+        Direction f = getBlockState().hasProperty(CatenaryMastBlock.FACING) ? getBlockState().getValue(CatenaryMastBlock.FACING) : Direction.EAST;
+        double ox = worldPosition.getX() + 0.5, oz = worldPosition.getZ() + 0.5;
+        float fitted = (float) CatenaryGeometry.REACH;
+        search:
+        for (double t = 0.5; t <= CatenaryGeometry.MAX_REACH + 0.5; t += 0.25) {
+            for (int dy : new int[]{0, 1, -1}) {
+                BlockPos b = BlockPos.containing(ox + f.getStepX() * t, worldPosition.getY() + dy, oz + f.getStepZ() * t);
+                double s = CatenaryGeometry.trackCrossing(level, b, ox, oz, f.getStepX(), f.getStepZ());
+                if (Double.isNaN(s)) continue;
+                fitted = (float) Math.max(CatenaryGeometry.MIN_REACH, Math.min(CatenaryGeometry.MAX_REACH, s));
+                break search;
+            }
+        }
+        if (Math.abs(fitted - reach) > 1e-3) {
+            reach = fitted;
+            changed();
+        }
     }
 
     public CatenaryMastTile(BlockPos pos, BlockState state) {
@@ -163,6 +190,7 @@ public class CatenaryMastTile extends BlockEntity {
         super.saveAdditional(tag, registries);
         tag.putLongArray("links", links.stream().mapToLong(BlockPos::asLong).toArray());
         if (feeder != null) tag.putLong("feeder", feeder.asLong());
+        tag.putFloat("reach", reach);
     }
 
     @Override
@@ -171,6 +199,7 @@ public class CatenaryMastTile extends BlockEntity {
         links.clear();
         for (long l : tag.getLongArray("links")) links.add(BlockPos.of(l));
         feeder = tag.contains("feeder") ? BlockPos.of(tag.getLong("feeder")) : null;
+        reach = tag.contains("reach") ? tag.getFloat("reach") : (float) CatenaryGeometry.REACH;
     }
 
     @Override

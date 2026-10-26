@@ -64,7 +64,7 @@ public final class Wires {
                 if (o.asLong() < pos.asLong()) continue;
                 var os = level.getBlockState(o);
                 if (!(os.getBlock() instanceof CatenaryMastBlock)) continue;
-                out.add(new Wire(Kind.SPAN, pos, o, span(CatenaryGeometry.anchor(pos, m.getBlockState(), 0), CatenaryGeometry.anchor(o, os, 0))));
+                out.add(new Wire(Kind.SPAN, pos, o, span(CatenaryGeometry.anchor(level, pos, m.getBlockState(), 0), CatenaryGeometry.anchor(level, o, os, 0))));
             }
         }
         for (SubstationTile s : SubstationTile.loaded(level)) {

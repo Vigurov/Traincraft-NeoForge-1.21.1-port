@@ -51,6 +51,13 @@ public class CatenaryMastBlock extends HorizontalDirectionalBlock implements Ent
     }
 
     @Override
+    public void setPlacedBy(Level level, BlockPos pos, BlockState state, @org.jetbrains.annotations.Nullable net.minecraft.world.entity.LivingEntity by, net.minecraft.world.item.ItemStack stack) {
+        super.setPlacedBy(level, pos, state, by, stack);
+        //the cantilever out to the middle of the track in front
+        if (!level.isClientSide && level.getBlockEntity(pos) instanceof CatenaryMastTile m) m.fitReach();
+    }
+
+    @Override
     protected void onPlace(BlockState state, Level level, BlockPos pos, BlockState old, boolean moved) {
         super.onPlace(state, level, pos, old, moved);
         if (level.isClientSide || old.is(this)) return;
