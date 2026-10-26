@@ -1,5 +1,6 @@
 package train.devtest;
 
+import train.Traincraft;
 import train.blocks.TCBlocks;
 import train.core.handlers.ConfigHandler;
 import train.client.JukeboxClient;
@@ -100,8 +101,43 @@ public class AutoTest {
                 }
             });
         }
+        if (p.containsKey("itemsheet")) {
+            //itemsheet=scale  every item of the Traincraft tabs drawn over the screen in a grid on slot grey, a new
+            //page every 20 ticks from tick 40 (take shots=40,..,20)
+            NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.client.event.RenderGuiEvent.Post e) -> {
+                Minecraft mc = Minecraft.getInstance();
+                if (mc.player == null || tick < 40) return;
+                if (sheet == null) {
+                    net.minecraft.world.item.CreativeModeTabs.tryRebuildTabContents(mc.player.connection.enabledFeatures(), true, mc.level.registryAccess());
+                    sheet = new java.util.ArrayList<>();
+                    sheet.addAll(Traincraft.tcTab.get().getDisplayItems());
+                    sheet.addAll(Traincraft.timCraftingTab.get().getDisplayItems());
+                    log("itemsheet " + sheet.size() + " items");
+                }
+                var g = e.getGuiGraphics();
+                float scale = Float.parseFloat(p.getProperty("itemsheet"));
+                int w = g.guiWidth(), h = g.guiHeight();
+                g.fill(0, 0, w, h, 0xFF8B8B8B);
+                int cell = 18;
+                int cols = (int) (w / scale / cell), rows = (int) (h / scale / cell);
+                int page = (tick - 40) / 20, from = page * cols * rows;
+                g.pose().pushPose();
+                g.pose().scale(scale, scale, 1);
+                for (int n = from; n < Math.min(sheet.size(), from + cols * rows); n++) {
+                    int x = ((n - from) % cols) * cell + 1, y = ((n - from) / cols) * cell + 1;
+                    g.fill(x - 1, y - 1, x + 17, y + 17, 0xFF373737);
+                    g.fill(x, y, x + 17, y + 17, 0xFFFFFFFF);
+                    g.fill(x, y, x + 16, y + 16, 0xFF8B8B8B);
+                    g.renderItem(sheet.get(n), x, y);
+                    g.renderItemDecorations(mc.font, sheet.get(n), x, y);
+                }
+                g.pose().popPose();
+            });
+        }
         log("autotest on: " + p);
     }
+
+    private static java.util.List<net.minecraft.world.item.ItemStack> sheet;
 
     private static int i(String key, int def) {
         return p.containsKey(key) ? Integer.parseInt(p.getProperty(key).trim()) : def;
@@ -1361,7 +1397,7 @@ public class AutoTest {
             String axis = a.length > 3 ? a[3] : "x";
             for (int n = 0; n < len; n++) {
                 BlockPos at = axis.equals("x") ? pos.offset(n, 0, 0) : pos.offset(0, 0, n);
-                level.setBlock(at.below(), Blocks.STONE.defaultBlockState(), 3);
+                if (level.getBlockState(at.below()).isAir()) level.setBlock(at.below(), Blocks.STONE.defaultBlockState(), 3);
                 net.minecraft.world.item.ItemStack stack = ebf.tim.items.ItemRail.setStackData(
                         new net.minecraft.world.item.ItemStack(ebf.tim.registry.TiMBlocks.railItem()),
                         new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.IRON_INGOT),
@@ -1381,7 +1417,7 @@ public class AutoTest {
         if (id.equals(ResourceLocation.fromNamespaceAndPath("traincraft", "catenary_mast"))) {
             //catenary_mast@x,y,z@facing  (the way its cantilever points: north/east/south/west)
             var facing = net.minecraft.core.Direction.byName(a.length > 2 ? a[2] : "east");
-            level.setBlock(pos.below(), Blocks.STONE.defaultBlockState(), 3);
+            if (level.getBlockState(pos.below()).isAir()) level.setBlock(pos.below(), Blocks.STONE.defaultBlockState(), 3);
             level.setBlock(pos, TCBlocks.CATENARY_MAST.get().defaultBlockState().setValue(CatenaryMastBlock.FACING, facing), 3);
             log("mast at " + pos + " facing " + facing);
             return;
@@ -1392,7 +1428,7 @@ public class AutoTest {
             String axis = a.length > 3 ? a[3] : "x";
             for (int n = 0; n < len; n++) {
                 BlockPos at = axis.equals("x") ? pos.offset(n, 0, 0) : pos.offset(0, 0, n);
-                level.setBlock(at.below(), Blocks.STONE.defaultBlockState(), 3);
+                if (level.getBlockState(at.below()).isAir()) level.setBlock(at.below(), Blocks.STONE.defaultBlockState(), 3);
                 var st = b.defaultBlockState();
                 //block@x,y,z@len@axis@facing
                 if (a.length > 4 && st.hasProperty(net.minecraft.world.level.block.state.properties.BlockStateProperties.HORIZONTAL_FACING)) {
@@ -1410,7 +1446,7 @@ public class AutoTest {
             sp.setYHeadRot(yaw);
             net.minecraft.world.item.ItemStack stack = new net.minecraft.world.item.ItemStack(track, 64);
             sp.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, stack);
-            level.setBlock(pos.below(), Blocks.STONE.defaultBlockState(), 3);
+            if (level.getBlockState(pos.below()).isAir()) level.setBlock(pos.below(), Blocks.STONE.defaultBlockState(), 3);
             var hit = new net.minecraft.world.phys.BlockHitResult(net.minecraft.world.phys.Vec3.atCenterOf(pos.below()), net.minecraft.core.Direction.UP, pos.below(), false);
             var result = track.useOn(new net.minecraft.world.item.context.UseOnContext(level, sp, net.minecraft.world.InteractionHand.MAIN_HAND, stack, hit));
             log("use " + id + " at " + pos + " yaw " + yaw + " -> " + result + " " + level.getBlockState(pos).getBlock());
