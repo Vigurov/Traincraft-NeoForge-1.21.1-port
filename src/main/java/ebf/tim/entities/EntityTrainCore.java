@@ -195,8 +195,8 @@ public class EntityTrainCore extends GenericRailTransport {
             if(getAccelerator()==0 && getBoolean(boolValues.BRAKE) && getVelocity()==0){
                 backBogie.setVelocity(0,0,0);
                 frontBogie.setVelocity(0,0,0);
-            } else if(getAccelerator()!=0 && leads){
-                //the followers' pull is in the leader's acceleration
+            } else if(getAccelerator()!=0 && leads && !getBoolean(boolValues.DERAILED)){
+                //the followers' pull is in the leader's acceleration (off the rails the wheels drive nothing)
                 appendMovement(cachedVectors[2].xCoord);
             }
         }

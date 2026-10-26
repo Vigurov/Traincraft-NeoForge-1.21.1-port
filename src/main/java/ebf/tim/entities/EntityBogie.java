@@ -142,8 +142,9 @@ public class EntityBogie {
             this.prevPosZ = this.posZ;
 
             if (flung) {
-                //off the rails it stays, even stopped over them: it has to be picked up and put back on
-                moveOffRail();
+                //off the rails it stays, even stopped over them: it has to be picked up and put back on. A heavy
+                //train ploughs on for a while (a few blocks), not stopping dead
+                moveOffRail(0.94);
                 velocity[2]=0;velocity[3]=0;
                 return;
             }
@@ -503,8 +504,9 @@ public class EntityBogie {
         if (Math.abs(step) * 20 > Math.sqrt(CURVE_LIMIT * radius)) {
             //too fast for this curve: off the rails, outwards (the cars that follow have no speed of their own, only
             //the pull: what counts is how fast it really goes)
+            //it goes on straight, where it was heading, and a little outwards, while the rails curve away
             flung = true;
-            double ox = normCpx * Math.abs(step) * 0.4, oz = normCpz * Math.abs(step) * 0.4;
+            double ox = normCpx * Math.abs(step) * 0.15, oz = normCpz * Math.abs(step) * 0.15;
             setPositionRelative(tx * step + ox, 0.0D, tz * step + oz);
             velocity[0] = tx * step + ox;
             velocity[1] = tz * step + oz;
@@ -518,10 +520,14 @@ public class EntityBogie {
     }
 
     private void moveOffRail(){
+        moveOffRail(0.85);
+    }
+
+    private void moveOffRail(double keep){
         //ploughing through the ground: a derailed train comes to a stop within a second or so
         yOffset = GROUND_Y;
-        velocity[0]*=0.85;
-        velocity[1]*=0.85;
+        velocity[0]*=keep;
+        velocity[1]*=keep;
         railPathZ=0;railPathX=0;
         //broken or absurd speeds would make the loop below run (almost) forever and freeze the server
         for (int i = 0; i < 4; i++) {

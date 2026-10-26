@@ -834,7 +834,8 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
 
         //scale drag for derail, or air lateral friction. if you do both at the same time then it's way too much.
         if(getBoolean(boolValues.DERAILED)){
-            drag*=CommonUtil.getBlockAt(level(),getX(),getY(),getZ()).getFriction();
+            //the ground's grip (ice slides on): blocks give 0.6, which took a whole train's speed in a couple of ticks
+            drag*=0.9f + 0.1f * CommonUtil.getBlockAt(level(),getX(),getY(),getZ()).getFriction();
         } else if (cachedVectors[2].yCoord > 0) {
             drag -= ((getFriction() * cachedVectors[2].yCoord * 4.448f));
         }
@@ -1158,6 +1159,8 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
     private static final double PUSH_TOP_SPEED = 0.06;
     /** up to this mass (kg) a push gives way at the full rate; a heavier train in proportion less */
     private static final double PUSH_MASS = 30000;
+    /** running into a derailed car faster than this (blocks a tick, 20 km/h) derails the one running in too */
+    private static final double WRECK_SPEED = 0.28;
     /** how hard cars bounce off each other: 0 they stay together, 1 they swap their speeds */
     private static final double RESTITUTION = 0.35;
     /** the autotest's debugcollide=1 */
@@ -1174,8 +1177,8 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
         double dx = other.getX() - getX(), dz = other.getZ() - getZ(), d = Math.sqrt(dx * dx + dz * dz);
         if (d < 1e-3) return;
         double ux = dx / d, uz = dz / d;
-        boolean thisDriven = consistDriver() != null && consistDriver().getAccelerator() != 0;
-        boolean otherDriven = other.consistDriver() != null && other.consistDriver().getAccelerator() != 0;
+        boolean thisDriven = consistDriver() != null && consistDriver().getAccelerator() != 0 && !consistDriver().getBoolean(boolValues.DERAILED);
+        boolean otherDriven = other.consistDriver() != null && other.consistDriver().getAccelerator() != 0 && !other.consistDriver().getBoolean(boolValues.DERAILED);
         double m1 = thisDriven ? Double.POSITIVE_INFINITY : consistMass(), m2 = otherDriven ? Double.POSITIVE_INFINITY : other.consistMass();
         if (Double.isInfinite(m1) && Double.isInfinite(m2)) return;
         //speeds along the line between them, from how far each really moved last tick (the bogies' velocity
@@ -1187,7 +1190,15 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
                 "collide t=%d %s->%s d=%.2f v1=%.3f v2=%.3f closing=%.3f m1=%.0f m2=%.0f", tickCount, getId(), other.getId(), d, v1, v2, closing, m1, m2));
         if (closing <= 0.001) return;
         double inv1 = Double.isInfinite(m1) ? 0 : 1 / m1, inv2 = Double.isInfinite(m2) ? 0 : 1 / m2;
-        double jimp = (1 + RESTITUTION) * closing / (inv1 + inv2);
+        //into something off the rails it is a crash, not a bump of buffers: they stay together, and a hard one
+        //(over about 20 km/h) takes the other off the rails as well
+        boolean wreck = getBoolean(boolValues.DERAILED) || other.getBoolean(boolValues.DERAILED);
+        double jimp = (1 + (wreck ? 0 : RESTITUTION)) * closing / (inv1 + inv2);
+        if (wreck && closing > WRECK_SPEED) {
+            for (GenericRailTransport t : new GenericRailTransport[]{this, other}) {
+                if (t.frontBogie != null && t.backBogie != null) t.frontBogie.flung = t.backBogie.flung = true;
+            }
+        }
         double n1 = v1 - jimp * inv1, n2 = v2 + jimp * inv2;
         if (inv1 > 0) for (GenericRailTransport t : getConsist()) t.setSpeedAlong(n1, ux, uz);
         if (inv2 > 0) for (GenericRailTransport t : other.getConsist()) t.setSpeedAlong(n2, ux, uz);
