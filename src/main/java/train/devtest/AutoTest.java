@@ -73,6 +73,12 @@ public class AutoTest {
             throw new RuntimeException(e);
         }
         NeoForge.EVENT_BUS.addListener(AutoTest::onTick);
+        //what hurts the player during a test
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.living.LivingDamageEvent.Post e) -> {
+            if (e.getEntity() instanceof net.minecraft.world.entity.player.Player) {
+                log("player hurt t=" + tick + " by " + e.getSource().getMsgId() + " " + e.getSource().getEntity() + " amount=" + e.getNewDamage());
+            }
+        });
         if (p.containsKey("soundlog")) {
             //soundlog=1  logs the sounds the client plays (but the steps and the like)
             NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.client.event.sound.PlaySoundEvent e) -> {
@@ -161,12 +167,23 @@ public class AutoTest {
                 }
                 if (p.containsKey("row")) {
                     //row=from,to,spacing  transports from..to of the registry one after another on one TiM rail line
-                    String[] g = p.getProperty("row").split(",");
-                    int from = Integer.parseInt(g[0]), to = Math.min(Integer.parseInt(g[1]), TiMGenericRegistry.TRANSPORTS.size() - 1), sp2 = Integer.parseInt(g[2]);
-                    run(level, sp, "traincraft:rail@0,0,0@" + ((to - from + 1) * sp2 + 10) + "@x");
-                    for (int n = from; n <= to; n++) {
-                        var id = BuiltInRegistries.ENTITY_TYPE.getKey(TiMGenericRegistry.TRANSPORTS.get(n).get());
-                        int x = 5 + (n - from) * sp2;
+                    //or row=spacing:index;index;...  just those
+                    java.util.List<Integer> ids = new java.util.ArrayList<>();
+                    int sp2;
+                    if (p.getProperty("row").contains(":")) {
+                        String[] g = p.getProperty("row").split(":");
+                        sp2 = Integer.parseInt(g[0]);
+                        for (String n : g[1].split(";")) ids.add(Integer.parseInt(n.trim()));
+                    } else {
+                        String[] g = p.getProperty("row").split(",");
+                        int from = Integer.parseInt(g[0]), to = Math.min(Integer.parseInt(g[1]), TiMGenericRegistry.TRANSPORTS.size() - 1);
+                        sp2 = Integer.parseInt(g[2]);
+                        for (int n = from; n <= to; n++) ids.add(n);
+                    }
+                    run(level, sp, "traincraft:rail@0,0,0@" + (ids.size() * sp2 + 10) + "@x");
+                    for (int k2 = 0; k2 < ids.size(); k2++) {
+                        var id = BuiltInRegistries.ENTITY_TYPE.getKey(TiMGenericRegistry.TRANSPORTS.get(ids.get(k2)).get());
+                        int x = 5 + k2 * sp2;
                         run(level, sp, id + "@" + x + ",0,0@-4");
                         rowNames.add(id.getPath());
                         rowX.add(x);
@@ -544,6 +561,23 @@ public class AutoTest {
                     client == null ? "none" : String.format("(%.2f,%.2f,%.2f yaw=%.1f yOff=%s)", client.getX() - base.getX(), client.getY() - base.getY(), client.getZ() - base.getZ(), client.getYRot(),
                             client.backBogie == null ? "-" : String.format("%.4f", client.backBogie.yOffset))));
         }
+        if (p.containsKey("drift") && base != null) {
+            //drift=tick  how far each placed transport went from where it was put (nothing drives them), at that tick
+            if (tick == 21) server.execute(() -> { for (GenericRailTransport t : placed) driftStart.put(t, t.position()); });
+            if (tick == Integer.parseInt(p.getProperty("drift"))) server.execute(() -> {
+                int n = 0;
+                for (GenericRailTransport t : placed) {
+                    var from = driftStart.get(t);
+                    double d = from == null ? -1 : from.distanceTo(t.position());
+                    if (d > 0.05) {
+                        n++;
+                        log(String.format("drift %-34s %.2f derailed=%s pitch=%.1f riders=%s", BuiltInRegistries.ENTITY_TYPE.getKey(t.getType()).getPath(), d,
+                                t.getBoolean(GenericRailTransport.boolValues.DERAILED), t.getXRot(), t.getPassengers().size()));
+                    }
+                }
+                log("drift: " + n + " of " + placed.size() + " moved; player rides " + (sp.getVehicle() == null ? "nothing" : sp.getVehicle().getType()));
+            });
+        }
         if (p.containsKey("row") && p.containsKey("rowshots") && !rowNames.isEmpty()) {
             //rowshots=every  the camera goes from one transport of the row to the next, a picture of each from the side
             int rowEvery = Integer.parseInt(p.getProperty("rowshots")), k = (tick - 40) / rowEvery, phase = (tick - 40) % rowEvery;
@@ -576,6 +610,7 @@ public class AutoTest {
     }
 
     private static BlockPos machineAt;
+    private static final java.util.Map<GenericRailTransport, net.minecraft.world.phys.Vec3> driftStart = new java.util.HashMap<>();
     private static final java.util.List<String> rowNames = new java.util.ArrayList<>();
     private static final java.util.List<Integer> rowX = new java.util.ArrayList<>();
     private static final java.util.Map<GenericRailTransport, net.minecraft.world.phys.Vec3> fleetStart = new java.util.HashMap<>();

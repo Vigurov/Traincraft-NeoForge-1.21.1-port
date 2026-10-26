@@ -93,8 +93,14 @@ public class EntityTrainCore extends GenericRailTransport {
         //scale based on power and velocity
         cachedVectors[2].xCoord=accel* (10000f * (float)Math.pow(8f,((2.35f * -(0.3557/getPower()))-2.35f)));
         //if speed is greater than top speed from km/h to m/s divided by 20 to get per tick
-        if (Math.abs(frontBogie.velocity[0])+Math.abs(frontBogie.velocity[1]) >
-                unRatio(accelerator>0?transportTopSpeed():transportTopSpeedReverse())) {
+        //(forwards is a negative accelerator here; 1.12 had the two limits swapped, so locomotives went forwards
+        //at their reverse top speed and backwards at their full one)
+        //only a throttle pushing the way it already goes is held back by the limit: one set the other way brakes
+        //and reverses whatever the speed (1.12 cut any throttle once the speed was over the limit)
+        double towardsFront = frontBogie.velocity[0] * (frontBogie.posX - backBogie.posX) + frontBogie.velocity[1] * (frontBogie.posZ - backBogie.posZ);
+        boolean sameWay = (towardsFront > 0) == (accelerator < 0);
+        if (sameWay && Math.abs(frontBogie.velocity[0])+Math.abs(frontBogie.velocity[1]) >
+                unRatio(accelerator<0?transportTopSpeed():transportTopSpeedReverse())) {
             cachedVectors[2].xCoord=0;
         }
         //off the rails the wheels have nothing to push against
