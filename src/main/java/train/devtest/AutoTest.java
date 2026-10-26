@@ -396,6 +396,16 @@ public class AutoTest {
                     }
                 }
             });
+            if (p.containsKey("trackpath") && tick % 5 == 0 && tick >= go) server.execute(() -> {
+                //trackpath=1  where each locomotive's front bogie is, and on what
+                for (GenericRailTransport t : placed) {
+                    if (!(t instanceof EntityTrainCore) || t.frontBogie == null) continue;
+                    String st = t.frontBogie.debugState();
+                    String on = st.substring(st.lastIndexOf(' ', st.indexOf(" last=") > 0 ? st.indexOf(" last=") - 1 : st.length() - 1) + 1).replace(")", "");
+                    log(String.format("path %d z=%.0f x=%.2f dz=%.2f y=%.2f derailed=%s v=%.3f %s", tick, t.getZ() - base.getZ(), t.getX() - base.getX(),
+                            t.frontBogie.posZ - base.getZ(), t.frontBogie.posY - base.getY(), t.getBoolean(GenericRailTransport.boolValues.DERAILED), t.getVelocity(), st.substring(st.indexOf("v=") + 2).replaceAll("^[-0-9,.]+ ", "")));
+                }
+            });
             if (tick == i("ticks", 200) - 2) server.execute(() -> {
                 int moved = 0, total = 0;
                 for (GenericRailTransport t : placed) {
@@ -413,6 +423,19 @@ public class AutoTest {
                 log("fleet moved " + moved + " of " + total);
             });
         }
+        if (tick == 25 && p.containsKey("railscan")) server.execute(() -> {
+            //railscan=1  every classic track block near the spawn: position, kind, its piece and facing
+            StringBuilder b = new StringBuilder();
+            for (BlockPos q : BlockPos.betweenClosed(base.offset(-5, -1, -30), base.offset(40, 3, 30))) {
+                var be = level.getBlockEntity(q);
+                if (be instanceof train.common.tile.TileTCRail r) {
+                    b.append(String.format(" %d,%d,%d:%s/%d", q.getX() - base.getX(), q.getY() - base.getY(), q.getZ() - base.getZ(), r.getTrackName(), r.getFacing()));
+                } else if (be instanceof train.common.tile.TileTCRailGag) {
+                    b.append(String.format(" %d,%d,%d:gag", q.getX() - base.getX(), q.getY() - base.getY(), q.getZ() - base.getZ()));
+                }
+            }
+            log("railscan" + b);
+        });
         if (tick == 30 && p.containsKey("measure")) {
             measureAll(mc);
         }

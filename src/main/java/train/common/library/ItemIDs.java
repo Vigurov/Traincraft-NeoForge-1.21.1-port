@@ -123,4 +123,13 @@ public enum ItemIDs implements train.common.api.IItemIDs {
 	public Item getItem() {
 		return this.item;
 	}
+
+	/**
+	 * the tight 90 degree turns (1x1 and 3x3, plain and embedded): too sharp for a train, so they are no longer
+	 * made or in the creative tab. They stay registered: switches use the medium turn inside, and pieces already
+	 * in a world still drop their item.
+	 */
+	public static boolean isRetired(ItemIDs id) {
+		return id == tcRail1X1Turn || id == tcRailMediumTurn || id == tcRailEmbedded1X1Turn || id == tcRailEmbeddedMediumTurn;
+	}
 }

@@ -32,7 +32,7 @@ public class Traincraft {
                 for (var t : train.items.TCItems.ARMOUR) output.accept(t.get());
                 ebf.tim.items.ItemRail.addCreativeVariants(output::accept);
                 for (train.common.library.ItemIDs id : train.common.library.ItemIDs.values()) {
-                    if (id.item != null) output.accept(id.item);
+                    if (id.item != null && !train.common.library.ItemIDs.isRetired(id)) output.accept(id.item);
                 }
                 for (var item : TiMGenericRegistry.TRANSPORT_ITEMS) {
                     if (!train.core.handlers.ConfigHandler.enabled(item.get().info())) continue;

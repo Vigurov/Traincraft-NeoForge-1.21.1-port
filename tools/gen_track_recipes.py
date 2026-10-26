@@ -45,15 +45,24 @@ def split_args(s):
 src = open(SRC).read().replace('\r', '')
 # only pieces that have an item (1.12 had recipes for a few it never made)
 registered = {m.lower() for m in re.findall(r'ItemIDs\.(\w+)\.item = new ItemTCRail', src)}
+# the tight 90 degree turns are no longer made (ItemIDs.isRetired)
+registered -= {'tcrail1x1turn', 'tcrailmediumturn', 'tcrailembedded1x1turn', 'tcrailembeddedmediumturn'}
+# recipes that used the medium turn take the large turn instead
+SUBST = {'ItemIDs.tcRailMediumTurn.item': 'ItemIDs.tcRailLargeTurn.item', 'ItemIDs.tcRailEmbeddedMediumTurn.item': 'ItemIDs.tcRailEmbeddedLargeTurn.item'}
 os.makedirs(OUT, exist_ok=True)
+#only its own files (the classic track recipes): the folder holds the mod's other recipes too
 for f in os.listdir(OUT):
-    os.remove(os.path.join(OUT, f))
+    if f.startswith('tcrail'):
+        os.remove(os.path.join(OUT, f))
 n, names = 0, {}
 for m in re.finditer(r'Recipes\.(addRecipe|addShapelessRecipe)\((.*)\);', src):
     kind, a = m.group(1), split_args(m.group(2))
+    #ingredients only (a[0] is the result)
+    for k, v in SUBST.items():
+        a = [a[0]] + [x.replace(k, v) for x in a[1:]]
     om = re.match(r'new ItemStack\(ItemIDs\.(\w+)\.item,\s*(\d+)\)', a[0])
     result = {'id': 'traincraft:' + om.group(1).lower(), 'count': int(om.group(2))}
-    used = [om.group(1).lower()] + [x.lower() for x in re.findall(r'ItemIDs\.(\w+)\.item', m.group(2))]
+    used = [om.group(1).lower()] + [x.lower() for x in re.findall(r'ItemIDs\.(\w+)\.item', ','.join(a[1:]))]
     if any(u not in registered for u in used):
         continue
     name = om.group(1).lower()
