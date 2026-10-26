@@ -66,6 +66,25 @@ public class TraincraftClient {
                 return renderer;
             }
         }, train.blocks.TCBlocks.HIGH_STAR.get().asItem(), train.blocks.TCBlocks.SIGNAL.get().asItem());
+        //the blocks drawn by their renderers show those models as items too
+        event.registerItem(new net.neoforged.neoforge.client.extensions.common.IClientItemExtensions() {
+            private net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer renderer;
+
+            @Override
+            public net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer getCustomRenderer() {
+                if (renderer == null) renderer = new train.client.render.BlockItemModels();
+                return renderer;
+            }
+        }, modelItems());
+    }
+
+    /** the items drawn by train.client.render.BlockItemModels */
+    public static final String[] MODEL_ITEMS = {"block.bridgepillar", "block.windmill", "block.waterwheel", "block.dieselgenerator",
+            "block.lantern", "catenary_mast", "substation"};
+
+    private static net.minecraft.world.item.Item[] modelItems() {
+        return java.util.Arrays.stream(MODEL_ITEMS).map(n -> net.minecraft.core.registries.BuiltInRegistries.ITEM.get(
+                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(Traincraft.MODID, n))).toArray(net.minecraft.world.item.Item[]::new);
     }
 
     /** the recipe book: opening it, and Traincraft's pages (1.12 Traincraft.load) */

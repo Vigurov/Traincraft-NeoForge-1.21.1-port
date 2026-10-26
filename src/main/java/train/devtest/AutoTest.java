@@ -1033,6 +1033,21 @@ public class AutoTest {
                 });
             }
         }
+        if (p.containsKey("stroll")) {
+            //stroll=x,z,yaw,fromTick,toTick  the player stands there (from the base, on the ground), holds forward and
+            //its height is logged every 2 ticks: what it walks over
+            String[] w = p.getProperty("stroll").split(",");
+            int from = Integer.parseInt(w[3]), to = Integer.parseInt(w[4]);
+            if (tick == from) server.execute(() -> {
+                sp.getAbilities().flying = false;
+                sp.onUpdateAbilities();
+                sp.connection.teleport(base.getX() + Double.parseDouble(w[0]), base.getY(), base.getZ() + Double.parseDouble(w[1]), Float.parseFloat(w[2]), 0);
+            });
+            if (tick == from + 2) mc.options.keyUp.setDown(true);
+            if (tick == to) mc.options.keyUp.setDown(false);
+            if (tick >= from && tick <= to && tick % 2 == 0) server.execute(() ->
+                    log(String.format("stroll t=%d x=%.2f y=%.3f z=%.2f", tick, sp.getX(), sp.getY() - base.getY(), sp.getZ())));
+        }
         if (p.containsKey("walk") && tick >= Integer.parseInt(p.getProperty("walk").split(",")[1])) {
             //walk=index,fromTick,toTick  the player stands behind that placed transport (on a line along x) and walks
             //into it, holding forward; its speed is logged every 2 ticks

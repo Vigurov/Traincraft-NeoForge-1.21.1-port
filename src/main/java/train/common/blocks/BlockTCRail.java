@@ -35,6 +35,8 @@ public class BlockTCRail extends Block implements EntityBlock {
 	public static final IntegerProperty META = IntegerProperty.create("meta", 0, 15);
 	/** thin enough to walk over, there so the piece can be looked at and broken */
 	private static final VoxelShape OUTLINE = Block.box(0, 0, 0, 16, 2, 16);
+	/** the ties and the rails underfoot: something to stand on and step over, as low as the rail tops */
+	static final VoxelShape TRACK_BED = Block.box(0, 0, 0, 16, 1.5, 16);
 	private static final int[] matrixXZ = {0,-1,-2,1,2}, matrixY = {0,-1,-2,1,2};
 
 	public BlockTCRail(Properties properties) {
@@ -71,7 +73,7 @@ public class BlockTCRail extends Block implements EntityBlock {
 
 	@Override
 	protected VoxelShape getCollisionShape(BlockState state, BlockGetter world, BlockPos pos, CollisionContext context) {
-		return Shapes.empty();
+		return TRACK_BED;
 	}
 
 	@Override

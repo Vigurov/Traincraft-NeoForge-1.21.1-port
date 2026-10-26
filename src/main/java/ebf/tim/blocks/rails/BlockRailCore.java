@@ -78,7 +78,8 @@ public class BlockRailCore extends RailBlock implements EntityBlock {
 
     @Override
     protected VoxelShape getCollisionShape(BlockState state, BlockGetter world, BlockPos pos, CollisionContext context) {
-        return Shapes.empty();
+        //the ties underfoot, as low as the rail tops
+        return Block.box(0, 0, 0, 16, 2, 16);
     }
 
     @Override

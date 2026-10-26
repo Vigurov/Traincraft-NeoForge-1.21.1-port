@@ -68,7 +68,7 @@ public class BlockTCRailGag extends Block implements EntityBlock {
 		if (tileEntity instanceof TileTCRailGag gag && !gag.type.equals("null") && gag.bbHeight > 0.2f) {
 			return Block.box(0, 0, 0, 16, Math.min(16, gag.bbHeight * 16), 16);
 		}
-		return Shapes.empty();
+		return BlockTCRail.TRACK_BED;
 	}
 
 	@Override
