@@ -1,9 +1,10 @@
 {
  "replace": false,
  "values": [
-  "traincraft:blockcopper",
+  "traincraft:block.petroleum",
   "traincraft:blockaluminum",
-  "traincraft:orecopper",
-  "traincraft:orealuminum"
+  "traincraft:blockcopper",
+  "traincraft:orealuminum",
+  "traincraft:orecopper"
  ]
 }

@@ -1,11 +1,16 @@
 {
  "replace": false,
  "values": [
-  "traincraft:blockcopper",
+  "traincraft:block.ballast",
+  "traincraft:block.dieselgenerator",
+  "traincraft:block.distil",
+  "traincraft:block.hearthfurnace",
+  "traincraft:block.petroleum",
   "traincraft:blockaluminum",
+  "traincraft:blockcopper",
   "traincraft:blocksteel",
-  "traincraft:orecopper",
   "traincraft:orealuminum",
+  "traincraft:orecopper",
   "traincraft:oresteel"
  ]
 }

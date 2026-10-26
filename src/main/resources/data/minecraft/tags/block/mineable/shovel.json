@@ -1,0 +1,7 @@
+{
+ "replace": false,
+ "values": [
+  "traincraft:block.ballast",
+  "traincraft:block.oilsand"
+ ]
+}

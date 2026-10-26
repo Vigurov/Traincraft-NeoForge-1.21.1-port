@@ -1,0 +1,37 @@
+{
+ "type": "minecraft:crafting_shapeless",
+ "category": "misc",
+ "ingredients": [
+  {
+   "item": "minecraft:gravel"
+  },
+  {
+   "item": "minecraft:gravel"
+  },
+  {
+   "item": "minecraft:gravel"
+  },
+  {
+   "item": "minecraft:gravel"
+  },
+  {
+   "item": "minecraft:gravel"
+  },
+  {
+   "item": "minecraft:gravel"
+  },
+  {
+   "item": "minecraft:gravel"
+  },
+  {
+   "item": "minecraft:gravel"
+  },
+  {
+   "item": "minecraft:clay"
+  }
+ ],
+ "result": {
+  "id": "traincraft:block.ballast",
+  "count": 16
+ }
+}

@@ -1,5 +1,7 @@
 package train.devtest;
 
+import train.blocks.machines.MachineMenu;
+import train.blocks.machines.MachineTile;
 import com.mojang.blaze3d.platform.NativeImage;
 import ebf.tim.entities.EntityTrainCore;
 import ebf.tim.entities.GenericRailTransport;
@@ -189,6 +191,35 @@ public class AutoTest {
                 }
             });
         }
+        if (tick == 30 && p.containsKey("machine")) {
+            //machine=kind|slot:item:count,...|gui   places the machine, fills its slots, logs it every 100 ticks
+            server.execute(() -> {
+                String[] a = p.getProperty("machine").split("\\|");
+                BlockPos at = base.offset(-3, 0, 2);
+                level.setBlock(at, BuiltInRegistries.BLOCK.get(ResourceLocation.parse("traincraft:block." + a[0])).defaultBlockState(), 3);
+                var te = (MachineTile) level.getBlockEntity(at);
+                if (a.length > 1) for (String gv : a[1].split(",")) {
+                    String[] g = gv.split(":");
+                    te.slot(Integer.parseInt(g[0])).setStack(new net.minecraft.world.item.ItemStack(BuiltInRegistries.ITEM.get(ResourceLocation.parse(g[1] + ":" + g[2])), Integer.parseInt(g[3])));
+                }
+                if (a.length > 2 && a[2].equals("power")) level.setBlock(at.above(), Blocks.REDSTONE_BLOCK.defaultBlockState(), 3);
+                if (a.length > 2 && a[2].equals("power")) te.powered = true;
+                machineAt = at;
+                if (p.containsKey("machinegui")) {
+                    sp.openMenu(new net.minecraft.world.SimpleMenuProvider((id, inv, pl) -> new MachineMenu(id, inv, te), level.getBlockState(at).getBlock().getName()),
+                            buf -> { buf.writeBlockPos(at); buf.writeUtf(te.kind); });
+                }
+            });
+        }
+        if (machineAt != null && tick % 100 == 0) {
+            server.execute(() -> {
+                if (level.getBlockEntity(machineAt) instanceof MachineTile te) {
+                    log("machine t=" + tick + " lit=" + level.getBlockState(machineAt).getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.LIT) + " burn=" + te.burnTime + " cook=" + te.cookTime
+                            + " tank=" + (te.tank == null ? "-" : te.tank.getName() + ":" + te.tank.amount) + " energy=" + te.energy.getEnergyStored()
+                            + " slots=" + te.inventory.stream().map(s2 -> s2.getSlotID() + "=" + s2.getStackOrEmpty()).toList());
+                }
+            });
+        }
         if (tick == start - 15 && p.containsKey("give") && train != null) {
             //give=slotId:item:count;... into the driven transport's inventory
             server.execute(() -> {
@@ -260,6 +291,8 @@ public class AutoTest {
             mc.stop();
         }
     }
+
+    private static BlockPos machineAt;
 
     /** block@x,y,z  or  rail line: block@x,y,z@len@axis  or  transport item@x,y,z@playerSide */
     private static void run(ServerLevel level, ServerPlayer sp, String use) {

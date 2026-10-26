@@ -1,0 +1,16 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "misc",
+ "pattern": [
+  "CCC"
+ ],
+ "key": {
+  "C": {
+   "tag": "minecraft:coals"
+  }
+ },
+ "result": {
+  "id": "traincraft:dust.coal",
+  "count": 4
+ }
+}

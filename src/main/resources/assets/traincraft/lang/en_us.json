@@ -1279,5 +1279,18 @@
  "block.traincraft.block.traintabletier3": "Assembly Table III",
  "container.storage": "Storage",
  "container.output": "Output",
- "itemGroup.timcrafting": "Trains in Motion: parts"
+ "itemGroup.timcrafting": "Trains in Motion: parts",
+ "block.traincraft.block.distil": "Distillation Tower",
+ "block.traincraft.block.hearthfurnace": "Open Hearth Furnace",
+ "block.traincraft.block.dieselgenerator": "Diesel Generator",
+ "block.traincraft.block.petroleum": "Petroleum Ore",
+ "block.traincraft.block.oilsand": "Oil Sand",
+ "block.traincraft.block.ballast": "Ballast",
+ "item.traincraft.balloon": "Balloon",
+ "item.traincraft.propeller": "Propeller",
+ "item.traincraft.copperrail": "Copper Rail",
+ "item.traincraft.steelrail": "Steel Rail",
+ "item.traincraft.reinforcedplastic": "Reinforced Plastic",
+ "item.traincraft.reinforcedplates": "Reinforced Plates",
+ "item.traincraft.composite_wrench": "Composite Wrench"
 }

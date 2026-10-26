@@ -1,0 +1,12 @@
+{
+ "parent": "block/cube",
+ "textures": {
+  "particle": "traincraft:block/distil_off_north",
+  "north": "traincraft:block/distil_off_north",
+  "south": "traincraft:block/distil_off_south",
+  "east": "traincraft:block/distil_off_east",
+  "west": "traincraft:block/distil_off_west",
+  "up": "traincraft:block/distil_off_up",
+  "down": "traincraft:block/distil_off_down"
+ }
+}

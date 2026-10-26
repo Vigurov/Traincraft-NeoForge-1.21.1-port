@@ -1,0 +1,9 @@
+{
+ "type": "neoforge:add_features",
+ "biomes": "#minecraft:is_overworld",
+ "features": [
+  "traincraft:ore_oilsand",
+  "traincraft:ore_petroleum"
+ ],
+ "step": "underground_ores"
+}

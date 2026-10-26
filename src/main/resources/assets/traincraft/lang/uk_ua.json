@@ -226,5 +226,18 @@
  "block.traincraft.block.traintabletier3": "Складальний стіл III",
  "container.storage": "Сховище",
  "container.output": "Вихід",
- "itemGroup.timcrafting": "Trains in Motion: деталі"
+ "itemGroup.timcrafting": "Trains in Motion: деталі",
+ "block.traincraft.block.distil": "Ректифікаційна колона",
+ "block.traincraft.block.hearthfurnace": "Мартенівська піч",
+ "block.traincraft.block.dieselgenerator": "Дизель-генератор",
+ "block.traincraft.block.petroleum": "Нафтова руда",
+ "block.traincraft.block.oilsand": "Нафтоносний пісок",
+ "block.traincraft.block.ballast": "Баласт",
+ "item.traincraft.balloon": "Аеростат",
+ "item.traincraft.propeller": "Пропелер",
+ "item.traincraft.copperrail": "Мідна рейка",
+ "item.traincraft.steelrail": "Сталева рейка",
+ "item.traincraft.reinforcedplastic": "Армований пластик",
+ "item.traincraft.reinforcedplates": "Армовані пластини",
+ "item.traincraft.composite_wrench": "Композитний ключ"
 }

@@ -1,0 +1,18 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "misc",
+ "pattern": [
+  "WWW",
+  "W W",
+  "WWW"
+ ],
+ "key": {
+  "W": {
+   "tag": "minecraft:wool"
+  }
+ },
+ "result": {
+  "id": "traincraft:balloon",
+  "count": 1
+ }
+}

@@ -20,6 +20,7 @@ public class TraincraftClient {
         {
             e.register(ebf.tim.registry.TiMMenus.TRANSPORT.get(), ebf.tim.gui.TransportScreen::new);
             e.register(ebf.tim.registry.TiMMenus.TABLE.get(), ebf.tim.gui.TableScreen::new);
+            e.register(train.blocks.TCBlocks.MACHINE_MENU.get(), train.blocks.machines.MachineScreen::new);
         });
         modBus.addListener((net.neoforged.fml.event.lifecycle.FMLClientSetupEvent e) -> train.devtest.AutoTest.init());
         NeoForge.EVENT_BUS.addListener(ClientKeyHandler::onClientTick);
@@ -32,5 +33,6 @@ public class TraincraftClient {
         }
         event.registerBlockEntityRenderer(ebf.tim.registry.TiMBlocks.RAIL_TILE.get(), ebf.tim.render.RailRenderer::new);
         event.registerBlockEntityRenderer(train.common.ClassicTracks.TILE_RAIL, train.client.render.RenderTCRail::new);
+        event.registerBlockEntityRenderer(train.blocks.TCBlocks.MACHINE_TILE.get(), train.client.render.RenderGeneratorDiesel::new);
     }
 }

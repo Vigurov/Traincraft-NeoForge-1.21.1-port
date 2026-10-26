@@ -27,6 +27,7 @@ public class Traincraft {
             .displayItems((params, output) -> {
                 output.accept(TiMGenericRegistry.STAKE.get());
                 for (var t : ebf.tim.registry.TiMBlocks.TABLE_ITEMS) output.accept(t.get());
+                for (var t : train.blocks.TCBlocks.ITEMS) output.accept(t.get());
                 ebf.tim.items.ItemRail.addCreativeVariants(output::accept);
                 for (train.common.library.ItemIDs id : train.common.library.ItemIDs.values()) {
                     if (id.item != null) output.accept(id.item);
@@ -58,6 +59,11 @@ public class Traincraft {
         ebf.tim.registry.TiMFluids.TYPES.register(modBus);
         ebf.tim.registry.TiMFluids.FLUIDS.register(modBus);
         ebf.tim.registry.TiMMenus.MENUS.register(modBus);
+        train.blocks.TCBlocks.init();
+        train.blocks.TCBlocks.MENUS.register(modBus);
+        modBus.addListener((net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent e) ->
+                e.registerBlockEntity(net.neoforged.neoforge.capabilities.Capabilities.EnergyStorage.BLOCK, train.blocks.TCBlocks.MACHINE_TILE.get(),
+                        (be, side) -> be.kind.equals("dieselgenerator") ? be.energyOut : null));
         TiMGenericRegistry.ENTITIES.register(modBus);
         ebf.tim.registry.TiMBlocks.BLOCKS.register(modBus);
         ebf.tim.registry.TiMBlocks.TILES.register(modBus);

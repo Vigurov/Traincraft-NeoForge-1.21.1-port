@@ -1,0 +1,12 @@
+{
+ "parent": "block/cube",
+ "textures": {
+  "particle": "traincraft:block/furnace_off_north",
+  "north": "traincraft:block/furnace_off_north",
+  "south": "traincraft:block/furnace_off_south",
+  "east": "traincraft:block/furnace_off_east",
+  "west": "traincraft:block/furnace_off_west",
+  "up": "traincraft:block/furnace_off_up",
+  "down": "traincraft:block/furnace_off_down"
+ }
+}
