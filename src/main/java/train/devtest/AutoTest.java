@@ -127,7 +127,7 @@ public class AutoTest {
         if (tick == 20) {
             //world changes run on the server thread (off it the level hands out no block entities)
             server.execute(() -> {
-                level.setDayTime(6000);
+                level.setDayTime(i("time", 6000));
                 base = BlockPos.containing(sp.getX(), sp.getY(), sp.getZ());
                 log("base " + base);
                 for (String use : p.getProperty("use", "").split(";")) {
@@ -264,6 +264,10 @@ public class AutoTest {
                     sp.getInventory().setItem(9 + n, stack);
                 }
             });
+        }
+        if (p.containsKey("lamp") && tick == Integer.parseInt(p.getProperty("lamp")) && train != null) {
+            //lamp=tick  switches the driven transport's lamps
+            server.execute(() -> train.interact(sp, false, false, 5));
         }
         if (p.containsKey("horn") && tick == Integer.parseInt(p.getProperty("horn")) && train != null) {
             server.execute(() -> train.interact(sp, false, false, 9));

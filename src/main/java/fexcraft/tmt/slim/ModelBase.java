@@ -60,7 +60,7 @@ public class ModelBase extends ArrayList<ModelRendererTurbo> {
 			}
 			GL11.glPushMatrix();
 			boolean bright = RenderContext.fullBright;
-			if (part.ignoresLighting) {
+			if (part.ignoresLighting || (RenderContext.lampsOn && part.boxName.contains("lamp"))) {
 				RenderContext.fullBright = true;
 			}
 			GL11.glTranslatef(part.rotationPointX * 0.0625F, part.rotationPointY * 0.0625F, part.rotationPointZ * 0.0625F);

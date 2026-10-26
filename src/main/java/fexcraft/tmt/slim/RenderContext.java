@@ -20,6 +20,8 @@ public final class RenderContext {
     public static ResourceLocation texture;
     public static int light = LightTexture.FULL_BRIGHT, overlay = OverlayTexture.NO_OVERLAY;
     public static boolean fullBright;
+    /**the transport being drawn has its lamps on: its "lamp" parts glow (TC 4.5 ModelRenderHelper)*/
+    public static boolean lampsOn;
     /**GL_TEXTURE_2D disabled: draw with the vertex colour on a white part of the block atlas*/
     public static boolean untextured;
     private static ResourceLocation boundBeforeUntextured;

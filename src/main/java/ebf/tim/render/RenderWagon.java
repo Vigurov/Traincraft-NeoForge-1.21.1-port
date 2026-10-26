@@ -55,6 +55,7 @@ public class RenderWagon extends EntityRenderer<GenericRailTransport> {
         float pitch = Mth.lerp(partialTick, entity.xRotO, entity.getXRot());
         RenderContext.begin(pose, buffers, packedLight, null);
         int depth = RenderContext.depth;
+        RenderContext.lampsOn = entity.getBoolean(GenericRailTransport.boolValues.LAMP);
         try {
             doRender(entity, yaw, pitch, entity.backBogie != null ? entity.backBogie.yOffset : 0, false, null);
         } catch (RuntimeException e) {
@@ -64,6 +65,7 @@ public class RenderWagon extends EntityRenderer<GenericRailTransport> {
             }
             while (RenderContext.depth > depth) fexcraft.tmt.slim.GL11.glPopMatrix();
         } finally {
+            RenderContext.lampsOn = false;
             RenderContext.end();
         }
     }
