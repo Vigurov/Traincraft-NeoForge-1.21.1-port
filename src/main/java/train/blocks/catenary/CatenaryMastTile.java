@@ -90,6 +90,24 @@ public class CatenaryMastTile extends BlockEntity {
         return null;
     }
 
+    /** for tests: how far across from (x, z) the nearest span is and how high its wire is over y: {across, above} */
+    public static double[] nearestSpan(Level level, double x, double y, double z) {
+        double[] best = {Double.MAX_VALUE, 0};
+        for (CatenaryMastTile t : loaded(level)) {
+            if (t.isRemoved()) continue;
+            Vec3 a = t.contactPoint();
+            for (BlockPos o : t.links) {
+                if (o.asLong() < t.worldPosition.asLong() || !(level.getBlockEntity(o) instanceof CatenaryMastTile other)) continue;
+                Vec3 b = other.contactPoint();
+                double dx = b.x - a.x, dz = b.z - a.z, l2 = dx * dx + dz * dz;
+                double s = l2 < 1e-6 ? 0 : Math.max(0, Math.min(1, ((x - a.x) * dx + (z - a.z) * dz) / l2));
+                double d = Math.hypot(a.x + dx * s - x, a.z + dz * s - z);
+                if (d < best[0]) best = new double[]{d, a.y + (b.y - a.y) * s - y};
+            }
+        }
+        return best;
+    }
+
     public void setFeeder(BlockPos substation) {
         feeder = substation == null ? null : substation.immutable();
         changed();

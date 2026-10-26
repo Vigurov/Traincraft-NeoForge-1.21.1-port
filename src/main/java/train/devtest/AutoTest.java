@@ -941,6 +941,19 @@ public class AutoTest {
                 if (cap != null) cap.receiveEnergy(Integer.parseInt(f[3]), false);
             });
         }
+        if (p.containsKey("wirelog") && base != null && tick % 5 == 0) {
+            //wirelog=1  each electric: where, how far across the nearest contact wire is and how high over its rails,
+            //the wire height its pantographs get, and whether it pulls
+            server.execute(() -> {
+                for (GenericRailTransport t : placed) {
+                    if (!(t instanceof EntityTrainCore c) || t.frontBogie == null || !t.getTypes().contains(ebf.tim.TrainsInMotion.transportTypes.ELECTRIC)) continue;
+                    double railTop = t.getY() + (t.frontBogie.yOffset + t.backBogie.yOffset) * 0.5;
+                    double[] n = CatenaryMastTile.nearestSpan(level, t.getX(), railTop, t.getZ());
+                    log(String.format("wire t=%d x=%.2f y=%.2f z=%.2f across=%.2f above=%.2f height=%.2f pull=%s v=%.3f", tick, t.getX() - base.getX(), railTop - base.getY(),
+                            t.getZ() - base.getZ(), n[0], n[1], t.entityData().get(GenericRailTransport.WIRE_HEIGHT), c.hasTraction(), t.getVelocity()));
+                }
+            });
+        }
         if (p.containsKey("catlog") && base != null && tick % 20 == 0) {
             //catlog=1  the energy at each mast (by x), and each placed transport's tank and engine
             server.execute(() -> {
@@ -1432,6 +1445,11 @@ public class AutoTest {
         if (id.equals(ResourceLocation.fromNamespaceAndPath("traincraft", "catenary_mast"))) {
             //catenary_mast@x,y,z@facing  (the way its cantilever points: north/east/south/west)
             var facing = net.minecraft.core.Direction.byName(a.length > 2 ? a[2] : "east");
+            if (!level.getBlockState(pos).isAir()) {
+                //a player could not put it there either
+                log("mast at " + pos + " not placed: " + level.getBlockState(pos).getBlock());
+                return;
+            }
             if (level.getBlockState(pos.below()).isAir()) level.setBlock(pos.below(), Blocks.STONE.defaultBlockState(), 3);
             level.setBlock(pos, TCBlocks.CATENARY_MAST.get().defaultBlockState().setValue(CatenaryMastBlock.FACING, facing), 3);
             log("mast at " + pos + " facing " + facing);
