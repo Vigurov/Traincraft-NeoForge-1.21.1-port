@@ -1,0 +1,16 @@
+{
+ "variants": {
+  "facing=north": {
+   "model": "traincraft:block/block.signal"
+  },
+  "facing=east": {
+   "model": "traincraft:block/block.signal"
+  },
+  "facing=south": {
+   "model": "traincraft:block/block.signal"
+  },
+  "facing=west": {
+   "model": "traincraft:block/block.signal"
+  }
+ }
+}

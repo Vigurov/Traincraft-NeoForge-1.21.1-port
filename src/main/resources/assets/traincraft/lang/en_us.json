@@ -1312,5 +1312,7 @@
  "item.traincraft.helmet_suit_paintable": "Composite Suit's Helmet (Paintable)",
  "item.traincraft.pants_suit_paintable": "Composite Suit's Pants (Paintable)",
  "item.traincraft.boots_suit_paintable": "Composite Suit's Boots (Paintable)",
- "item.traincraft.jacket_suit_paintable": "Composite Suit's Chest (Paintable)"
+ "item.traincraft.jacket_suit_paintable": "Composite Suit's Chest (Paintable)",
+ "block.traincraft.block.highstar": "High Star Switch Stand",
+ "block.traincraft.block.signal": "Signal"
 }

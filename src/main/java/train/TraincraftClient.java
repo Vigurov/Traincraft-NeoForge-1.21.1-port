@@ -52,6 +52,16 @@ public class TraincraftClient {
                 return net.minecraft.util.FastColor.ARGB32.opaque(((train.items.ItemTCArmor) stack.getItem()).getColor(stack));
             }
         }, paintable().toArray(new net.minecraft.world.item.Item[0]));
+        //the switch stand and signal items draw their models
+        event.registerItem(new net.neoforged.neoforge.client.extensions.common.IClientItemExtensions() {
+            private net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer renderer;
+
+            @Override
+            public net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer getCustomRenderer() {
+                if (renderer == null) renderer = new train.client.render.RenderSwitchBlocks.Items();
+                return renderer;
+            }
+        }, train.blocks.TCBlocks.HIGH_STAR.get().asItem(), train.blocks.TCBlocks.SIGNAL.get().asItem());
     }
 
     /** the recipe book: opening it, and Traincraft's pages (1.12 Traincraft.load) */
@@ -110,6 +120,8 @@ public class TraincraftClient {
         event.registerBlockEntityRenderer(train.blocks.TCBlocks.MACHINE_TILE.get(), train.client.render.RenderGeneratorDiesel::new);
         event.registerBlockEntityRenderer(train.blocks.TCBlocks.LANTERN_TILE.get(), train.client.render.RenderLantern::new);
         event.registerBlockEntityRenderer(train.blocks.TCBlocks.PILLAR_TILE.get(), train.client.render.RenderBridgePillar::new);
+        event.registerBlockEntityRenderer(train.blocks.TCBlocks.SWITCH_STAND_TILE.get(), train.client.render.RenderSwitchBlocks::new);
+        event.registerBlockEntityRenderer(train.blocks.TCBlocks.SIGNAL_TILE.get(), train.client.render.RenderSwitchBlocks::new);
         train.blocks.lantern.LanternBlock.openScreen = t -> net.minecraft.client.Minecraft.getInstance().setScreen(new train.client.gui.LanternScreen(t));
     }
 }

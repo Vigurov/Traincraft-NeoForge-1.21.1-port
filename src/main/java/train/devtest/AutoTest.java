@@ -251,6 +251,36 @@ public class AutoTest {
                 }
             });
         }
+        if (tick == 25 && p.containsKey("hand")) {
+            //hand=item  in the main hand
+            server.execute(() -> sp.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND,
+                    new net.minecraft.world.item.ItemStack(BuiltInRegistries.ITEM.get(ResourceLocation.parse(p.getProperty("hand"))))));
+        }
+        if (p.containsKey("toggle") && tick == Integer.parseInt(p.getProperty("toggle").split("@")[1])) {
+            //toggle=x,y,z@tick  right clicks the block there (a switch stand)
+            server.execute(() -> {
+                String[] xyz = p.getProperty("toggle").split("@")[0].split(",");
+                BlockPos at = base.offset(Integer.parseInt(xyz[0]), Integer.parseInt(xyz[1]), Integer.parseInt(xyz[2]));
+                var hit = new net.minecraft.world.phys.BlockHitResult(net.minecraft.world.phys.Vec3.atCenterOf(at), net.minecraft.core.Direction.UP, at, false);
+                log("toggle " + at + " -> " + level.getBlockState(at).useWithoutItem(level, sp, hit));
+            });
+        }
+        if (p.containsKey("probe") && tick % 40 == 0 && base != null) {
+            //probe=x,y,z;...  logs switch/signal strengths and classic switch track states there
+            server.execute(() -> {
+                StringBuilder b = new StringBuilder();
+                for (String pr : p.getProperty("probe").split(";")) {
+                    String[] xyz = pr.split(",");
+                    BlockPos at = base.offset(Integer.parseInt(xyz[0]), Integer.parseInt(xyz[1]), Integer.parseInt(xyz[2]));
+                    var be = level.getBlockEntity(at);
+                    b.append(" [").append(pr).append(" ").append(be == null ? "-" : be.getClass().getSimpleName());
+                    if (be instanceof ebf.tim.blocks.TileSwitch t) b.append(" strength=").append(t.getStrength()).append(" facing=").append(t.facing());
+                    if (be instanceof train.common.tile.TileTCRail r) b.append(" ").append(r.getTrackName()).append(" switch=").append(r.getSwitchState());
+                    b.append("]");
+                }
+                log("probe t=" + tick + b);
+            });
+        }
         if (tick == 40 && p.containsKey("viewfront")) {
             mc.options.setCameraType(net.minecraft.client.CameraType.THIRD_PERSON_FRONT);
         }

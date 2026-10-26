@@ -259,5 +259,7 @@
  "item.traincraft.helmet_suit_paintable": "Шолом композитного костюма (фарбується)",
  "item.traincraft.pants_suit_paintable": "Штани композитного костюма (фарбуються)",
  "item.traincraft.boots_suit_paintable": "Чоботи композитного костюма (фарбуються)",
- "item.traincraft.jacket_suit_paintable": "Нагрудник композитного костюма (фарбується)"
+ "item.traincraft.jacket_suit_paintable": "Нагрудник композитного костюма (фарбується)",
+ "block.traincraft.block.highstar": "Стрілочний перевідник",
+ "block.traincraft.block.signal": "Світлофор"
 }

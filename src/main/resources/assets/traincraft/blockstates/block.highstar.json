@@ -1,0 +1,16 @@
+{
+ "variants": {
+  "facing=north": {
+   "model": "traincraft:block/block.highstar"
+  },
+  "facing=east": {
+   "model": "traincraft:block/block.highstar"
+  },
+  "facing=south": {
+   "model": "traincraft:block/block.highstar"
+  },
+  "facing=west": {
+   "model": "traincraft:block/block.highstar"
+  }
+ }
+}

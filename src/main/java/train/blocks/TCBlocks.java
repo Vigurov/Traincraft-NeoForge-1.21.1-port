@@ -52,6 +52,14 @@ public class TCBlocks {
     public static final DeferredBlock<train.blocks.bench.BlockTrainWorkbench> PART_TABLE = block("block.parttable", () -> new train.blocks.bench.BlockTrainWorkbench(
             BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.5F).sound(SoundType.WOOD)));
 
+    /** 1.12 BlockSwitchStand (rock) and BlockTCSignal (lit like a lamp); both drawn by RenderSwitchBlocks */
+    public static final DeferredBlock<ebf.tim.blocks.BlockSwitch> HIGH_STAR = block("block.highstar", () -> new ebf.tim.blocks.BlockSwitch(
+            BlockBehaviour.Properties.of().mapColor(MapColor.METAL).strength(1.5F).sound(SoundType.METAL).noOcclusion(),
+            train.blocks.switchstand.TileSwitchStand::new));
+    public static final DeferredBlock<ebf.tim.blocks.BlockSignal> SIGNAL = block("block.signal", () -> new ebf.tim.blocks.BlockSignal(
+            BlockBehaviour.Properties.of().mapColor(MapColor.METAL).strength(1.0F).sound(SoundType.METAL).noOcclusion().lightLevel(s -> 15),
+            train.blocks.signal.TileTCSignal::new));
+
     public static final DeferredItem<Item> BALLOON = item("balloon"), PROPELLER = item("propeller"),
             COPPER_RAIL = item("copperrail"), STEEL_RAIL = item("steelrail"),
             REINFORCED_PLASTIC = item("reinforcedplastic"), REINFORCED_PLATES = item("reinforcedplates"),
@@ -72,6 +80,14 @@ public class TCBlocks {
     @SuppressWarnings("DataFlowIssue")
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<train.blocks.bench.BlockTrainWorkbench.Tile>> WORKBENCH_TILE = TiMBlocks.TILES.register("parttable",
             () -> BlockEntityType.Builder.of(train.blocks.bench.BlockTrainWorkbench.Tile::new, PART_TABLE.get()).build(null));
+
+    @SuppressWarnings("DataFlowIssue")
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<train.blocks.switchstand.TileSwitchStand>> SWITCH_STAND_TILE = TiMBlocks.TILES.register("highstar",
+            () -> BlockEntityType.Builder.of(train.blocks.switchstand.TileSwitchStand::new, HIGH_STAR.get()).build(null));
+
+    @SuppressWarnings("DataFlowIssue")
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<train.blocks.signal.TileTCSignal>> SIGNAL_TILE = TiMBlocks.TILES.register("signal",
+            () -> BlockEntityType.Builder.of(train.blocks.signal.TileTCSignal::new, SIGNAL.get()).build(null));
 
     public static final DeferredHolder<MenuType<?>, MenuType<train.blocks.bench.TrainWorkbenchMenu>> WORKBENCH_MENU =
             MENUS.register("trainworkbench", () -> IMenuTypeExtension.create(train.blocks.bench.TrainWorkbenchMenu::fromNetwork));

@@ -13,6 +13,8 @@
   "traincraft:orecopper",
   "traincraft:oresteel",
   "traincraft:block.lantern",
-  "traincraft:block.windmill"
+  "traincraft:block.windmill",
+  "traincraft:block.highstar",
+  "traincraft:block.signal"
  ]
 }
