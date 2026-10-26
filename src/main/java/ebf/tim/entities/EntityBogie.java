@@ -60,6 +60,8 @@ public class EntityBogie {
      * track, which left the wheels a little above the railheads (0.04 and 0.07 blocks); these put them on top
      */
     public static final float TIM_RAIL_Y = 0.405f, CLASSIC_TRACK_Y = 0.3425f, VANILLA_RAIL_Y = 0.3425f;
+    /** off the rails the wheels stand on the ground, the rail's height (1/16 of a block) lower than on a vanilla rail */
+    public static final float GROUND_Y = VANILLA_RAIL_Y - 0.0625f;
     /**what 1.12 kept in the minecart's entity data: the TiM rails read the last used rail shape from here*/
     public final CompoundTag entityData = new CompoundTag();
 
@@ -379,6 +381,8 @@ public class EntityBogie {
 
     private void moveOffRail(){
         //ploughing through the ground: a derailed train comes to a stop within a second or so
+        //(1.12 kept the rail's height here, so a train that ran off the end of the track hovered above the grass)
+        yOffset = GROUND_Y;
         velocity[0]*=0.85;
         velocity[1]*=0.85;
         railPathZ=0;railPathX=0;

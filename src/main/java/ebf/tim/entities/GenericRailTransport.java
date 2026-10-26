@@ -1049,6 +1049,11 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
                     }
                 }
 
+                //cars coupled together keep their spacing through the coupling: bumping them apart as well made the
+                //coupling pull them back, and a pushed train shook back and forth (1.12 did the same)
+                if (colliding.host != null && getConsist().contains(colliding.host)) {
+                    return;
+                }
                 if (getBoolean(boolValues.BRAKE)) {
                     appendMovement(-(Math.max(Math.abs(getVelocity()), (Math.abs(colliding.host.getVelocity()))*0.25)+0.05)*0.5);
                 } else {
@@ -1284,7 +1289,9 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
         double dist = Math.sqrt(vecX * vecX + vecZ * vecZ);
         Double rest = linkRest.get(other.getId());
         if (rest == null) {
-            rest = Math.min(dist, (double)(getOptimalDistance(other) + other.getOptimalDistance(this)));
+            //the ends just touch (half of each one's length); 1.12 kept the distance at the moment of coupling when that
+            //was shorter, so cars that ran into each other stayed partly inside one another
+            rest = (double)(getOptimalDistance(other) + other.getOptimalDistance(this));
             linkRest.put(other.getId(), rest);
         }
         //moving towards our back (positive, the yaw vector points front -> back) closes up on a neighbour behind us.
@@ -1310,7 +1317,13 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
             }
             //move with the locomotive: towards the neighbour on its side when it pulls, away when it pushes, at its
             //speed (our own speed and direction are dropped: on curves they could turn round and run away) ...
-            double lvx = driver.frontBogie.velocity[0], lvz = driver.frontBogie.velocity[1];
+            //the locomotive's real move over the last tick: its bogie velocity holds only the new push on the ticks
+            //the acceleration is worked out, and then the cars took a push for a pull and jumped back
+            double lvx = driver.getX() - driver.xo, lvz = driver.getZ() - driver.zo;
+            if (Math.abs(lvx) + Math.abs(lvz) < 1.0E-4) {
+                lvx = driver.frontBogie.velocity[0];
+                lvz = driver.frontBogie.velocity[1];
+            }
             double leadSpeed = Math.abs(lvx) + Math.abs(lvz);
             double pull = (lvx * (driver.getX() - getX()) + lvz * (driver.getZ() - getZ())) >= 0 ? 1 : -1;
             frontBogie.velocity[0] = frontBogie.velocity[1] = 0;
