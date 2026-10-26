@@ -141,6 +141,14 @@ public class EntityBogie {
             this.prevPosY = this.posY;
             this.prevPosZ = this.posZ;
 
+            if (flung) {
+                moveOffRail();
+                if (Math.abs(velocity[0]) + Math.abs(velocity[1]) < 0.005) {
+                    flung = false;
+                }
+                velocity[2]=0;velocity[3]=0;
+                return;
+            }
             Block block = CommonUtil.getBlockAt(getWorld(), xFloor, yFloor, zFloor);
             if (!CommonUtil.isClassicTrack(block) && lastTrack != null) {
                 //a diagonal runs through block corners: right at one the bogie can be a hair inside an empty block
@@ -458,6 +466,16 @@ public class EntityBogie {
         return pl > 1e-6 && (px * rx + pz * rz) / pl < Math.cos(Math.PI / 4);
     }
 
+    /**
+     * how hard a curve can be taken: a bogie faster than sqrt(CURVE_LIMIT * radius) m/s (a block a metre, 20
+     * ticks a second) comes off. 3.5 m/s2 sideways is about where a real train tips over or climbs the rail; the
+     * Traincraft curves are a tenth of a real one's radius, so they count ten times as wide: a large turn takes
+     * about 45 km/h, a 45 degree switch 40
+     */
+    private static final double CURVE_LIMIT = 3.5 * 10;
+    /** came off the rails on a curve: rolls on the ground until it stops, it can be put back on the track then */
+    public boolean flung;
+
     private void moveOnTC90TurnRail(int j, double radius, double startX, double startZ){
         double controlX = posX - startX;
         double controlZ = posZ - startZ;
@@ -484,6 +502,16 @@ public class EntityBogie {
         //standing at the start of one rolling by itself
         double pull = velocity[2] * tx + velocity[3] * tz;
         double step = motionSqrt + pull;
+        if (Math.abs(step) * 20 > Math.sqrt(CURVE_LIMIT * radius)) {
+            //too fast for this curve: off the rails, outwards (the cars that follow have no speed of their own, only
+            //the pull: what counts is how fast it really goes)
+            flung = true;
+            double ox = normCpx * Math.abs(step) * 0.4, oz = normCpz * Math.abs(step) * 0.4;
+            setPositionRelative(tx * step + ox, 0.0D, tz * step + oz);
+            velocity[0] = tx * step + ox;
+            velocity[1] = tz * step + oz;
+            return;
+        }
         //onto the arc, then along its tangent
         setPosition(startX + (normCpx * radius), j, startZ + (normCpz * radius));
         setPositionRelative(tx * step, 0.0D, tz * step);

@@ -664,7 +664,8 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
                 //round a 45 degree switch was taken for derailed and dragged to a stop by the ground.
                 //The blocks below and above count too: at the top end of a slope a bogie is part way between
                 //the slope and the track one block up
-                setBoolean(boolValues.DERAILED, !onRails(frontBogie.posX, frontBogie.posY, frontBogie.posZ)
+                setBoolean(boolValues.DERAILED, frontBogie.flung || backBogie.flung
+                        || !onRails(frontBogie.posX, frontBogie.posY, frontBogie.posZ)
                         || !onRails(backBogie.posX, backBogie.posY, backBogie.posZ));
             }
 
