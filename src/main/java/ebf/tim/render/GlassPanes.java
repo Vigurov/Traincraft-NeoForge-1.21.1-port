@@ -36,8 +36,8 @@ public final class GlassPanes {
 
     private static final Map<Class<?>, Panes> BY_CLASS = new HashMap<>();
     private static final float CELL = 1 / 16f;
-    /** off with -Dtc.noglass=true */
-    private static final boolean ON = !Boolean.getBoolean("tc.noglass");
+    /** off for now (the windows found are not right on every model); on for work on it with -Dtc.glass=true */
+    private static final boolean ON = Boolean.getBoolean("tc.glass");
 
     public static void prepare(GenericRailTransport t) {
         if (!ON || BY_CLASS.containsKey(t.getClass()) || t.frontBogie == null) return;
