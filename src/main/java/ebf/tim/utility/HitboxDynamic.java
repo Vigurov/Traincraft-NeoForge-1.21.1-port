@@ -74,6 +74,22 @@ public class HitboxDynamic {
             float c = -sideAt + 2 * sideAt * i / ne;
             for (float e : new float[]{-endAt, endAt}) walkBoxes.add(new WalkBox(entity, e, c, s.floor(), t, h));
         }
+        //beyond the end walls up to the body's ends (a hopper's sloping ends, closed end parts): solid as high as the
+        //walls, or one would jump the end wall into the model and fall through it
+        float from = endAt + t / 2, len = s.halfBody() - from;
+        if (len > 0.05f) {
+            //squares no longer than the stretch (into the inside they would close it), as many across as cover it
+            int nl = (int) Math.ceil(len / 0.4f);
+            float cell = len / nl;
+            int nw = (int) Math.ceil(fw / cell);
+            for (int i = 0; i < nl; i++) {
+                float a = from + cell * (i + 0.5f);
+                for (int j = 0; j < nw; j++) {
+                    float c = -fw / 2 + fw / nw * (j + 0.5f);
+                    for (float sg : new float[]{-1, 1}) walkBoxes.add(new WalkBox(entity, sg * a, c, 0, cell, s.wall()));
+                }
+            }
+        }
     }
 
     public void position(double x, double y, double z, float pitch, float yaw){

@@ -627,6 +627,19 @@ public class AutoTest {
         if (tick == 30 && p.containsKey("measure")) {
             measureAll(mc);
         }
+        if (p.containsKey("hitboxes") && tick == 50) mc.getEntityRenderDispatcher().setRenderHitBoxes(true);
+        if (tick == 70 && p.containsKey("camabove") && !placed.isEmpty()) {
+            //camabove=index,back,up  the camera that far beside and over that placed transport, looking at its middle
+            String[] c = p.getProperty("camabove").split(",");
+            GenericRailTransport t = placed.get(Integer.parseInt(c[0]));
+            double back = Double.parseDouble(c[1]), up = Double.parseDouble(c[2]);
+            float pitch = (float) Math.toDegrees(Math.atan2(up, back));
+            server.execute(() -> {
+                sp.getAbilities().flying = true;
+                sp.onUpdateAbilities();
+                sp.connection.teleport(t.getX(), t.getY() + up - 1.62, t.getZ() - back, 0, pitch);
+            });
+        }
         if (tick == 100 && p.containsKey("camsmoke")) {
             //camsmoke=dist  the camera that far beside the first chimney of the first locomotive here, looking at it
             for (var e : mc.level.entitiesForRendering()) {
@@ -1467,13 +1480,15 @@ public class AutoTest {
                             if (h - railY > floor + 0.3f) high++;
                         }
                     }
+                    log(String.format(java.util.Locale.ROOT, "walkcls %-30s floor %.2f wall %.2f ends %.2f top %.2f cont %.2f halfIn %.2f body %.2f",
+                            id, floor, wall, endTop - railY, top - railY, all > 0 ? high / (float) all : 0f, halfIn, bodyHalf));
                     if (all > 0 && high < 0.7f * all) wall = floor;
                     boolean ends = endTop != -Float.MAX_VALUE && endTop - railY > floor + 0.35f && halfIn > 0.2f && halfIn < bodyHalf - 0.05f;
                     if (wall > floor + 0.35f && floor < 1.2f) {
                         //walls on both sides; the ends where the floor stops, or the body's ends when the floor runs on
                         float t2 = Math.max(0.08f, thick + 0.025f);
-                        log(String.format(java.util.Locale.ROOT, "walkshape tub(\"%s\", %.3ff, %.3ff, %.3ff, %.3ff, %.3ff);", id, floor,
-                                ends ? Math.min(wall, endTop - railY) : wall, w, t2, ends ? halfIn : bodyHalf - t2));
+                        log(String.format(java.util.Locale.ROOT, "walkshape tub(\"%s\", %.3ff, %.3ff, %.3ff, %.3ff, %.3ff, %.3ff);", id, floor,
+                                ends ? Math.min(wall, endTop - railY) : wall, w, t2, ends ? halfIn : bodyHalf - t2, bodyHalf));
                     } else if (floor < 1.0f) {
                         log(String.format(java.util.Locale.ROOT, "walkshape flat(\"%s\", %.3ff);", id, floor));
                     }
