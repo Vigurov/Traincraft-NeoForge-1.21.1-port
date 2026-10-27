@@ -486,6 +486,18 @@ public class AutoTest {
                 log("jukebox t=" + tick + " playing=" + cj.isPlaying() + " url=" + cj.getStreamURL() + " " + JukeboxClient.status(cj));
             }
         }
+        if (p.containsKey("rclick") && tick == Integer.parseInt(p.getProperty("rclick").split("@")[1])) {
+            //rclick=index@tick[@sneak]  the player right clicks that placed transport (empty hand); logs what opened
+            String[] r = p.getProperty("rclick").split("@");
+            GenericRailTransport t = placed.get(Integer.parseInt(r[0]));
+            server.execute(() -> {
+                sp.setShiftKeyDown(r.length > 2);
+                var res = t.interact(sp, net.minecraft.world.InteractionHand.MAIN_HAND);
+                sp.setShiftKeyDown(false);
+                log("rclick " + t.getClass().getSimpleName() + " sneak=" + (r.length > 2) + " -> " + res + " menu=" + sp.containerMenu.getClass().getSimpleName()
+                        + " riding=" + (sp.getVehicle() == t));
+            });
+        }
         if (p.containsKey("load") && tick == 40) {
             //load=index:count|index:count  fills that many inventory slots of those placed transports with logs (on
             //the server only, no screen opened: what the clients see of it comes through the synced cargo count)

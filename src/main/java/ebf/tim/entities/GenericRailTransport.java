@@ -357,6 +357,12 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
                     }
                     return true;
                 }
+                //its inventory or tanks: sneaking, or on one there is no seat in (a freight car could not be loaded at
+                //all: its screen only opened from a seat)
+                boolean storage = (inventory != null && !inventory.isEmpty()) || getTankCapacity() != null;
+                if (storage && (p.isShiftKeyDown() || getRiderOffsets() == null)) {
+                    return interact(p, isFront, isBack, 1);
+                }
                 //be sure the player has permission to enter the transport, and that the transport has a seat open.
                 if (getRiderOffsets() != null && getPermissions(p, false, true)) {
                     if (getPassengers().size() < getRiderOffsets().length && !p.isPassenger()) {
