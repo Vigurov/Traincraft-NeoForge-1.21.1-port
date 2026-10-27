@@ -128,6 +128,12 @@ public class Tessellator {
                 RenderContext.measure.add(face[i]);
             }
             if (RenderContext.measureFaces != null) RenderContext.measureFaces.add(face);
+            if (RenderContext.measureFaceUV != null) {
+                float[] uv = new float[pts.size() * 2];
+                for (int i = 0; i < pts.size(); i++) { uv[2 * i] = pts.get(i)[3]; uv[2 * i + 1] = pts.get(i)[4]; }
+                RenderContext.measureFaceUV.add(uv);
+                RenderContext.measureFaceTex.add(RenderContext.untextured ? null : RenderContext.texture);
+            }
             if (RenderContext.measureFaceUp != null) {
                 float mx = nx, my = ny, mz = nz;
                 if (mx == 0 && my == 0 && mz == 0 && pts.size() >= 3) {

@@ -57,6 +57,8 @@ public class RenderWagon extends EntityRenderer<GenericRailTransport> {
         CargoRender.prepare(entity);
         //its wheels onto the rails: found once (draws it into nothing too)
         WheelFit.prepare(entity);
+        //its windows, glazed: found once
+        GlassPanes.prepare(entity);
         RenderContext.begin(pose, buffers, packedLight, null);
         int depth = RenderContext.depth;
         RenderContext.lampsOn = entity.getBoolean(GenericRailTransport.boolValues.LAMP);
@@ -76,6 +78,7 @@ public class RenderWagon extends EntityRenderer<GenericRailTransport> {
         }
         renderCouplers(entity, partialTick, pose, buffers, packedLight);
         CargoRender.render(entity, yaw, pitch, pose, buffers, packedLight);
+        GlassPanes.render(entity, yaw, pitch, pose, buffers, packedLight);
     }
 
     private static final ResourceLocation COUPLER_TEX = ResourceLocation.withDefaultNamespace("textures/block/anvil.png");

@@ -28,6 +28,9 @@ public final class RenderContext {
     public static java.util.List<org.joml.Vector3f[]> measureFaces;
     /** while measuring: for each face, the y of its normal as drawn (below 0: turned down, unseen from above) */
     public static java.util.List<Float> measureFaceUp;
+    /** while measuring: each face's texture coordinates (u, v per corner) and texture (null untextured) */
+    public static java.util.List<float[]> measureFaceUV;
+    public static java.util.List<ResourceLocation> measureFaceTex;
     /** parts not drawn (an electric's folded pantograph while it is raised) */
     public static java.util.Set<ModelRendererTurbo> hidden;
     /** parts moved across the transport (its wheels onto the rails), and the transport's frame they are moved in */
