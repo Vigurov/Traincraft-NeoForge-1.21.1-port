@@ -40,7 +40,7 @@ public final class WalkShapes {
         tub("freightopenwagon", 0.550f, 1.487f, 0.563f, 0.080f, 1.362f, 1.813f);
         tub("tenderbr01", 0.937f, 1.585f, 0.688f, 0.275f, 0.500f, 1.550f);
         //the DB gondola's model sits off to one side, which the rays could not read: by eye, from its hitbox
-        tub("freightgondoladb", 0.61f, 1.48f, 0.70f, 0.08f, 1.78f, 1.88f);
+        tub("freightgondoladb", 0.61f, 1.32f, 0.70f, 0.08f, 1.78f, 1.88f);
         flat("bambooflatcarpassenger", 0.364f);
         flat("freightbulkheadflatcart", 0.535f);
         flat("flatcartdb", 0.532f);

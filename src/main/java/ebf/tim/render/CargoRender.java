@@ -103,26 +103,41 @@ public final class CargoRender {
 
     private static void heap(WalkShapes.Shape s, float fill, BlockState st, PoseStack pose, MultiBufferSource buffers, int light) {
         float halfLong = s.halfInside(), halfWide = s.halfWidth() - s.thickness();
-        int na = Math.max(1, Math.round(2 * halfLong / STEP)), nw = Math.max(1, Math.round(2 * halfWide / STEP));
-        float da = 2 * halfLong / na, dw = 2 * halfWide / nw;
         TextureAtlasSprite tex = topOf(st);
+        //coal's block is smooth tiles at its own size: twice as fine it reads as loose lumps
+        float grain = st.is(Blocks.COAL_BLOCK) ? 2 : 1;
+        //the cells end at every repeat of the texture: one running over it would take its neighbour's in the atlas
+        float[] xs = lines(-halfLong, halfLong, 1 / grain), zs = lines(-halfWide, halfWide, 1 / grain);
         VertexConsumer c = buffers.getBuffer(RenderType.entityCutout(TextureAtlas.LOCATION_BLOCKS));
         PoseStack.Pose p = pose.last();
-        for (int i = 0; i < na; i++) {
-            for (int j = 0; j < nw; j++) {
-                float x0 = -halfLong + da * i, x1 = x0 + da, z0 = -halfWide + dw * j, z1 = z0 + dw;
-                float h00 = height(s, fill, x0, z0, halfLong, halfWide), h10 = height(s, fill, x1, z0, halfLong, halfWide);
-                float h11 = height(s, fill, x1, z1, halfLong, halfWide), h01 = height(s, fill, x0, z1, halfLong, halfWide);
-                //the texture at its true size: one block's worth per block, wherever the cell lies in it
-                float u0 = frac(x0), u1 = u0 + da, v0 = frac(z0), v1 = v0 + dw;
-                float nx = (h00 - h10 + h01 - h11) / (2 * da), nz = (h00 - h01 + h10 - h11) / (2 * dw);
-                float nl = (float) Math.sqrt(nx * nx + 1 + nz * nz);
-                vertex(c, p, x0, h00, z0, tex.getU(u0), tex.getV(v0), nx / nl, 1 / nl, nz / nl, light);
-                vertex(c, p, x0, h01, z1, tex.getU(u0), tex.getV(v1), nx / nl, 1 / nl, nz / nl, light);
-                vertex(c, p, x1, h11, z1, tex.getU(u1), tex.getV(v1), nx / nl, 1 / nl, nz / nl, light);
-                vertex(c, p, x1, h10, z0, tex.getU(u1), tex.getV(v0), nx / nl, 1 / nl, nz / nl, light);
+        float y = height(s, fill, 0, 0, halfLong, halfWide);
+        for (int i = 0; i + 1 < xs.length; i++) {
+            for (int j = 0; j + 1 < zs.length; j++) {
+                float x0 = xs[i], x1 = xs[i + 1], z0 = zs[j], z1 = zs[j + 1];
+                float u0 = tile(x0, x1, grain), u1 = u0 + (x1 - x0) * grain, v0 = tile(z0, z1, grain), v1 = v0 + (z1 - z0) * grain;
+                vertex(c, p, x0, y, z0, tex.getU(u0), tex.getV(v0), 0, 1, 0, light);
+                vertex(c, p, x0, y, z1, tex.getU(u0), tex.getV(v1), 0, 1, 0, light);
+                vertex(c, p, x1, y, z1, tex.getU(u1), tex.getV(v1), 0, 1, 0, light);
+                vertex(c, p, x1, y, z0, tex.getU(u1), tex.getV(v0), 0, 1, 0, light);
             }
         }
+    }
+
+    /** from a to b: both ends and every multiple of step between them */
+    private static float[] lines(float a, float b, float step) {
+        java.util.List<Float> l = new java.util.ArrayList<>();
+        l.add(a);
+        for (float v = (float) (Math.floor(a / step) + 1) * step; v < b - 1e-4f; v += step) if (v > a + 1e-4f) l.add(v);
+        l.add(b);
+        float[] r = new float[l.size()];
+        for (int i = 0; i < r.length; i++) r[i] = l.get(i);
+        return r;
+    }
+
+    /** where in its texture repeat a cell from a to b (inside one repeat) starts, 0..1 */
+    private static float tile(float a, float b, float grain) {
+        float mid = (a + b) / 2 * grain;
+        return a * grain - (float) Math.floor(mid);
     }
 
     /** the texture of the block's top (hay's ends, not its banded side), its particle one when it has no top */

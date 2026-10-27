@@ -633,6 +633,26 @@ public class AutoTest {
             measureAll(mc);
         }
         if (p.containsKey("hitboxes") && tick == 50) mc.getEntityRenderDispatcher().setRenderHitBoxes(true);
+        if (p.containsKey("camviews") && !placed.isEmpty() && tick >= 80) {
+            //camviews=index;dx,dy,dz;dx,dy,dz...  the camera at each offset from that transport in turn (every 10
+            //ticks from 80), looking at its middle a block over its rails; a shot each (tc-view-N.png)
+            String[] v = p.getProperty("camviews").split(";");
+            GenericRailTransport t = placed.get(Integer.parseInt(v[0]));
+            int k = (tick - 80) / 10, phase = (tick - 80) % 10;
+            if (k + 1 < v.length) {
+                if (phase == 0) {
+                    String[] o = v[k + 1].split(",");
+                    double dx = Double.parseDouble(o[0]), dy = Double.parseDouble(o[1]), dz = Double.parseDouble(o[2]);
+                    float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz)) + 180, pitch = (float) Math.toDegrees(Math.atan2(dy - 1, Math.hypot(dx, dz)));
+                    server.execute(() -> {
+                        sp.getAbilities().flying = true;
+                        sp.onUpdateAbilities();
+                        sp.connection.teleport(t.getX() + dx, t.getY() + dy - 1.62, t.getZ() + dz, yaw, pitch);
+                    });
+                }
+                if (phase == 8) net.minecraft.client.Screenshot.grab(mc.gameDirectory, "tc-view-" + k + ".png", mc.getMainRenderTarget(), m -> {});
+            }
+        }
         if (tick == 70 && p.containsKey("camabove") && !placed.isEmpty()) {
             //camabove=index,back,up  the camera that far beside and over that placed transport, looking at its middle
             String[] c = p.getProperty("camabove").split(",");
