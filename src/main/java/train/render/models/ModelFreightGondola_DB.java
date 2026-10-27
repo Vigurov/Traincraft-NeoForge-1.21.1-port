@@ -194,7 +194,8 @@ public class ModelFreightGondola_DB extends ModelBase {
 
 		bodyModel=new ModelRendererTurbo[]{box,
 				box0,box1,box2,box3,box4,box5,box6,box7,box8,box9,
-				box10,box11,box12,box13,box14,box15,box16,box17,
+				//box15-17, three cubes turned askew inside the car, have a see-through texture: never seen, only in the way
+				box10,box11,box12,box13,box14,
 				box20,box22,box23,box25,box26,box28,box29,
 				box35,box38,box40,box42,box44,box63
 		};
@@ -224,12 +225,8 @@ public class ModelFreightGondola_DB extends ModelBase {
 			GL11.glTranslatef(0, 5f, 0);
 			box24.render(f5);
 			GL11.glPopMatrix();
-			
-			GL11.glPushMatrix();
-			GL11.glRotatef(180, 1, 0, 0);
-			GL11.glTranslatef(0, -1.14f, 0);
-			box64.render(f5);
-			GL11.glPopMatrix();
+			//1.12 also drew the load's plate turned over here: it stood slanting through the empty car, over its
+			//sides in places, and through any load drawn in it
 		}
 
 		super.render(entity, f, f1, f2, f3, f4, f5);

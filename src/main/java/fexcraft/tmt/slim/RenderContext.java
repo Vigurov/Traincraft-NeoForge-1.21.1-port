@@ -26,6 +26,8 @@ public final class RenderContext {
     public static java.util.List<org.joml.Vector3f> measure;
     /** while measuring: the faces too, each its corners (tests: what a vertical ray down meets) */
     public static java.util.List<org.joml.Vector3f[]> measureFaces;
+    /** while measuring: for each face, the y of its normal as drawn (below 0: turned down, unseen from above) */
+    public static java.util.List<Float> measureFaceUp;
     /** parts not drawn (an electric's folded pantograph while it is raised) */
     public static java.util.Set<ModelRendererTurbo> hidden;
     /** the part being drawn */

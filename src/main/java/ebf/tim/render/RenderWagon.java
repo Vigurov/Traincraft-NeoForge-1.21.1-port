@@ -53,6 +53,8 @@ public class RenderWagon extends EntityRenderer<GenericRailTransport> {
     public void render(GenericRailTransport entity, float entityYaw, float partialTick, PoseStack pose, MultiBufferSource buffers, int packedLight) {
         float yaw = Mth.rotLerp(partialTick, entity.yRotO, entity.getYRot());
         float pitch = Mth.lerp(partialTick, entity.xRotO, entity.getXRot());
+        //an open car's inside, measured once per type for its load (draws the model into nothing: before ours)
+        CargoRender.prepare(entity);
         RenderContext.begin(pose, buffers, packedLight, null);
         int depth = RenderContext.depth;
         RenderContext.lampsOn = entity.getBoolean(GenericRailTransport.boolValues.LAMP);

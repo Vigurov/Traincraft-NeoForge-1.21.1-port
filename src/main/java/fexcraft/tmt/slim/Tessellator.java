@@ -128,6 +128,17 @@ public class Tessellator {
                 RenderContext.measure.add(face[i]);
             }
             if (RenderContext.measureFaces != null) RenderContext.measureFaces.add(face);
+            if (RenderContext.measureFaceUp != null) {
+                float mx = nx, my = ny, mz = nz;
+                if (mx == 0 && my == 0 && mz == 0 && pts.size() >= 3) {
+                    Vec3f a = new Vec3f(pts.get(0)[0], pts.get(0)[1], pts.get(0)[2]);
+                    Vec3f b = new Vec3f(pts.get(1)[0], pts.get(1)[1], pts.get(1)[2]);
+                    Vec3f d = new Vec3f(pts.get(2)[0], pts.get(2)[1], pts.get(2)[2]);
+                    Vec3f n = new Vec3f(b.subtract(d)).crossProduct(b.subtract(a)).normalize();
+                    mx = n.xCoord; my = n.yCoord; mz = n.zCoord;
+                }
+                RenderContext.measureFaceUp.add(m.transformDirection(mx, my, mz, new org.joml.Vector3f()).normalize().y);
+            }
             return;
         }
         VertexConsumer c = RenderContext.consumerNow();
