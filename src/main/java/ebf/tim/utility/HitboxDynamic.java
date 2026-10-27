@@ -13,6 +13,8 @@ public class HitboxDynamic {
 
     private float longest=0;
     public List<CollisionBox> interactionBoxes = new ArrayList<>();
+    /** what players walk on in an open car (WalkShapes): its floor and walls; empty for the solid ones */
+    public List<WalkBox> walkBoxes = new ArrayList<>();
     public CollisionBox front,back;
 
     public HitboxDynamic(float depth, float height, float width, GenericRailTransport entity){
@@ -40,6 +42,38 @@ public class HitboxDynamic {
                 back=front;
             }
         }
+        walkShape(entity);
+    }
+
+    /** the floor and walls of an open car, from its measured shape; its own boxes then stop only clicks and cars */
+    private void walkShape(GenericRailTransport entity) {
+        var type = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType());
+        WalkShapes.Shape s = type == null ? null : WalkShapes.of(type.getPath());
+        if (s == null || interactionBoxes.isEmpty()) return;
+        for (CollisionBox b : interactionBoxes) b.solid = false;
+        float length = entity.getHitboxSize()[0];
+        //the floor: squares across the body, along all of it
+        float fw = s.tub() ? 2 * s.halfWidth() : entity.getHitboxSize()[2];
+        float fl = s.tub() ? 2 * (s.halfInside() + s.thickness()) : length;
+        int n = (int) Math.ceil(fl / fw);
+        for (int i = 0; i < n; i++) {
+            walkBoxes.add(new WalkBox(entity, -fl / 2 + fl / n * (i + 0.5f), 0, 0, fw, s.floor()));
+        }
+        if (!s.tub()) return;
+        //the walls: small squares (a long thin box would grow to a square across when the car stands at an angle),
+        //their inner faces where the model's are
+        float t = 0.2f, h = s.wall() - s.floor();
+        float sideAt = s.halfWidth() - s.thickness() + t / 2, endAt = s.halfInside() + t / 2;
+        int ns = (int) Math.ceil((2 * endAt + t) / t);
+        for (int i = 0; i <= ns; i++) {
+            float a = -endAt - t / 2 + (2 * endAt + t) * i / ns;
+            for (float sd : new float[]{-sideAt, sideAt}) walkBoxes.add(new WalkBox(entity, a, sd, s.floor(), t, h));
+        }
+        int ne = (int) Math.ceil(2 * sideAt / t);
+        for (int i = 1; i < ne; i++) {
+            float c = -sideAt + 2 * sideAt * i / ne;
+            for (float e : new float[]{-endAt, endAt}) walkBoxes.add(new WalkBox(entity, e, c, s.floor(), t, h));
+        }
     }
 
     public void position(double x, double y, double z, float pitch, float yaw){
@@ -52,6 +86,16 @@ public class HitboxDynamic {
             box.xo = box.getX(); box.yo = box.getY(); box.zo = box.getZ();
             box.xOld = box.xo; box.yOld = box.yo; box.zOld = box.zo;
             box.setPos(part.xCoord,part.yCoord,part.zCoord);
+        }
+        if (walkBoxes.isEmpty()) return;
+        //over the rails' top, along and across the car, tilted with it on a slope
+        GenericRailTransport host = walkBoxes.get(0).host;
+        double rail = y + host.entityData().get(GenericRailTransport.BOGIE_Y_OFFSET);
+        double r = Math.toRadians(yaw), ux = Math.cos(r), uz = Math.sin(r), climb = Math.sin(Math.toRadians(-pitch));
+        for (WalkBox b : walkBoxes) {
+            b.xo = b.getX(); b.yo = b.getY(); b.zo = b.getZ();
+            b.xOld = b.xo; b.yOld = b.yo; b.zOld = b.zo;
+            b.setPos(x + b.along * ux - b.side * uz, rail + b.bottom + b.along * climb, z + b.along * uz + b.side * ux);
         }
     }
 
@@ -69,7 +113,7 @@ public class HitboxDynamic {
         for (Entity obj : host.level().getEntities(host, area)) {
             //generally we only want to collide with mobs/players/other collision boxes
             //we dont collide with passenger entities, we collide with the thing they are on.
-            if(obj instanceof GenericRailTransport || obj.isPassenger()) {
+            if(obj instanceof GenericRailTransport || obj instanceof WalkBox || obj.isPassenger()) {
                 continue;
             }
             //if it's another collision box, be sure it's not the current entity or a linked one

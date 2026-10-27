@@ -640,6 +640,9 @@ public class AutoTest {
                 break;
             }
         }
+        if (tick == 30 && p.containsKey("shapecheck")) {
+            shapeCheck(mc);
+        }
         if (tick == 30 && p.containsKey("smokecheck")) {
             smokeCheck(mc);
         }
@@ -1117,6 +1120,19 @@ public class AutoTest {
                 });
             }
         }
+        if (p.containsKey("dropon") && tick >= Integer.parseInt(p.getProperty("dropon").split("@")[1]) && !placed.isEmpty()) {
+            //dropon=index@tick  drops the player 2.5 above the middle of that placed transport; logs their height over
+            //its rails' top (its position) every 4 ticks for 40
+            String[] d = p.getProperty("dropon").split("@");
+            int at = Integer.parseInt(d[1]);
+            GenericRailTransport t = placed.get(Integer.parseInt(d[0]));
+            if (tick == at) server.execute(() -> sp.connection.teleport(t.getX(), t.getY() + 2.5, t.getZ(), d.length > 2 ? Float.parseFloat(d[2]) : sp.getYRot(), 0));
+            //dropon=index@tick@yaw  then walks that way from 20 ticks after the drop, for 20
+            if (d.length > 2 && tick == at + 20) mc.options.keyUp.setDown(true);
+            if (d.length > 2 && tick == at + 40) mc.options.keyUp.setDown(false);
+            if (tick > at && tick <= at + 40 && tick % 4 == 0) server.execute(() -> log(String.format("dropon t=%d over %.3f across %.2f ground=%s",
+                    tick, sp.getY() - t.getY() - t.entityData().get(GenericRailTransport.BOGIE_Y_OFFSET), Math.hypot(sp.getX() - t.getX(), sp.getZ() - t.getZ()), sp.onGround())));
+        }
         if (p.containsKey("stroll")) {
             //stroll=x,z,yaw,fromTick,toTick  the player stands there (from the base, on the ground), holds forward and
             //its height is logged every 2 ticks: what it walks over
@@ -1127,10 +1143,14 @@ public class AutoTest {
                 sp.onUpdateAbilities();
                 sp.connection.teleport(base.getX() + Double.parseDouble(w[0]), base.getY(), base.getZ() + Double.parseDouble(w[1]), Float.parseFloat(w[2]), 0);
             });
-            if (tick == from + 2) mc.options.keyUp.setDown(true);
-            if (tick == to) mc.options.keyUp.setDown(false);
+            //stroll=...,jump  holds jump too; stroll=...,drop  drops them there from 2 blocks up, no walking
+            boolean drop = w.length > 5 && w[5].equals("drop");
+            if (tick == from + 2 && !drop) mc.options.keyUp.setDown(true);
+            if (tick == from + 2 && w.length > 5 && w[5].equals("jump")) mc.options.keyJump.setDown(true);
+            if (tick == from && drop) server.execute(() -> sp.connection.teleport(sp.getX(), base.getY() + 2.5, sp.getZ(), sp.getYRot(), 0));
+            if (tick == to) { mc.options.keyUp.setDown(false); mc.options.keyJump.setDown(false); }
             if (tick >= from && tick <= to && tick % 2 == 0) server.execute(() ->
-                    log(String.format("stroll t=%d x=%.2f y=%.3f z=%.2f", tick, sp.getX(), sp.getY() - base.getY(), sp.getZ())));
+                    log(String.format("stroll t=%d x=%.2f y=%.3f z=%.2f ground=%s", tick, sp.getX(), sp.getY() - base.getY(), sp.getZ(), sp.onGround())));
         }
         if (p.containsKey("walk") && tick >= Integer.parseInt(p.getProperty("walk").split(",")[1])) {
             //walk=index,fromTick,toTick  the player stands behind that placed transport (on a line along x) and walks
@@ -1363,6 +1383,125 @@ public class AutoTest {
             }
         }
         log("smokecheck done");
+    }
+
+    /**
+     * shapecheck=1: every transport's body as drawn, with its bogies along x: how long (from the middle to each end)
+     * and wide it is, how high its sides go, and how high the highest thing inside it is (0.35 in from the sides
+     * and 0.4 from the ends): an open-top car has that well under its sides, a covered one has its roof there
+     */
+    private static void shapeCheck(Minecraft mc) {
+        for (var holder : TiMGenericRegistry.TRANSPORTS) {
+            String id = BuiltInRegistries.ENTITY_TYPE.getKey(holder.get()).getPath();
+            try {
+                GenericRailTransport t = holder.get().create(mc.level);
+                t.setPos(0, 0, 0);
+                float[] rp = t.rotationPoints();
+                t.frontBogie = new ebf.tim.entities.EntityBogie(t, rp[1], 0, 0, true);
+                t.backBogie = new ebf.tim.entities.EntityBogie(t, rp[0], 0, 0, false);
+                float railY = 0.3f;
+                t.frontBogie.yOffset = t.backBogie.yOffset = railY;
+                t.renderData.needsModelUpdate = true;
+                var verts = new java.util.ArrayList<org.joml.Vector3f>();
+                var faces = new java.util.ArrayList<org.joml.Vector3f[]>();
+                fexcraft.tmt.slim.RenderContext.begin(new com.mojang.blaze3d.vertex.PoseStack(), null, 0, null);
+                fexcraft.tmt.slim.RenderContext.measure = verts;
+                fexcraft.tmt.slim.RenderContext.measureFaces = faces;
+                ebf.tim.render.RenderWagon.measuring = true;
+                try {
+                    ebf.tim.render.RenderWagon.doRender(t, t.getYRot(), 0, railY, false, null);
+                } finally {
+                    ebf.tim.render.RenderWagon.measuring = false;
+                    fexcraft.tmt.slim.RenderContext.measure = null;
+                    fexcraft.tmt.slim.RenderContext.measureFaces = null;
+                    fexcraft.tmt.slim.RenderContext.end();
+                }
+                if (verts.isEmpty()) continue;
+                float x0 = Float.MAX_VALUE, x1 = -Float.MAX_VALUE, w = 0, top = -Float.MAX_VALUE, lo = Float.MAX_VALUE;
+                for (var v : verts) { x0 = Math.min(x0, v.x); x1 = Math.max(x1, v.x); w = Math.max(w, Math.abs(v.z)); top = Math.max(top, v.y); lo = Math.min(lo, v.y); }
+                //what a ray down meets first: across the body (z) in the middle third of its length, every 0.05
+                StringBuilder prof = new StringBuilder();
+                java.util.List<Float> mid = new java.util.ArrayList<>();
+                for (float z = -w; z <= w + 1e-4; z += 0.05f) {
+                    java.util.List<Float> hits = new java.util.ArrayList<>();
+                    for (float x = x0 + (x1 - x0) / 3; x <= x1 - (x1 - x0) / 3; x += 0.1f) hits.add(rayDown(faces, x, z));
+                    hits.sort(null);
+                    float h = hits.get(hits.size() / 2);
+                    prof.append(String.format(java.util.Locale.ROOT, " %.2f", h == -Float.MAX_VALUE ? -1f : h - railY));
+                    if (Math.abs(z) < w * 0.5f) mid.add(h);
+                }
+                mid.sort(null);
+                float inside = mid.isEmpty() ? -Float.MAX_VALUE : mid.get(mid.size() / 2);
+                log(String.format(java.util.Locale.ROOT, "shape %-34s %-26s len %.2f..%.2f halfwidth %.2f top %.2f inside %.2f hitbox %s across:%s",
+                        id, t.getClass().getSimpleName(), x0, x1, w, top - railY, inside - railY, java.util.Arrays.toString(t.getHitboxSize()), prof));
+                if (inside != -Float.MAX_VALUE && !(t instanceof EntityTrainCore)) {
+                    float floor = inside - railY;
+                    //the sides: what the ray meets near each edge (the highest within 0.2 of it)
+                    float sideL = -Float.MAX_VALUE, sideR = -Float.MAX_VALUE, thick = 0;
+                    for (float z = -w; z <= w + 1e-4; z += 0.025f) {
+                        float h = -Float.MAX_VALUE;
+                        for (float x = x0 + (x1 - x0) / 3; x <= x1 - (x1 - x0) / 3; x += 0.2f) h = Math.max(h, rayDown(faces, x, z));
+                        if (z < -w + 0.2f) sideL = Math.max(sideL, h);
+                        if (z > w - 0.2f) sideR = Math.max(sideR, h);
+                        if (h > inside + 0.3f && Math.abs(z) > w - 0.25f) thick = Math.max(thick, w - Math.abs(z));
+                    }
+                    float wall = Math.min(sideL, sideR) - railY;
+                    //along the middle: where the floor is, and the ends' height
+                    float in0 = Float.MAX_VALUE, in1 = -Float.MAX_VALUE, endTop = -Float.MAX_VALUE;
+                    for (float x = x0; x <= x1 + 1e-4; x += 0.025f) {
+                        float h = rayDown(faces, x, 0);
+                        if (Math.abs(h - inside) < 0.06f) { in0 = Math.min(in0, x); in1 = Math.max(in1, x); }
+                    }
+                    for (float x = x0; x <= x1 + 1e-4; x += 0.025f) if (x < in0 || x > in1) endTop = Math.max(endTop, rayDown(faces, x, 0));
+                    float halfIn = Math.min(-in0, in1);
+                    log(String.format(java.util.Locale.ROOT, "walkdiag %-30s floor %.2f sides %.2f/%.2f ends %.2f in %.2f..%.2f thick %.2f top %.2f",
+                            id, floor, sideL - railY, sideR - railY, endTop - railY, in0, in1, thick, top - railY));
+                    float bodyHalf = Math.min(-x0, x1);
+                    //a wall runs along the side; stakes only stand here and there
+                    int high = 0, all = 0;
+                    for (float x = -bodyHalf + 0.1f; x <= bodyHalf - 0.1f; x += 0.05f) {
+                        for (float side : new float[]{-1, 1}) {
+                            all++;
+                            float h = -Float.MAX_VALUE;
+                            for (float in = 0.01f; in <= 0.25f; in += 0.025f) h = Math.max(h, rayDown(faces, x, side * (w - in)));
+                            if (h - railY > floor + 0.3f) high++;
+                        }
+                    }
+                    if (all > 0 && high < 0.7f * all) wall = floor;
+                    boolean ends = endTop != -Float.MAX_VALUE && endTop - railY > floor + 0.35f && halfIn > 0.2f && halfIn < bodyHalf - 0.05f;
+                    if (wall > floor + 0.35f && floor < 1.2f) {
+                        //walls on both sides; the ends where the floor stops, or the body's ends when the floor runs on
+                        float t2 = Math.max(0.08f, thick + 0.025f);
+                        log(String.format(java.util.Locale.ROOT, "walkshape tub(\"%s\", %.3ff, %.3ff, %.3ff, %.3ff, %.3ff);", id, floor,
+                                ends ? Math.min(wall, endTop - railY) : wall, w, t2, ends ? halfIn : bodyHalf - t2));
+                    } else if (floor < 1.0f) {
+                        log(String.format(java.util.Locale.ROOT, "walkshape flat(\"%s\", %.3ff);", id, floor));
+                    }
+                }
+            } catch (Throwable e) {
+                log("shape " + id + " failed: " + e);
+            }
+        }
+        log("shapecheck done");
+    }
+
+    /** the height of the first face a vertical ray down at (x, z) meets, or -MAX when none */
+    private static float rayDown(java.util.List<org.joml.Vector3f[]> faces, float x, float z) {
+        float best = -Float.MAX_VALUE;
+        for (var f : faces) {
+            //a fan of triangles from the first corner
+            for (int i = 1; i + 1 < f.length; i++) {
+                var a = f[0]; var b = f[i]; var c = f[i + 1];
+                float d = (b.z - c.z) * (a.x - c.x) + (c.x - b.x) * (a.z - c.z);
+                if (Math.abs(d) < 1e-7f) continue;
+                float l1 = ((b.z - c.z) * (x - c.x) + (c.x - b.x) * (z - c.z)) / d;
+                float l2 = ((c.z - a.z) * (x - c.x) + (a.x - c.x) * (z - c.z)) / d;
+                float l3 = 1 - l1 - l2;
+                if (l1 < -1e-4f || l2 < -1e-4f || l3 < -1e-4f) continue;
+                best = Math.max(best, l1 * a.y + l2 * b.y + l3 * c.y);
+            }
+        }
+        return best;
     }
 
     private static void measureAll(Minecraft mc) {

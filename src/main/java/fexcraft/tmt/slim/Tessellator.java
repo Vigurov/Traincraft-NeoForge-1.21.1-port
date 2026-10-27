@@ -121,7 +121,13 @@ public class Tessellator {
         }
         if (RenderContext.measure != null) {
             org.joml.Matrix4f m = RenderContext.pose.last().pose();
-            for (float[] p : pts) RenderContext.measure.add(m.transformPosition(p[0], p[1], p[2], new org.joml.Vector3f()));
+            org.joml.Vector3f[] face = new org.joml.Vector3f[pts.size()];
+            for (int i = 0; i < pts.size(); i++) {
+                float[] p = pts.get(i);
+                face[i] = m.transformPosition(p[0], p[1], p[2], new org.joml.Vector3f());
+                RenderContext.measure.add(face[i]);
+            }
+            if (RenderContext.measureFaces != null) RenderContext.measureFaces.add(face);
             return;
         }
         VertexConsumer c = RenderContext.consumerNow();

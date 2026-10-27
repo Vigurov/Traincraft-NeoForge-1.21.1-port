@@ -20,6 +20,8 @@ import net.neoforged.neoforge.entity.PartEntity;
 public class CollisionBox extends PartEntity<GenericRailTransport> {
     public final GenericRailTransport host;
     private final EntityDimensions size;
+    /** whether players and mobs bump into it: not on an open car, whose WalkBoxes they walk on instead */
+    public boolean solid = true;
 
     public CollisionBox(GenericRailTransport transport) {
         super(transport);
@@ -51,7 +53,7 @@ public class CollisionBox extends PartEntity<GenericRailTransport> {
      * got through with a little effort) */
     @Override
     public boolean canBeCollidedWith() {
-        return true;
+        return solid;
     }
 
     @Override

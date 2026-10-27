@@ -24,6 +24,8 @@ public final class RenderContext {
     public static boolean lampsOn;
     /**when set, polygons are not drawn: their vertices (in the pose stack's base space) are collected here*/
     public static java.util.List<org.joml.Vector3f> measure;
+    /** while measuring: the faces too, each its corners (tests: what a vertical ray down meets) */
+    public static java.util.List<org.joml.Vector3f[]> measureFaces;
     /** parts not drawn (an electric's folded pantograph while it is raised) */
     public static java.util.Set<ModelRendererTurbo> hidden;
     /** the part being drawn */

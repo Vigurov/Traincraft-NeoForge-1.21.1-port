@@ -165,7 +165,9 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
         initInventorySlots();
         if(world!=null) {
             collisionHandler = new HitboxDynamic(getHitboxSize()[0],getHitboxSize()[1],getHitboxSize()[2], this);
-            parts = collisionHandler.interactionBoxes.toArray(new PartEntity<?>[0]);
+            java.util.List<PartEntity<?>> all = new java.util.ArrayList<>(collisionHandler.interactionBoxes);
+            all.addAll(collisionHandler.walkBoxes);
+            parts = all.toArray(new PartEntity<?>[0]);
             //the parts need ids next to ours, the client gives them the same ones (see recreateFromPacket)
             this.setId(ENTITY_COUNTER.getAndAdd(parts.length + 1) + 1);
         } else {
@@ -1356,7 +1358,7 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
             AABB area = new AABB(xo - getHitboxSize()[0], getY() + 0.4, zo - getHitboxSize()[0],
                     xo + getHitboxSize()[0], getY() + getHitboxSize()[1] + 1.5, zo + getHitboxSize()[0]);
             for (Entity e : level().getEntities(this, area, e -> !(e instanceof Player) && !(e instanceof GenericRailTransport)
-                    && !(e instanceof CollisionBox) && !e.isPassenger())) {
+                    && !(e instanceof CollisionBox) && !(e instanceof ebf.tim.utility.WalkBox) && !e.isPassenger())) {
                 if (standsOnTop(e)) carry(e, dx, dz, dyaw, true);
             }
         }
