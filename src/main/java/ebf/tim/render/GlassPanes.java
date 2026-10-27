@@ -116,14 +116,34 @@ public final class GlassPanes {
         for (Face f : faces) for (Vector3f v : f.v()) {
             x0 = Math.min(x0, v.x); x1 = Math.max(x1, v.x); y1 = Math.max(y1, v.y); z0 = Math.min(z0, v.z); z1 = Math.max(z1, v.z);
         }
-        List<Pane> panes = new ArrayList<>();
+        List<Window> found = new ArrayList<>();
         //the sides: looking along z (from +z and from -z), over x (along) and y (up)
-        look(faces, 2, 0, x0, x1, 0, y1, +1, z1, panes);
-        look(faces, 2, 0, x0, x1, 0, y1, -1, z0, panes);
+        look(faces, 2, 0, x0, x1, 0, y1, +1, z1, found);
+        look(faces, 2, 0, x0, x1, 0, y1, -1, z0, found);
         //the ends: looking along x, over z and y
-        look(faces, 0, 2, z0, z1, 0, y1, +1, x1, panes);
-        look(faces, 0, 2, z0, z1, 0, y1, -1, x0, panes);
-        if (Boolean.getBoolean("tc.glassdebug")) System.out.println("[TCTEST] glass " + t.getClass().getSimpleName() + " panes " + panes.size());
+        look(faces, 0, 2, z0, z1, 0, y1, +1, x1, found);
+        look(faces, 0, 2, z0, z1, 0, y1, -1, x0, found);
+        //one pane per window: the same window is found in a wall's outer and inner face, and from both sides; the
+        //outermost one is kept
+        float cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+        //the wall a window is in: of its planes, the largest (a stripe or rail standing out of the wall is a small
+        //plane, and a pane in it would float in front of the wall)
+        found.sort((p, q) -> q.size() != p.size() ? Integer.compare(q.size(), p.size())
+                : Float.compare(Math.abs(q.at() - (q.a() == 0 ? cx : cz)), Math.abs(p.at() - (p.a() == 0 ? cx : cz))));
+        List<Pane> panes = new ArrayList<>();
+        List<Window> kept = new ArrayList<>();
+        for (Window w : found) {
+            boolean dup = false;
+            for (Window k : kept) {
+                //the same window: the same outline, on the same side of the car
+                boolean side = Math.signum(w.at() - (w.a() == 0 ? cx : cz)) == Math.signum(k.at() - (k.a() == 0 ? cx : cz));
+                if (k.a() == w.a() && side && w.overlap(k) > 0.5f) { dup = true; break; }
+            }
+            if (dup) continue;
+            kept.add(w);
+            panes.addAll(w.panes());
+        }
+        if (Boolean.getBoolean("tc.glassdebug")) System.out.println("[TCTEST] glass " + t.getClass().getSimpleName() + " panes " + panes.size() + " windows " + kept.size());
         return new Panes(panes, rp[1] - rp[0] >= 0 ? 1 : -1);
     }
 
@@ -134,7 +154,7 @@ public final class GlassPanes {
      * thick (a rail or grille has thin bars), of a window's size, above the frame. What stands in front of a wall
      * (a hood, rails) does not matter: each wall is looked at by itself
      */
-    private static void look(List<Face> faces, int a, int b, float b0, float b1, float h0, float h1, int sign, float from, List<Pane> out) {
+    private static void look(List<Face> faces, int a, int b, float b0, float b1, float h0, float h1, int sign, float from, List<Window> out) {
         int nb = (int) Math.ceil((b1 - b0) / CELL), nh = (int) Math.ceil((h1 - h0) / CELL);
         if (nb < 4 || nh < 4) return;
         //the faces by the cells their outline covers, so each ray only tries those
@@ -171,7 +191,7 @@ public final class GlassPanes {
         }
         if (System.getProperty("tc.glassmap") != null) {
             //tests: the depth of the first surface on each ray, as a grey picture (white near, black none)
-            try (java.io.PrintWriter w = new java.io.PrintWriter(System.getProperty("tc.glassmap") + "/axis" + a + ".pgm")) {
+            try (java.io.PrintWriter w = new java.io.PrintWriter(System.getProperty("tc.glassmap") + "/axis" + a + (sign > 0 ? "p" : "m") + ".pgm")) {
                 int[] first = new int[nb * nh];
                 java.util.Arrays.fill(first, Integer.MAX_VALUE);
                 for (int[] h : hits) first[h[0]] = Math.min(first[h[0]], h[1]);
@@ -194,52 +214,41 @@ public final class GlassPanes {
             walls.add(d);
         }
         if (Boolean.getBoolean("tc.glassdebug")) System.out.println("[TCTEST] walls axis " + a + ": " + walls.stream().map(w -> String.format(java.util.Locale.ROOT, "%.2f(%d)", from - sign * (w + 0.5f) * step, histogram.get(w))).toList());
-        //each wall's plane, taking what is up to 4 steps behind it as the same wall (a frame a little inset); and
-        //what lies just behind it, 2 to 13 steps (to 0.2 blocks): a window shows the inside further back, a door
-        //or panel set into the wall is right there
-        List<Window> found = new ArrayList<>();
+        //each wall's plane, taking what is up to 10 steps behind it as the same wall (a frame inset, a slanting
+        //windscreen's); and what lies just behind that, to 20 steps (0.3 blocks): a window shows the inside further
+        //back, a door or panel set into the wall is right there
         for (int wall : walls) {
-            boolean[] in = new boolean[nb * nh], close = new boolean[nb * nh];
+            boolean[] in = new boolean[nb * nh], close = new boolean[nb * nh], front = new boolean[nb * nh];
+            int[] frame = new int[nb * nh];
+            java.util.Arrays.fill(frame, Integer.MIN_VALUE);
             for (int[] h : hits) {
                 int dd = h[1] - wall;
-                //the wall, a frame a little inset, and whatever stands in front (a roof over the windscreen)
-                if (dd >= -20 && dd <= 4) in[h[0]] = true;
-                if (dd >= 5 && dd <= 13) close[h[0]] = true;
+                //the wall, a frame a little inset, and whatever stands close in front (a roof over the windscreen)
+                if (dd >= -20 && dd <= 10) in[h[0]] = true;
+                //the wall itself here (a slanting frame's depth changes across it)
+                if (dd >= -4 && dd <= 10 && (frame[h[0]] == Integer.MIN_VALUE || Math.abs(dd) < Math.abs(frame[h[0]] - wall))) frame[h[0]] = h[1];
+                if (dd >= 11 && dd <= 20) close[h[0]] = true;
+                //anything solid between the eye and the wall: the window is not seen from here
+                if (dd < -1) front[h[0]] = true;
             }
-            holes(in, close, nb, nh, b0, h0, a, b, from - sign * (wall + 0.5f) * step, sign, found);
-        }
-        //one pane per window: of the holes on top of each other (a wall's outer and inner face), the outermost
-        found.sort((p, q) -> Float.compare(sign * q.at(), sign * p.at()));
-        List<Window> kept = new ArrayList<>();
-        for (Window w : found) {
-            boolean dup = false;
-            for (Window k : kept) if (Math.abs(w.at() - k.at()) < 0.25f && w.overlap(k) > 0.6f) { dup = true; break; }
-            if (!dup) kept.add(w);
-        }
-        //a window seen from both sides is found twice: once is enough
-        for (Window w : kept) {
-            boolean twice = false;
-            for (Pane q : out) {
-                Pane f = w.panes().get(0);
-                if (Math.abs(comp(q.a(), a) - comp(f.a(), a)) < 0.05f && Math.abs(comp(q.a(), b) - comp(f.a(), b)) < 0.02f
-                        && Math.abs(q.a().y - f.a().y) < 0.02f) { twice = true; break; }
-            }
-            if (!twice) out.addAll(w.panes());
+            //the pane set into the wall by a third of a pixel: what of it is off the window hides inside the wall,
+            //only what the opening shows is seen
+            holes(in, close, front, frame, step, from, nb, nh, b0, h0, a, b, from - sign * (wall + 1.5f) * step, sign, histogram.get(wall), out);
         }
     }
 
     /** a window found in a wall's plane: its outline (cells) and its panes */
-    private record Window(float at, int minI, int maxI, int minJ, int maxJ, List<Pane> panes) {
+    private record Window(int a, float at, int size, float bLo, float bHi, float hLo, float hHi, List<Pane> panes) {
         float overlap(Window o) {
-            int wi = Math.min(maxI, o.maxI) - Math.max(minI, o.minI) + 1, hj = Math.min(maxJ, o.maxJ) - Math.max(minJ, o.minJ) + 1;
-            if (wi <= 0 || hj <= 0) return 0;
-            float area = Math.min((maxI - minI + 1) * (maxJ - minJ + 1), (o.maxI - o.minI + 1) * (o.maxJ - o.minJ + 1));
-            return wi * hj / area;
+            float wb = Math.min(bHi, o.bHi) - Math.max(bLo, o.bLo), wh = Math.min(hHi, o.hHi) - Math.max(hLo, o.hLo);
+            if (wb <= 0 || wh <= 0) return 0;
+            float area = Math.min((bHi - bLo) * (hHi - hLo), (o.bHi - o.bLo) * (o.hHi - o.hLo));
+            return wb * wh / area;
         }
     }
 
     /** the holes of one wall's plane that are windows */
-    private static void holes(boolean[] in, boolean[] close, int nb, int nh, float b0, float h0, int a, int b, float at, int sign, List<Window> out) {
+    private static void holes(boolean[] in, boolean[] close, boolean[] front, int[] frame, float step, float from, int nb, int nh, float b0, float h0, int a, int b, float at, int sign, int size, List<Window> out) {
         boolean[] seen = new boolean[nb * nh];
         int[] queue = new int[nb * nh];
         for (int s = 0; s < nb * nh; s++) {
@@ -261,7 +270,9 @@ public final class GlassPanes {
             }
             int wi = maxI - minI + 1, hj = maxJ - minJ + 1;
             boolean dbg = Boolean.getBoolean("tc.glassdebug") && n >= 6 && n < 2000;
-            if (!closed || wi < 2 || hj < 2 || wi > 30 || hj > 30 || Math.max(wi, hj) > 6 * Math.min(wi, hj)
+            //a door: much taller than wide and tall as a man (its glass, if any, is the model's own)
+            boolean door = hj > 2.2f * wi && hj * CELL > 0.6f;
+            if (!closed || door || wi < 3 || hj < 3 || wi > 30 || hj > 30 || Math.max(wi, hj) > 6 * Math.min(wi, hj)
                     || h0 + CELL * minJ < 0.45f || n < 0.5f * wi * hj) {
                 if (dbg) System.out.println(String.format(java.util.Locale.ROOT, "[TCTEST] hole axis %d at %.2f b %.2f..%.2f h %.2f..%.2f n %d: shape closed=" + closed + "", a, at, b0 + CELL * minI, b0 + CELL * (maxI + 1), h0 + CELL * minJ, h0 + CELL * (maxJ + 1), n));
                 continue;
@@ -283,8 +294,15 @@ public final class GlassPanes {
                 ring++;
                 if (in[k]) wall++;
             }
-            int shallow = 0;
-            for (int q = 0; q < n; q++) if (close[queue[q]]) shallow++;
+            int shallow = 0, hidden = 0;
+            for (int q = 0; q < n; q++) {
+                if (close[queue[q]]) shallow++;
+                if (front[queue[q]]) hidden++;
+            }
+            if (hidden > 0.25f * n) {
+                if (dbg) System.out.println(String.format(java.util.Locale.ROOT, "[TCTEST] hole axis %d at %.2f b %.2f..%.2f h %.2f..%.2f n %d: behind something %d", a, at, b0 + CELL * minI, b0 + CELL * (maxI + 1), h0 + CELL * minJ, h0 + CELL * (maxJ + 1), n, hidden));
+                continue;
+            }
             if (shallow > 0.3f * n) {
                 if (dbg) System.out.println(String.format(java.util.Locale.ROOT, "[TCTEST] hole axis %d at %.2f b %.2f..%.2f h %.2f..%.2f n %d: inset %d", a, at, b0 + CELL * minI, b0 + CELL * (maxI + 1), h0 + CELL * minJ, h0 + CELL * (maxJ + 1), n, shallow));
                 continue;
@@ -294,15 +312,40 @@ public final class GlassPanes {
                 continue;
             }
             if (dbg) System.out.println(String.format(java.util.Locale.ROOT, "[TCTEST] hole axis %d at %.2f b %.2f..%.2f h %.2f..%.2f n %d: GLASS", a, at, b0 + CELL * minI, b0 + CELL * (maxI + 1), h0 + CELL * minJ, h0 + CELL * (maxJ + 1), n));
+            //the window's slope from its frame: a plane depth = c0 + c1 * i + c2 * j fitted to the wall round it (a
+            //windscreen leans back), the pane in it, set a third of a pixel into the wall
+            double[][] m = new double[3][3];
+            double[] r = new double[3];
+            int fitted = 0;
+            for (int i = minI - 2; i <= maxI + 2; i++) for (int j = minJ - 2; j <= maxJ + 2; j++) {
+                if (i < 0 || j < 0 || i >= nb || j >= nh) continue;
+                int k = i * nh + j;
+                if (patch[k] || frame[k] == Integer.MIN_VALUE) continue;
+                double[] x = {1, i, j};
+                for (int u = 0; u < 3; u++) { r[u] += x[u] * frame[k]; for (int v = 0; v < 3; v++) m[u][v] += x[u] * x[v]; }
+                fitted++;
+            }
+            double[] c = fitted >= 6 ? solve(m, r) : null;
             List<Pane> panes = new ArrayList<>();
+            //the glass: where the window shows deep inside (not over a slanting corner or anything just behind)
             for (int q = 0; q < n; q++) {
-                int c = queue[q], i = c / nh, j = c % nh;
+                int cell = queue[q], i = cell / nh, j = cell % nh;
+                if (close[cell] || front[cell]) continue;
                 float pb0 = b0 + CELL * i, pb1 = pb0 + CELL, ph0 = h0 + CELL * j, ph1 = ph0 + CELL;
+                //one pane of old Minecraft glass over the whole window, its frame round the window's outline
                 float u0 = (i - minI) / (float) wi, u1 = (i - minI + 1) / (float) wi;
                 float v0 = 1 - (j - minJ) / (float) hj, v1 = 1 - (j - minJ + 1) / (float) hj;
-                panes.add(pane(a, b, at, pb0, pb1, ph0, ph1, sign, u0, v0, u1, v1));
+                if (c == null) {
+                    panes.add(pane(a, b, at, pb0, pb1, ph0, ph1, sign, u0, v0, u1, v1));
+                } else {
+                    //each corner at the plane's depth there
+                    float d00 = depthAt(c, i, j, from, step, sign), d10 = depthAt(c, i + 1, j, from, step, sign);
+                    float d11 = depthAt(c, i + 1, j + 1, from, step, sign), d01 = depthAt(c, i, j + 1, from, step, sign);
+                    panes.add(new Pane(point(a, b, d00, pb0, ph0), point(a, b, d10, pb1, ph0), point(a, b, d11, pb1, ph1), point(a, b, d01, pb0, ph1),
+                            a == 0 ? sign : 0, a == 2 ? sign : 0, u0, v0, u1, v1));
+                }
             }
-            out.add(new Window(at, minI, maxI, minJ, maxJ, panes));
+            out.add(new Window(a, at, size, b0 + CELL * minI, b0 + CELL * (maxI + 1), h0 + CELL * minJ, h0 + CELL * (maxJ + 1), panes));
         }
     }
 
@@ -333,6 +376,32 @@ public final class GlassPanes {
         }
     }
 
+    /** the fitted plane's position along the eye's axis at a cell corner (i, j), a third of a pixel into the wall */
+    private static float depthAt(double[] c, int i, int j, float from, float step, int sign) {
+        double steps = c[0] + c[1] * (i - 0.5) + c[2] * (j - 0.5) + 1.5;
+        return (float) (from - sign * steps * step);
+    }
+
+    /** a 3x3 linear system, or null when it has no single answer */
+    private static double[] solve(double[][] m, double[] r) {
+        double[][] a = {m[0].clone(), m[1].clone(), m[2].clone()};
+        double[] b = r.clone();
+        for (int col = 0; col < 3; col++) {
+            int piv = col;
+            for (int row = col + 1; row < 3; row++) if (Math.abs(a[row][col]) > Math.abs(a[piv][col])) piv = row;
+            if (Math.abs(a[piv][col]) < 1e-9) return null;
+            double[] t = a[col]; a[col] = a[piv]; a[piv] = t;
+            double tb = b[col]; b[col] = b[piv]; b[piv] = tb;
+            for (int row = 0; row < 3; row++) {
+                if (row == col) continue;
+                double f = a[row][col] / a[col][col];
+                for (int k = col; k < 3; k++) a[row][k] -= f * a[col][k];
+                b[row] -= f * b[col];
+            }
+        }
+        return new double[]{b[0] / a[0][0], b[1] / a[1][1], b[2] / a[2][2]};
+    }
+
     private static Pane pane(int a, int b, float at, float pb0, float pb1, float ph0, float ph1, int sign, float u0, float v0, float u1, float v1) {
         Vector3f p00 = point(a, b, at, pb0, ph0), p10 = point(a, b, at, pb1, ph0), p11 = point(a, b, at, pb1, ph1), p01 = point(a, b, at, pb0, ph1);
         return new Pane(p00, p10, p11, p01, a == 0 ? sign : 0, a == 2 ? sign : 0, u0, v0, u1, v1);
@@ -348,7 +417,7 @@ public final class GlassPanes {
         return axis == 0 ? v.x : axis == 1 ? v.y : v.z;
     }
 
-    /** the glass of old Minecraft (before 1.14): clear, a white frame and streaks across */
+    /** the glass of old Minecraft (before 1.14): clear with streaks across (its white frame is not used) */
     private static final ResourceLocation GLASS = ResourceLocation.fromNamespaceAndPath("traincraft", "textures/models/window_glass.png");
 
     public static void render(GenericRailTransport t, float yaw, float pitch, PoseStack pose, MultiBufferSource buffers, int light) {
