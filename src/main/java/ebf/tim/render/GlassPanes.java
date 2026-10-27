@@ -128,8 +128,11 @@ public final class GlassPanes {
     }
 
     /**
-     * looks along axis a (0 x, 2 z) from the side sign*infinity at every pixel of the other horizontal axis b and
-     * of height, records how deep the eye goes from the outermost surface (from), finds the openings and glazes them
+     * looks through the model along axis a (0 x, 2 z), at every pixel of the other horizontal axis b and of height,
+     * and keeps every surface it passes (not see-through texture there) by its depth. The walls are the depths with
+     * much surface; in each wall's plane a window is a hole: empty, closed all round by the wall at least two pixels
+     * thick (a rail or grille has thin bars), of a window's size, above the frame. What stands in front of a wall
+     * (a hood, rails) does not matter: each wall is looked at by itself
      */
     private static void look(List<Face> faces, int a, int b, float b0, float b1, float h0, float h1, int sign, float from, List<Pane> out) {
         int nb = (int) Math.ceil((b1 - b0) / CELL), nh = (int) Math.ceil((h1 - h0) / CELL);
@@ -149,29 +152,98 @@ public final class GlassPanes {
                 l.add(f);
             }
         }
-        float[] depth = new float[nb * nh];
+        //every surface on every ray, by depth in 64ths of a block
+        float step = 1 / 64f;
+        List<int[]> hits = new ArrayList<>();
+        Map<Integer, Integer> histogram = new java.util.TreeMap<>();
         for (int i = 0; i < nb; i++) {
             for (int j = 0; j < nh; j++) {
-                float pb = b0 + CELL * (i + 0.5f), ph = h0 + CELL * (j + 0.5f);
                 List<Integer> l = bucket.get(i * nh + j);
-                depth[i * nh + j] = l == null ? Float.POSITIVE_INFINITY : firstSeen(faces, l, a, b, pb, ph, sign, from);
+                if (l == null) continue;
+                float pb = b0 + CELL * (i + 0.5f), ph = h0 + CELL * (j + 0.5f);
+                java.util.Set<Integer> here = new java.util.TreeSet<>();
+                allSeen(faces, l, a, b, pb, ph, sign, from, step, here);
+                for (int d : here) {
+                    hits.add(new int[]{i * nh + j, d});
+                    histogram.merge(d, 1, Integer::sum);
+                }
             }
         }
-        //a deep cell: deeper than the surface near it (the shallowest within 3 pixels) by more than a frame's depth
-        boolean[] deep = new boolean[nb * nh];
-        for (int i = 0; i < nb; i++) for (int j = 0; j < nh; j++) {
-            float near = Float.POSITIVE_INFINITY;
-            for (int di = -3; di <= 3; di++) for (int dj = -3; dj <= 3; dj++) {
-                int ii = i + di, jj = j + dj;
-                if (ii < 0 || jj < 0 || ii >= nb || jj >= nh) continue;
-                near = Math.min(near, depth[ii * nh + jj]);
+        if (System.getProperty("tc.glassmap") != null) {
+            //tests: the depth of the first surface on each ray, as a grey picture (white near, black none)
+            try (java.io.PrintWriter w = new java.io.PrintWriter(System.getProperty("tc.glassmap") + "/axis" + a + ".pgm")) {
+                int[] first = new int[nb * nh];
+                java.util.Arrays.fill(first, Integer.MAX_VALUE);
+                for (int[] h : hits) first[h[0]] = Math.min(first[h[0]], h[1]);
+                w.println("P2 " + nb + " " + nh + " 255");
+                for (int j = nh - 1; j >= 0; j--) {
+                    StringBuilder row = new StringBuilder();
+                    for (int i = 0; i < nb; i++) row.append(first[i * nh + j] == Integer.MAX_VALUE ? 0 : Math.max(20, 255 - first[i * nh + j] * 2)).append(' ');
+                    w.println(row);
+                }
+            } catch (java.io.IOException ignored) {
             }
-            deep[i * nh + j] = near != Float.POSITIVE_INFINITY && depth[i * nh + j] > near + 0.14f;
         }
+        //the walls: depths with a large flat surface
+        List<Integer> walls = new ArrayList<>();
+        for (var e : histogram.entrySet()) {
+            int d = e.getKey(), c = e.getValue();
+            if (c < 40) continue;
+            if (c < histogram.getOrDefault(d - 1, 0) || c < histogram.getOrDefault(d + 1, 0)) continue;
+            if (!walls.isEmpty() && d - walls.get(walls.size() - 1) <= 1) continue;
+            walls.add(d);
+        }
+        if (Boolean.getBoolean("tc.glassdebug")) System.out.println("[TCTEST] walls axis " + a + ": " + walls.stream().map(w -> String.format(java.util.Locale.ROOT, "%.2f(%d)", from - sign * (w + 0.5f) * step, histogram.get(w))).toList());
+        //each wall's plane, taking what is up to 4 steps behind it as the same wall (a frame a little inset); and
+        //what lies just behind it, 2 to 13 steps (to 0.2 blocks): a window shows the inside further back, a door
+        //or panel set into the wall is right there
+        List<Window> found = new ArrayList<>();
+        for (int wall : walls) {
+            boolean[] in = new boolean[nb * nh], close = new boolean[nb * nh];
+            for (int[] h : hits) {
+                int dd = h[1] - wall;
+                //the wall, a frame a little inset, and whatever stands in front (a roof over the windscreen)
+                if (dd >= -20 && dd <= 4) in[h[0]] = true;
+                if (dd >= 5 && dd <= 13) close[h[0]] = true;
+            }
+            holes(in, close, nb, nh, b0, h0, a, b, from - sign * (wall + 0.5f) * step, sign, found);
+        }
+        //one pane per window: of the holes on top of each other (a wall's outer and inner face), the outermost
+        found.sort((p, q) -> Float.compare(sign * q.at(), sign * p.at()));
+        List<Window> kept = new ArrayList<>();
+        for (Window w : found) {
+            boolean dup = false;
+            for (Window k : kept) if (Math.abs(w.at() - k.at()) < 0.25f && w.overlap(k) > 0.6f) { dup = true; break; }
+            if (!dup) kept.add(w);
+        }
+        //a window seen from both sides is found twice: once is enough
+        for (Window w : kept) {
+            boolean twice = false;
+            for (Pane q : out) {
+                Pane f = w.panes().get(0);
+                if (Math.abs(comp(q.a(), a) - comp(f.a(), a)) < 0.05f && Math.abs(comp(q.a(), b) - comp(f.a(), b)) < 0.02f
+                        && Math.abs(q.a().y - f.a().y) < 0.02f) { twice = true; break; }
+            }
+            if (!twice) out.addAll(w.panes());
+        }
+    }
+
+    /** a window found in a wall's plane: its outline (cells) and its panes */
+    private record Window(float at, int minI, int maxI, int minJ, int maxJ, List<Pane> panes) {
+        float overlap(Window o) {
+            int wi = Math.min(maxI, o.maxI) - Math.max(minI, o.minI) + 1, hj = Math.min(maxJ, o.maxJ) - Math.max(minJ, o.minJ) + 1;
+            if (wi <= 0 || hj <= 0) return 0;
+            float area = Math.min((maxI - minI + 1) * (maxJ - minJ + 1), (o.maxI - o.minI + 1) * (o.maxJ - o.minJ + 1));
+            return wi * hj / area;
+        }
+    }
+
+    /** the holes of one wall's plane that are windows */
+    private static void holes(boolean[] in, boolean[] close, int nb, int nh, float b0, float h0, int a, int b, float at, int sign, List<Window> out) {
         boolean[] seen = new boolean[nb * nh];
         int[] queue = new int[nb * nh];
         for (int s = 0; s < nb * nh; s++) {
-            if (!deep[s] || seen[s]) continue;
+            if (in[s] || seen[s]) continue;
             int n = 0, head = 0, minI = nb, maxI = 0, minJ = nh, maxJ = 0;
             boolean closed = true;
             queue[n++] = s;
@@ -184,47 +256,81 @@ public final class GlassPanes {
                 for (int[] q : next) {
                     if (q[0] < 0 || q[1] < 0 || q[0] >= nb || q[1] >= nh) continue;
                     int k = q[0] * nh + q[1];
-                    if (deep[k] && !seen[k]) { seen[k] = true; queue[n++] = k; }
+                    if (!in[k] && !seen[k]) { seen[k] = true; queue[n++] = k; }
                 }
             }
             int wi = maxI - minI + 1, hj = maxJ - minJ + 1;
-            //a window: 3..28 pixels each way, not a slit, over the frame (half a block up), filling its outline
-            if (!closed || wi < 3 || hj < 3 || wi > 28 || hj > 28 || Math.max(wi, hj) > 5 * Math.min(wi, hj)
-                    || h0 + CELL * minJ < 0.5f || n < 0.55f * wi * hj) continue;
-            //the wall round it: the ring 1 to 2 pixels outside it, nearly all at one depth
-            List<Float> ring = new ArrayList<>();
-            int ringAll = 0;
-            for (int i = minI - 2; i <= maxI + 2; i++) for (int j = minJ - 2; j <= maxJ + 2; j++) {
-                if (i < 0 || j < 0 || i >= nb || j >= nh) continue;
-                int k = i * nh + j;
-                if (deep[k] && inPatch(queue, n, k)) continue;
-                boolean border = i < minI || i > maxI || j < minJ || j > maxJ;
-                if (!border) continue;
-                ringAll++;
-                if (depth[k] != Float.POSITIVE_INFINITY) ring.add(depth[k]);
+            boolean dbg = Boolean.getBoolean("tc.glassdebug") && n >= 6 && n < 2000;
+            if (!closed || wi < 2 || hj < 2 || wi > 30 || hj > 30 || Math.max(wi, hj) > 6 * Math.min(wi, hj)
+                    || h0 + CELL * minJ < 0.45f || n < 0.5f * wi * hj) {
+                if (dbg) System.out.println(String.format(java.util.Locale.ROOT, "[TCTEST] hole axis %d at %.2f b %.2f..%.2f h %.2f..%.2f n %d: shape closed=" + closed + "", a, at, b0 + CELL * minI, b0 + CELL * (maxI + 1), h0 + CELL * minJ, h0 + CELL * (maxJ + 1), n));
+                continue;
             }
-            if (ring.size() < 0.9f * ringAll) continue;
-            ring.sort(null);
-            float wall = ring.get(ring.size() / 2);
-            int flat = 0;
-            for (float d : ring) if (Math.abs(d - wall) < 0.07f) flat++;
-            if (flat < 0.75f * ring.size()) continue;
-            //the pane: its pixels, at the wall's depth, a hair inside
-            float at = from - sign * (wall + 0.03f);
-            //one whole pane of glass over each window, its frame round the window's outline
+            //the wall round it two pixels thick, nearly whole (a rail's gaps have one-pixel bars round them)
+            boolean[] patch = new boolean[nb * nh];
+            for (int q = 0; q < n; q++) patch[queue[q]] = true;
+            int ring = 0, wall = 0;
+            for (int i = minI - 2; i <= maxI + 2; i++) for (int j = minJ - 2; j <= maxJ + 2; j++) {
+                if (i < 0 || j < 0 || i >= nb || j >= nh) { ring++; continue; }
+                int k = i * nh + j;
+                if (patch[k]) continue;
+                boolean near = false;
+                for (int di = -2; di <= 2 && !near; di++) for (int dj = -2; dj <= 2 && !near; dj++) {
+                    int ii = i + di, jj = j + dj;
+                    if (ii >= 0 && jj >= 0 && ii < nb && jj < nh && patch[ii * nh + jj]) near = true;
+                }
+                if (!near) continue;
+                ring++;
+                if (in[k]) wall++;
+            }
+            int shallow = 0;
+            for (int q = 0; q < n; q++) if (close[queue[q]]) shallow++;
+            if (shallow > 0.3f * n) {
+                if (dbg) System.out.println(String.format(java.util.Locale.ROOT, "[TCTEST] hole axis %d at %.2f b %.2f..%.2f h %.2f..%.2f n %d: inset %d", a, at, b0 + CELL * minI, b0 + CELL * (maxI + 1), h0 + CELL * minJ, h0 + CELL * (maxJ + 1), n, shallow));
+                continue;
+            }
+            if (wall < 0.8f * ring) {
+                if (dbg) System.out.println(String.format(java.util.Locale.ROOT, "[TCTEST] hole axis %d at %.2f b %.2f..%.2f h %.2f..%.2f n %d: ring %d/%d", a, at, b0 + CELL * minI, b0 + CELL * (maxI + 1), h0 + CELL * minJ, h0 + CELL * (maxJ + 1), n, wall, ring));
+                continue;
+            }
+            if (dbg) System.out.println(String.format(java.util.Locale.ROOT, "[TCTEST] hole axis %d at %.2f b %.2f..%.2f h %.2f..%.2f n %d: GLASS", a, at, b0 + CELL * minI, b0 + CELL * (maxI + 1), h0 + CELL * minJ, h0 + CELL * (maxJ + 1), n));
+            List<Pane> panes = new ArrayList<>();
             for (int q = 0; q < n; q++) {
                 int c = queue[q], i = c / nh, j = c % nh;
                 float pb0 = b0 + CELL * i, pb1 = pb0 + CELL, ph0 = h0 + CELL * j, ph1 = ph0 + CELL;
                 float u0 = (i - minI) / (float) wi, u1 = (i - minI + 1) / (float) wi;
                 float v0 = 1 - (j - minJ) / (float) hj, v1 = 1 - (j - minJ + 1) / (float) hj;
-                out.add(pane(a, b, at, pb0, pb1, ph0, ph1, sign, u0, v0, u1, v1));
+                panes.add(pane(a, b, at, pb0, pb1, ph0, ph1, sign, u0, v0, u1, v1));
             }
+            out.add(new Window(at, minI, maxI, minJ, maxJ, panes));
         }
     }
 
-    private static boolean inPatch(int[] queue, int n, int k) {
-        for (int q = 0; q < n; q++) if (queue[q] == k) return true;
-        return false;
+    /** the depths (in steps from the outermost surface) of every face the eye passes and cannot see through */
+    private static void allSeen(List<Face> faces, List<Integer> which, int a, int b, float pb, float ph, int sign, float from, float step, java.util.Set<Integer> out) {
+        for (int fi : which) {
+            Face f = faces.get(fi);
+            Vector3f[] v = f.v();
+            for (int i = 1; i + 1 < v.length; i++) {
+                Vector3f p = v[0], q = v[i], r = v[i + 1];
+                float pB = comp(p, b), qB = comp(q, b), rB = comp(r, b);
+                float d = (qB - rB) * (p.y - r.y) - (q.y - r.y) * (pB - rB);
+                if (Math.abs(d) < 1e-8f) continue;
+                float l1 = ((qB - rB) * (ph - r.y) - (q.y - r.y) * (pb - rB)) / d;
+                float l2 = ((rB - pB) * (ph - r.y) + (p.y - r.y) * (pb - rB)) / d;
+                float l3 = 1 - l1 - l2;
+                if (l1 < -1e-4f || l2 < -1e-4f || l3 < -1e-4f) continue;
+                if (f.tex() != null) {
+                    float[] uv = f.uv();
+                    float u = l1 * uv[0] + l2 * uv[2 * i] + l3 * uv[2 * (i + 1)];
+                    float w = l1 * uv[1] + l2 * uv[2 * i + 1] + l3 * uv[2 * (i + 1) + 1];
+                    if (f.tex().clearAt(u, w)) break;
+                }
+                float depth = sign * (from - (l1 * comp(p, a) + l2 * comp(q, a) + l3 * comp(r, a)));
+                out.add((int) Math.floor(depth / step));
+                break;
+            }
+        }
     }
 
     private static Pane pane(int a, int b, float at, float pb0, float pb1, float ph0, float ph1, int sign, float u0, float v0, float u1, float v1) {
@@ -240,35 +346,6 @@ public final class GlassPanes {
 
     private static float comp(Vector3f v, int axis) {
         return axis == 0 ? v.x : axis == 1 ? v.y : v.z;
-    }
-
-    /** how deep from the outermost surface the eye meets the first face it cannot see through */
-    private static float firstSeen(List<Face> faces, List<Integer> which, int a, int b, float pb, float ph, int sign, float from) {
-        float best = Float.POSITIVE_INFINITY;
-        for (int fi : which) {
-            Face f = faces.get(fi);
-            Vector3f[] v = f.v();
-            for (int i = 1; i + 1 < v.length; i++) {
-                Vector3f p = v[0], q = v[i], r = v[i + 1];
-                float pB = comp(p, b), qB = comp(q, b), rB = comp(r, b);
-                float d = (qB - rB) * (p.y - r.y) - (q.y - r.y) * (pB - rB);
-                if (Math.abs(d) < 1e-8f) continue;
-                float l1 = ((qB - rB) * (ph - r.y) - (q.y - r.y) * (pb - rB)) / d;
-                float l2 = ((rB - pB) * (ph - r.y) + (p.y - r.y) * (pb - rB)) / d;
-                float l3 = 1 - l1 - l2;
-                if (l1 < -1e-4f || l2 < -1e-4f || l3 < -1e-4f) continue;
-                float depth = sign * (from - (l1 * comp(p, a) + l2 * comp(q, a) + l3 * comp(r, a)));
-                if (depth >= best || depth < -0.01f) continue;
-                if (f.tex() != null) {
-                    float[] uv = f.uv();
-                    float u = l1 * uv[0] + l2 * uv[2 * i] + l3 * uv[2 * (i + 1)];
-                    float w = l1 * uv[1] + l2 * uv[2 * i + 1] + l3 * uv[2 * (i + 1) + 1];
-                    if (f.tex().clearAt(u, w)) continue;
-                }
-                best = depth;
-            }
-        }
-        return best;
     }
 
     /** the glass of old Minecraft (before 1.14): clear, a white frame and streaks across */

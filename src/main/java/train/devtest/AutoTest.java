@@ -696,6 +696,9 @@ public class AutoTest {
                     t.renderData.modelList = t.getModel();
                     t.renderData.bogies = t.bogies();
                     ebf.tim.render.WheelFit.prepare(t);
+                    long t0 = System.nanoTime();
+                    ebf.tim.render.GlassPanes.prepare(t);
+                    log(String.format("glasstime %s %d ms", t.getClass().getSimpleName(), (System.nanoTime() - t0) / 1000000));
                 } catch (Throwable e) {
                     log("wheelfit failed " + e);
                 }
