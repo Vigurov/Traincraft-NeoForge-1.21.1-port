@@ -68,7 +68,8 @@ public final class CargoRender {
 
     /**
      * the model seen from above, once per car type: the height of its first surface down every eighth of a block,
-     * over the rails' top, in its own frame (x from the back bogie towards the front one times dir, z across)
+     * over the rails' top, in its own frame (x from the back bogie towards the front one times dir, z across),
+     * every sixteenth of a block
      */
     private record Grid(float x0, float z0, float cell, int nx, int nz, float[] top, float dir) {
         float at(int i, int j) { return top[i * nz + j]; }
@@ -119,7 +120,7 @@ public final class CargoRender {
             }
             float x0 = Float.MAX_VALUE, x1 = -Float.MAX_VALUE, z0 = Float.MAX_VALUE, z1 = -Float.MAX_VALUE;
             for (var v : verts) { x0 = Math.min(x0, v.x); x1 = Math.max(x1, v.x); z0 = Math.min(z0, v.z); z1 = Math.max(z1, v.z); }
-            float cell = 0.125f;
+            float cell = 0.0625f;
             //on the texture's eighths: the cells then never run over a repeat of it
             x0 = (float) Math.floor(x0 / cell) * cell;
             z0 = (float) Math.floor(z0 / cell) * cell;
@@ -193,7 +194,23 @@ public final class CargoRender {
                     if (!in[n[0] * g.nz() + n[1]] && low(g, n[0], n[1], y)) todo.add(n);
                 }
             }
-            return in;
+            //one cell on into the walls round it: a cell only partly under a wall counted as the wall, and left a
+            //gap along it; under the wall the load's edge is hidden (walls are thicker than a cell)
+            boolean[] out = in.clone();
+            for (int i = 0; i < g.nx(); i++) {
+                for (int j = 0; j < g.nz(); j++) {
+                    if (!in[i * g.nz() + j]) continue;
+                    for (int di = -1; di <= 1; di++) {
+                        for (int dj = -1; dj <= 1; dj++) {
+                            int a = i + di, b = j + dj;
+                            if (a < 0 || b < 0 || a >= g.nx() || b >= g.nz()) continue;
+                            float h = g.at(a, b);
+                            if (!Float.isNaN(h) && h >= y - 0.01f) out[a * g.nz() + b] = true;
+                        }
+                    }
+                }
+            }
+            return out;
         });
     }
 
