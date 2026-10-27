@@ -226,6 +226,11 @@ public class FuelHandler{
 				train.accelerator = 0;
 				train.updateConsist();
 			}
+		} else if (train.getBoolean(GenericRailTransport.boolValues.RUNNING) && getBoilerHeat(train) <= 100) {
+			//no water in the boiler and no steam: the ignition does not start it
+			train.setBoolean(GenericRailTransport.boolValues.RUNNING, false);
+			train.accelerator = 0;
+			train.updateConsist();
 		}
 		if (tank(train, 1)!=null && tank(train, 1).amount >0) {
 			//steam is expelled through the pistons to push them back and forth, but even when the accelerator is off, a degree of steam is still escaping.

@@ -485,6 +485,23 @@ public class AutoTest {
                 log("jukebox t=" + tick + " playing=" + cj.isPlaying() + " url=" + cj.getStreamURL() + " " + JukeboxClient.status(cj));
             }
         }
+        if (p.containsKey("load") && tick == 40) {
+            //load=index:count|index:count  fills that many inventory slots of those placed transports with logs (on
+            //the server only, no screen opened: what the clients see of it comes through the synced cargo count)
+            server.execute(() -> {
+                for (String q : p.getProperty("load").split("\\|")) {
+                    String[] a = q.split(":");
+                    GenericRailTransport t = placed.get(Integer.parseInt(a[0]));
+                    int n = Integer.parseInt(a[1]), done = 0;
+                    for (var s : t.inventory) {
+                        if (done >= n) break;
+                        s.setStack(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.OAK_LOG, 64));
+                        done++;
+                    }
+                    log("load " + t.getClass().getSimpleName() + " slots " + t.inventory.size() + " filled " + done + " cargo " + t.cargoCount());
+                }
+            });
+        }
         if (p.containsKey("fuelall")) {
             //fuelall=1  fuel for every placed locomotive at 30, engines on at 40 (no driving)
             if (tick == 30) server.execute(() -> {
@@ -508,8 +525,14 @@ public class AutoTest {
                     : f.length > 3 && tick >= Integer.parseInt(f[3]) ? -Integer.parseInt(f[0])
                     : f.length > 2 && tick >= Integer.parseInt(f[2]) ? 0 : Integer.parseInt(f[0]);
             if (tick == 30) server.execute(() -> {
+                //nofuel=index,index  those placed locomotives get nothing (they must not move however they are driven)
+                java.util.Set<String> nofuel = java.util.Set.of(p.getProperty("nofuel", "").split(","));
                 for (GenericRailTransport t : placed) {
                     if (!(t instanceof EntityTrainCore)) continue;
+                    if (nofuel.contains(String.valueOf(placed.indexOf(t)))) {
+                        fleetStart.put(t, t.position());
+                        continue;
+                    }
                     var types = t.getTypes();
                     if (types.contains(ebf.tim.TrainsInMotion.transportTypes.STEAM)) {
                         put(t, 400, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.COAL, 64));
@@ -536,6 +559,7 @@ public class AutoTest {
             //water as it is used up (steam), one bucket at a time like a player would
             if (tick % 40 == 0) server.execute(() -> {
                 for (GenericRailTransport t : placed) {
+                    if (java.util.Set.of(p.getProperty("nofuel", "").split(",")).contains(String.valueOf(placed.indexOf(t)))) continue;
                     if (t.getTypes().contains(ebf.tim.TrainsInMotion.transportTypes.STEAM)) {
                         var slot = t.getSlotIndexByID(401);
                         if (slot != null && !slot.getHasStack()) slot.setStack(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.WATER_BUCKET));

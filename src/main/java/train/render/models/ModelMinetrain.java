@@ -191,13 +191,7 @@ public class ModelMinetrain extends ModelBase {
 			fexcraft.tmt.slim.TextureManager.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation, "textures/trains/minetrain_winter.png"));
 		}
 		
-		int cargo = 0;
-
-		for (ItemStackSlot s : ((GenericRailTransport) entity).inventory){
-			if(s.getStack()!=null){
-				cargo++;
-			}
-		}
+		int cargo = ((GenericRailTransport) entity).cargoCount();
 		if (cargo != 0) {
 			if(cargo<=9) {
 				box27.renderClean();

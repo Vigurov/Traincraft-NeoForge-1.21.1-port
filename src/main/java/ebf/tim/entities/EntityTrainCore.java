@@ -109,11 +109,23 @@ public class EntityTrainCore extends GenericRailTransport {
     }
 
     /**
-     * it can pull: an electric only under a live wire (and for 2 seconds after leaving it, over a gap between
-     * spans), others always. What it keeps from the wire only evens out the supply: off the wire a real one has
+     * it can pull: a steam locomotive with steam in it, a diesel with fuel, an electric only under a live wire (and
+     * for 2 seconds after leaving it, over a gap between spans). What it keeps from the wire only evens out the supply: off the wire a real one has
      * nothing to run on
      */
     public boolean hasTraction() {
+        if (getTankCapacity() == null) return true;
+        //a steam locomotive pulls once its boiler boils, a diesel with fuel in its tank (both used to move with the
+        //ignition on and nothing in them)
+        if (getTypes().contains(STEAM) || getTypes().contains(NUCLEAR_STEAM)) {
+            //the boiler over boiling point, with water in it: it makes steam (BOILER_HEAT is the heat x 100)
+            var water = getTank(0);
+            return entityData().get(BOILER_HEAT) > 100 * 100 && water != null && water.amount > 0;
+        }
+        if (getTypes().contains(DIESEL) || getTypes().contains(HYDROGEN_DIESEL)) {
+            var fuel = getTank(0);
+            return fuel != null && fuel.amount > 0;
+        }
         if (!getTypes().contains(ELECTRIC)) return true;
         if (tickCount - lastUnderWire > 40) return false;
         var f = getTank(0);

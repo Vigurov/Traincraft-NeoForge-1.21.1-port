@@ -131,13 +131,7 @@ public class ModelFreightCenterBeam_Wood_2 extends ModelBase {
 	public void render(Entity entity, float f, float f1, float f2, float f3, float f4, float f5) {
 		
 		//freight
-		int cargo = 0;
-
-		for (ItemStackSlot s : ((GenericRailTransport) entity).inventory){
-			if(s.getStack()!=null){
-				cargo++;
-			}
-		}
+		int cargo = ((GenericRailTransport) entity).cargoCount();
 		if(cargo != 0) {
 			GL11.glPushMatrix();
 			//GL11.glScalef(1, 0.0f+((Freight)entity).getAmmountOfCargo()*0.0194f, 1);

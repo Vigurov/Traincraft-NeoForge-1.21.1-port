@@ -207,6 +207,8 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
     public static final EntityDataAccessor<org.joml.Vector3f> BACK_BOGIE = SynchedEntityData.defineId(GenericRailTransport.class, EntityDataSerializers.VECTOR3);
     /**the bogies' heights above the rail block (yOffset), used by the renderer*/
     public static final EntityDataAccessor<CompoundTag> TANKS = SynchedEntityData.defineId(GenericRailTransport.class, EntityDataSerializers.COMPOUND_TAG);
+    /** how many of its inventory slots hold something: the client draws the load in open wagons by it */
+    public static final EntityDataAccessor<Integer> CARGO = SynchedEntityData.defineId(GenericRailTransport.class, EntityDataSerializers.INT);
     public static final EntityDataAccessor<Integer> FUEL_CONSUMPTION = SynchedEntityData.defineId(GenericRailTransport.class, EntityDataSerializers.INT);
     public static final EntityDataAccessor<Integer> BOILER_HEAT = SynchedEntityData.defineId(GenericRailTransport.class, EntityDataSerializers.INT);
     public static final EntityDataAccessor<Float> BOGIE_Y_OFFSET = SynchedEntityData.defineId(GenericRailTransport.class, EntityDataSerializers.FLOAT);
@@ -228,6 +230,7 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
         builder.define(FUEL_CONSUMPTION, 0);
         builder.define(BOILER_HEAT, 0);
         builder.define(WIRE_HEIGHT, 0f);
+        builder.define(CARGO, 0);
     }
 
     /**1.12 name of the synced data; vanilla's own entityData field is the XML data here*/
@@ -879,6 +882,8 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
      */
     @Override
     public void tick() {
+        //the load as saved (a loaded wagon is not marked dirty): once a second is enough
+        if (tickCount % 20 == 1) syncCargo();
         //regen health after a while
         if(health<20 && tickCount%40==0){
             if(health>15){
@@ -1868,6 +1873,23 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
         if (level() != null && !level().isClientSide && getTankCapacity() != null) {
             entityData().set(TANKS, tanksTag());
         }
+        syncCargo();
+    }
+
+    /** the filled slots, for the clients (who only see the inventory itself while its screen is open) */
+    private void syncCargo() {
+        if (level() == null || level().isClientSide || inventory == null) return;
+        int n = 0;
+        for (ItemStackSlot s : inventory) if (s.getStack() != null) n++;
+        if (entityData().get(CARGO) != n) entityData().set(CARGO, n);
+    }
+
+    /** how many inventory slots hold something; on the client from the synced count */
+    public int cargoCount() {
+        if (level() != null && level().isClientSide) return entityData().get(CARGO);
+        int n = 0;
+        if (inventory != null) for (ItemStackSlot s : inventory) if (s.getStack() != null) n++;
+        return n;
     }
 
     public boolean stillValid(Player p) {

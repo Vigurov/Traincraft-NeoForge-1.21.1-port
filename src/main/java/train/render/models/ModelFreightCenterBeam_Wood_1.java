@@ -170,13 +170,7 @@ public class ModelFreightCenterBeam_Wood_1 extends ModelBase {
 		box23.showModel=false;
 		box27.showModel=false;
 
-		int cargo = 0;
-
-		for (ItemStackSlot s : ((GenericRailTransport) entity).inventory){
-			if(s.getStack()!=null){
-				cargo++;
-			}
-		}
+		int cargo = ((GenericRailTransport) entity).cargoCount();
 		int inventorySize = ((GenericRailTransport) entity).getInventoryRows()*9;
 		if (cargo != 0) {
 			if(cargo<=inventorySize/6) {

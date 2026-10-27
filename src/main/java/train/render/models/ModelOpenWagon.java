@@ -109,13 +109,7 @@ public class ModelOpenWagon extends ModelBase {
 	
 	@Override
 	public void render(Entity entity, float f, float f1, float f2, float f3, float f4, float f5) {
-		int cargo = 0;
-
-		for (ItemStackSlot s : ((GenericRailTransport) entity).inventory){
-			if(s.getStack()!=null){
-				cargo++;
-			}
-		}
+		int cargo = ((GenericRailTransport) entity).cargoCount();
 		if (cargo != 0) {
 			GL11.glPushMatrix();
 			GL11.glTranslatef(0, -0.8f+cargo*0.023f, 0);

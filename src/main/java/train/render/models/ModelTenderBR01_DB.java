@@ -371,13 +371,7 @@ public class ModelTenderBR01_DB extends ModelBase {
 			fexcraft.tmt.slim.TextureManager.bindTexture(fexcraft.tmt.slim.TextureManager.loc(Info.resourceLocation, "textures/trains/tenderBR01_DB_winter.png"));
 		}
 		
-		int cargo = 0;
-
-		for (ItemStackSlot s : ((GenericRailTransport) entity).inventory){
-			if(s.getStack()!=null){
-				cargo++;
-			}
-		}
+		int cargo = ((GenericRailTransport) entity).cargoCount();
 		if (cargo != 0) {
 			GL11.glPushMatrix();
 			GL11.glTranslatef(0, -0.66f+cargo*0.046f, 0);
