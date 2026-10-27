@@ -1325,6 +1325,8 @@
  "message.traincraft.catenary.already": "These masts are already joined",
  "message.traincraft.catenary.strung": "Wire strung",
  "message.traincraft.catenary.offtrack": "Strung, but the wire strays off the track between these masts: put one closer",
+ "message.traincraft.nofuel": "No fuel",
+ "message.traincraft.nowater": "No water in the boiler",
  "block.traincraft.substation": "Traction Substation",
  "item.traincraft.feeder_cable": "Power Cable",
  "message.traincraft.feeder.start": "Cable held: right click the mast (or substation) to feed",

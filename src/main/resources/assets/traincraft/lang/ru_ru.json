@@ -254,6 +254,8 @@
  "message.traincraft.catenary.already": "Эти опоры уже соединены",
  "message.traincraft.catenary.strung": "Провод натянут",
  "message.traincraft.catenary.offtrack": "Провод натянут, но между этими опорами он уходит от пути: поставь опору ближе",
+ "message.traincraft.nofuel": "Нет топлива",
+ "message.traincraft.nowater": "В котле нет воды",
  "block.traincraft.substation": "Тяговая подстанция",
  "item.traincraft.feeder_cable": "Силовой кабель",
  "message.traincraft.feeder.start": "Кабель тянется: нажми на опору (или подстанцию)",

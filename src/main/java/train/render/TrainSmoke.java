@@ -143,8 +143,13 @@ public final class TrainSmoke {
     /** called every client tick of a locomotive */
     public static void tick(EntityTrainCore loco) {
         FX data = BY_CLASS.get(loco.getClass());
+        boolean running = loco.getBoolean(GenericRailTransport.boolValues.RUNNING);
+        //a steam locomotive smokes while its fire burns, already while the boiler heats up; the steam from the
+        //cylinders only comes once it runs
+        boolean fire = loco.getTypes().contains(ebf.tim.TrainsInMotion.transportTypes.STEAM)
+                && loco.entityData().get(GenericRailTransport.FUEL_CONSUMPTION) > 0;
         if (data == null || loco.frontBogie == null || loco.backBogie == null
-                || !loco.getBoolean(GenericRailTransport.boolValues.RUNNING) || Math.abs(loco.getXRot()) > 30) {
+                || !(running || fire) || Math.abs(loco.getXRot()) > 30) {
             return;
         }
         //the forward direction from the bogies (TiM's model x), the side is its z
@@ -166,7 +171,7 @@ public final class TrainSmoke {
                 }
             }
             //steam: both sides of the locomotive (TC4 mirrored z for its four fixed yaws)
-            if (data.explosion != null && random.nextInt(300) < data.explosionIterations * 10) {
+            if (running && data.explosion != null && random.nextInt(300) < data.explosionIterations * 10) {
                 for (int j = 0; j < data.explosionIterations; j++) {
                     for (Vector3f p : at.explosion) {
                         spawn(loco, data.explosion, p, 1, base, fx, fz);

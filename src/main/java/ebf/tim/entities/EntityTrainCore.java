@@ -132,6 +132,24 @@ public class EntityTrainCore extends GenericRailTransport {
         return f != null && f.amount > 0;
     }
 
+    /**
+     * what it lacks to be started, as a message key, or null: a steam locomotive water in its boiler and a fire (or
+     * fuel to light one), a diesel fuel. An electric starts anyway: it runs once it is under a live wire
+     */
+    public String missingToStart() {
+        if (getTankCapacity() == null || getBoolean(boolValues.CREATIVE)) return null;
+        if (getTypes().contains(STEAM)) {
+            var water = getTank(0);
+            if (water == null || water.amount <= 0) return "message.traincraft.nowater";
+            boolean burning = entityData().get(FUEL_CONSUMPTION) > 0;
+            if (!burning && ebf.tim.utility.FuelHandler.itemBurnTime(getSlotIndexByID(400)) <= 0) return "message.traincraft.nofuel";
+        } else if (getTypes().contains(DIESEL) || getTypes().contains(HYDROGEN_DIESEL)) {
+            var fuel = getTank(0);
+            if (fuel == null || fuel.amount <= 0) return "message.traincraft.nofuel";
+        }
+        return null;
+    }
+
     /** the last tick it was under a contact wire (server) */
     private int lastUnderWire = -1000;
 
@@ -372,6 +390,16 @@ public class EntityTrainCore extends GenericRailTransport {
         if (!super.interact(player, isFront, isBack, key)){
             switch (key){
                 case 8:{ //toggle ignition
+                    if (!getBoolean(boolValues.RUNNING)) {
+                        //nothing to run on: it does not start (it used to, for a moment, smoking)
+                        String missing = missingToStart();
+                        if (missing != null) {
+                            if (!level().isClientSide && player != null) {
+                                player.displayClientMessage(net.minecraft.network.chat.Component.translatable(missing), true);
+                            }
+                            return true;
+                        }
+                    }
                     setBoolean(boolValues.RUNNING, !getBoolean(boolValues.RUNNING));
                     updateLinks();
                     return true;
