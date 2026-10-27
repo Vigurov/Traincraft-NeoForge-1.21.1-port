@@ -211,6 +211,8 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
     public static final EntityDataAccessor<CompoundTag> TANKS = SynchedEntityData.defineId(GenericRailTransport.class, EntityDataSerializers.COMPOUND_TAG);
     /** how many of its inventory slots hold something: the client draws the load in open wagons by it */
     public static final EntityDataAccessor<Integer> CARGO = SynchedEntityData.defineId(GenericRailTransport.class, EntityDataSerializers.INT);
+    /** what its filled slots hold, in slot order (item ids): the open cars show the very load (CargoRender) */
+    public static final EntityDataAccessor<String> CARGO_ITEMS = SynchedEntityData.defineId(GenericRailTransport.class, EntityDataSerializers.STRING);
     public static final EntityDataAccessor<Integer> FUEL_CONSUMPTION = SynchedEntityData.defineId(GenericRailTransport.class, EntityDataSerializers.INT);
     public static final EntityDataAccessor<Integer> BOILER_HEAT = SynchedEntityData.defineId(GenericRailTransport.class, EntityDataSerializers.INT);
     public static final EntityDataAccessor<Float> BOGIE_Y_OFFSET = SynchedEntityData.defineId(GenericRailTransport.class, EntityDataSerializers.FLOAT);
@@ -233,6 +235,7 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
         builder.define(BOILER_HEAT, 0);
         builder.define(WIRE_HEIGHT, 0f);
         builder.define(CARGO, 0);
+        builder.define(CARGO_ITEMS, "");
     }
 
     /**1.12 name of the synced data; vanilla's own entityData field is the XML data here*/
@@ -1816,6 +1819,9 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
     @Override
     public boolean isItemValidForSlot(int slot, ItemStack itemStack) {
         if (itemStack == null || itemStack.isEmpty()){return true;}
+        //the cars made for one load take only that: the log cars wood, the rail car rails
+        String load = ebf.tim.utility.CargoRules.of(this);
+        if (load != null) return ebf.tim.utility.CargoRules.takes(load, itemStack);
         //compensate for specific rollingstock
         for(TrainsInMotion.transportTypes type : getTypes()){
             if(type==LOGCAR && (itemStack.is(net.minecraft.tags.ItemTags.LOGS) || itemStack.is(net.minecraft.tags.ItemTags.PLANKS))){
@@ -1888,13 +1894,27 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
     private void syncCargo() {
         if (level() == null || level().isClientSide || inventory == null) return;
         int n = 0;
-        for (ItemStackSlot s : inventory) if (s.getStack() != null) n++;
+        StringBuilder ids = new StringBuilder();
+        for (ItemStackSlot s : inventory) {
+            if (s.getStack() == null) continue;
+            n++;
+            if (ids.length() > 0) ids.append(' ');
+            ids.append(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getStack().getItem()));
+        }
         if (entityData().get(CARGO) != n) entityData().set(CARGO, n);
+        if (!entityData().get(CARGO_ITEMS).contentEquals(ids)) entityData().set(CARGO_ITEMS, ids.toString());
+    }
+
+    /** whether it shows its very load (an open car, not a tender): its model's own load is then left out */
+    public boolean showsItsLoad() {
+        var s = collisionHandler == null ? null : collisionHandler.shape;
+        return s != null && s.tub() && !getTypes().contains(TrainsInMotion.transportTypes.TENDER);
     }
 
     /** how many inventory slots hold something; on the client from the synced count */
     public int cargoCount() {
-        if (level() != null && level().isClientSide) return entityData().get(CARGO);
+        //the open cars draw what they hold themselves (CargoRender), not their model's load
+        if (level() != null && level().isClientSide) return showsItsLoad() ? 0 : entityData().get(CARGO);
         int n = 0;
         if (inventory != null) for (ItemStackSlot s : inventory) if (s.getStack() != null) n++;
         return n;

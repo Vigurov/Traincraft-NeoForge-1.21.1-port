@@ -69,6 +69,7 @@ public class RenderWagon extends EntityRenderer<GenericRailTransport> {
             RenderContext.end();
         }
         renderCouplers(entity, partialTick, pose, buffers, packedLight);
+        CargoRender.render(entity, yaw, pitch, pose, buffers, packedLight);
     }
 
     private static final ResourceLocation COUPLER_TEX = ResourceLocation.withDefaultNamespace("textures/block/anvil.png");

@@ -15,6 +15,8 @@ public class HitboxDynamic {
     public List<CollisionBox> interactionBoxes = new ArrayList<>();
     /** what players walk on in an open car (WalkShapes): its floor and walls; empty for the solid ones */
     public List<WalkBox> walkBoxes = new ArrayList<>();
+    /** the car's open shape, or null */
+    public WalkShapes.Shape shape;
     public CollisionBox front,back;
 
     public HitboxDynamic(float depth, float height, float width, GenericRailTransport entity){
@@ -50,6 +52,7 @@ public class HitboxDynamic {
         var type = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType());
         WalkShapes.Shape s = type == null ? null : WalkShapes.of(type.getPath());
         if (s == null || interactionBoxes.isEmpty()) return;
+        shape = s;
         for (CollisionBox b : interactionBoxes) b.solid = false;
         float length = entity.getHitboxSize()[0];
         //the floor: squares across the body, along all of it

@@ -503,12 +503,17 @@ public class AutoTest {
             //the server only, no screen opened: what the clients see of it comes through the synced cargo count)
             server.execute(() -> {
                 for (String q : p.getProperty("load").split("\\|")) {
-                    String[] a = q.split(":");
+                    String[] a = q.split(":", 3);
                     GenericRailTransport t = placed.get(Integer.parseInt(a[0]));
                     int n = Integer.parseInt(a[1]), done = 0;
+                    //load=index:count[:item,item...]  the items in turn (logs when none given)
+                    String[] what = a.length > 2 ? a[2].split(",") : new String[]{"minecraft:oak_log"};
                     for (var s : t.inventory) {
                         if (done >= n) break;
-                        s.setStack(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.OAK_LOG, 64));
+                        var item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(what[done % what.length]));
+                        var stack = new net.minecraft.world.item.ItemStack(item, 64);
+                        if (t.isItemValidForSlot(s.getSlotID(), stack)) s.setStack(stack);
+                        else log("load: " + item + " not taken by " + t.getClass().getSimpleName());
                         done++;
                     }
                     log("load " + t.getClass().getSimpleName() + " slots " + t.inventory.size() + " filled " + done + " cargo " + t.cargoCount());
