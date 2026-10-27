@@ -35,6 +35,16 @@ public final class TrainSmoke {
 
     private static final Map<Class<?>, FX> BY_CLASS = new HashMap<>();
     private static final Map<Class<?>, Placed> PLACED = new HashMap<>();
+    /**
+     * per class and chimney, what moves the TC4 position onto the middle of the chimney top as TiM draws the model
+     * (model frame: x backwards along, y down, z across). Measured with the autotest's smokecheck: the TC4 numbers
+     * left the smoke starting 0.15-0.4 blocks over most chimneys, some beside them
+     */
+    private static final Map<Class<?>, float[][]> ADJUST = new HashMap<>();
+
+    private static void adjust(Class<?> c, float[][] d) {
+        ADJUST.put(c, d);
+    }
     private static final RandomSource random = RandomSource.create();
 
     private static ParticleOptions type(String name) {
@@ -110,6 +120,63 @@ public final class TrainSmoke {
         put(EntityLocoSteamMILWClassA.class, new float[][]{{0.0f, 0.1f, 0.0f}, {0.0f, 180.0f, 180.0f}, {0.9f, 0.9f, 0.9f}}, "largesmoke", 20, new double[][]{{4.4, 1.35, 0.0}}, "explode", 2, new double[][]{{4.2, -0.4, 0.8}});
         put(EntityLocoSteamFowler.class, new float[][]{{-3.0f, -0.51585f, 0.0f}, {0.0f, 180.0f, 180.0f}, {1.0f, 1.0f, 1.0f}}, "largesmoke", 20, new double[][]{{3.2, 1.6, 0.0}}, "explode", 2, new double[][]{{2.0, -0.4, 0.0}});
         put(EntityLocoSteamSnowPlow.class, new float[][]{{-2.0f, 0.12f, 0.0f}, {0.0f, 180.0f, 180.0f}, {1.0f, 1.0f, 1.0f}}, "smoke", 4, new double[][]{{3.15, 1.6, 0.0}}, "", 0, new double[][]{});
+        //smokecheck's corrections
+        adjust(EntityLocoSteam4_4_0.class, new float[][]{{0.000f, 0.290f, 0.000f}});
+        adjust(EntityLocoSteamMallardA4.class, new float[][]{{0.000f, 0.327f, 0.000f}});
+        adjust(EntityLocoSteamHallClass.class, new float[][]{{0.000f, 0.263f, 0.000f}});
+        adjust(EntityLocoSteam040VB.class, new float[][]{{0.000f, 0.125f, 0.000f}});
+        adjust(EntityLocoSteam262T.class, new float[][]{{0.000f, 0.138f, 0.000f}});
+        adjust(EntityLocoSteamAdler.class, new float[][]{{0.000f, 0.125f, 0.000f}});
+        adjust(EntityLocoSteamAlcoSC4.class, new float[][]{{0.000f, 0.356f, 0.000f}});
+        adjust(EntityLocoSteamAlice0_4_0.class, new float[][]{{0.000f, 0.100f, 0.000f}});
+        adjust(EntityLocoSteamBerk765.class, new float[][]{{0.000f, 0.331f, 0.000f}});
+        adjust(EntityLocoSteamBerk1225.class, new float[][]{{0.000f, 0.331f, 0.000f}});
+        adjust(EntityLocoSteamBR01_DB.class, new float[][]{{0.000f, 0.342f, 0.000f}});
+        adjust(EntityLocoSteamBR80_DB.class, new float[][]{{0.000f, 0.355f, 0.000f}});
+        adjust(EntityLocoSteamC41.class, new float[][]{{0.000f, 0.312f, 0.000f}});
+        adjust(EntityLocoSteamC41_080.class, new float[][]{{0.000f, 0.312f, 0.000f}});
+        adjust(EntityLocoSteamC41T.class, new float[][]{{0.000f, 0.312f, 0.000f}});
+        adjust(EntityLocoSteamC62Class.class, new float[][]{{0.000f, 0.340f, 0.000f}});
+        adjust(EntityLocoSteamCherepanov.class, new float[][]{{0.000f, 0.320f, 0.000f}});
+        adjust(EntityLocoSteamClimax.class, new float[][]{{0.000f, 0.370f, 0.000f}});
+        adjust(EntityLocoSteamCoranationClass.class, new float[][]{{0.088f, 0.256f, -0.000f}});
+        adjust(EntityLocoSteamD51.class, new float[][]{{0.000f, 0.300f, 0.000f}});
+        adjust(EntityLocoSteamD51Long.class, new float[][]{{0.000f, 0.300f, 0.000f}});
+        adjust(EntityLocoSteamEr_Ussr.class, new float[][]{{0.000f, 0.298f, 0.000f}});
+        adjust(EntityLocoSteamForneyRed.class, new float[][]{{0.000f, 0.538f, 0.000f}});
+        adjust(EntityLocoSteamFowler.class, new float[][]{{0.000f, 0.291f, 0.000f}});
+        adjust(EntityLocoSteamGLYN042T.class, new float[][]{{0.000f, 0.125f, 0.000f}});
+        adjust(EntityLocoSteamGS4.class, new float[][]{{0.000f, 0.060f, 0.000f}});
+        adjust(EntityLocoSteamHeavy.class, new float[][]{{0.225f, 0.610f, -0.000f}});
+        adjust(EntityLocoSteamKingClass.class, new float[][]{{0.000f, 0.319f, 0.000f}});
+        adjust(EntityLocoSteamLSSP7.class, new float[][]{{-0.412f, -0.077f, 0.013f}});
+        adjust(EntityLocoSteamMILWClassA.class, new float[][]{{0.000f, 0.378f, 0.000f}});
+        adjust(EntityLocoSteamMogulBlue.class, new float[][]{{0.000f, 0.368f, 0.000f}});
+        adjust(EntityLocoSteamPannier.class, new float[][]{{0.000f, 0.311f, 0.000f}});
+        adjust(EntityLocoSteamShay.class, new float[][]{{0.000f, 0.338f, 0.000f}});
+        adjust(EntityLocoSteamSmall.class, new float[][]{{0.000f, 0.095f, 0.000f}});
+        adjust(EntityLocoSteamSnowPlow.class, new float[][]{{0.000f, 0.155f, 0.000f}});
+        adjust(EntityLocoSteamSouthern1102.class, new float[][]{{0.000f, 0.312f, 0.000f}});
+        adjust(EntityLocoSteamUSATCUK.class, new float[][]{{0.000f, 0.287f, 0.000f}});
+        adjust(EntityLocoSteamUSATCUS.class, new float[][]{{0.096f, 0.278f, -0.046f}});
+        adjust(EntityLocoSteamVBShay.class, new float[][]{{0.000f, 0.342f, 0.000f}});
+        adjust(EntityLocoDiesel44TonSwitcher.class, new float[][]{{0.000f, 0.094f, 0.000f}, {0.000f, 0.094f, 0.000f}});
+        adjust(EntityLocoDieselBamboo.class, new float[][]{{-0.100f, 0.044f, -0.031f}});
+        adjust(EntityLocoDieselCD742.class, new float[][]{{0.000f, 0.164f, 0.000f}});
+        adjust(EntityLocoDieselChME3.class, new float[][]{{0.000f, 0.103f, 0.000f}});
+        adjust(EntityLocoDieselClass66.class, new float[][]{{0.288f, 0.113f, 0.031f}});
+        adjust(EntityLocoDieselDD35A.class, new float[][]{{0.000f, 0.070f, 0.000f}, {0.000f, 0.070f, 0.000f}});
+        adjust(EntityLocoDieselDeltic.class, new float[][]{{0.000f, 0.022f, 0.000f}});
+        adjust(EntityLocoDieselEMDF3.class, new float[][]{{0.000f, 0.112f, 0.000f}, {0.000f, 0.112f, 0.000f}});
+        adjust(EntityLocoDieselEMDF7.class, new float[][]{{0.000f, 0.112f, 0.000f}, {0.000f, 0.112f, 0.000f}});
+        adjust(EntityLocoDieselFOLM1.class, new float[][]{{-0.125f, 0.163f, -0.025f}});
+        adjust(EntityLocoDieselGP7Red.class, new float[][]{{0.000f, 0.202f, 0.000f}, {0.000f, 0.202f, 0.000f}});
+        adjust(EntityLocoDieselKof_DB.class, new float[][]{{0.000f, 0.197f, 0.000f}});
+        adjust(EntityLocoDieselSD40.class, new float[][]{{0.104f, 0.127f, -0.000f}});
+        adjust(EntityLocoDieselSD70.class, new float[][]{{-0.144f, 0.010f, 0.023f}});
+        adjust(EntityLocoDieselShunter.class, new float[][]{{0.000f, 0.148f, 0.000f}, {0.000f, 0.148f, 0.000f}});
+        adjust(EntityLocoDieselV60_DB.class, new float[][]{{-0.281f, 0.098f, -0.000f}});
+        adjust(EntityLocoDieselWLs40.class, new float[][]{{0.000f, 0.156f, 0.000f}});
     }
 
     private static Matrix3f rotation(float[] deg) {
@@ -134,7 +201,11 @@ public final class TrainSmoke {
     private static Placed placed(EntityTrainCore loco, FX data) {
         return PLACED.computeIfAbsent(loco.getClass(), c -> {
             Vector3f[] s = new Vector3f[data.smokeFX.length], e = new Vector3f[data.explosionFX.length];
-            for (int i = 0; i < s.length; i++) s[i] = toTiM(data.smokeFX[i], data.tc4, loco);
+            float[][] fix = ADJUST.get(c);
+            for (int i = 0; i < s.length; i++) {
+                s[i] = toTiM(data.smokeFX[i], data.tc4, loco);
+                if (fix != null && i < fix.length) s[i].add(fix[i][0], fix[i][1], fix[i][2]);
+            }
             for (int i = 0; i < e.length; i++) e[i] = toTiM(data.explosionFX[i], data.tc4, loco);
             return new Placed(s, e);
         });
@@ -180,6 +251,34 @@ public final class TrainSmoke {
                 }
             }
         }
+    }
+
+    /**
+     * for tests: where its smoke comes out, relative to the locomotive with its bogies along +x (x along, y up from
+     * its position, z across), at that rail height; empty when it has none
+     */
+    public static java.util.List<double[]> smokePoints(EntityTrainCore loco, float railY) {
+        FX data = BY_CLASS.get(loco.getClass());
+        java.util.List<double[]> out = new java.util.ArrayList<>();
+        if (data == null || data.smoke == null) return out;
+        double base = ebf.tim.render.RenderWagon.modelBaseY(loco, railY);
+        for (Vector3f p : placed(loco, data).smoke) out.add(new double[]{-p.x, base - p.y, p.z});
+        return out;
+    }
+
+    /** for tests: where its first chimney's smoke comes out in the world now, or null */
+    public static net.minecraft.world.phys.Vec3 worldSmokePoint(EntityTrainCore loco) {
+        FX data = BY_CLASS.get(loco.getClass());
+        if (data == null || data.smoke == null || loco.frontBogie == null || loco.backBogie == null) return null;
+        double fx = loco.frontBogie.posX - loco.backBogie.posX, fz = loco.frontBogie.posZ - loco.backBogie.posZ;
+        double len = Math.sqrt(fx * fx + fz * fz);
+        if (len < 1.0E-4) return null;
+        fx /= len;
+        fz /= len;
+        double base = ebf.tim.render.RenderWagon.modelBaseY(loco, (loco.frontBogie.yOffset + loco.backBogie.yOffset) * 0.5f);
+        Vector3f p = placed(loco, data).smoke[0];
+        double x = -p.x, y = base - p.y, z = p.z;
+        return new net.minecraft.world.phys.Vec3(loco.getX() + x * fx - z * fz, loco.getY() + y, loco.getZ() + x * fz + z * fx);
     }
 
     /** a model-frame point to the world: turned upside down at 1.5 + rail height, x along the bogies */

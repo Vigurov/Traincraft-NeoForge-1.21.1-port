@@ -1,5 +1,6 @@
 package train.devtest;
 
+import train.render.TrainSmoke;
 import train.blocks.catenary.CatenaryWireItem;
 import train.Traincraft;
 import train.blocks.TCBlocks;
@@ -613,6 +614,22 @@ public class AutoTest {
         }
         if (tick == 30 && p.containsKey("measure")) {
             measureAll(mc);
+        }
+        if (tick == 100 && p.containsKey("camsmoke")) {
+            //camsmoke=dist  the camera that far beside the first chimney of the first locomotive here, looking at it
+            for (var e : mc.level.entitiesForRendering()) {
+                if (!(e instanceof EntityTrainCore t)) continue;
+                var at = TrainSmoke.worldSmokePoint(t);
+                if (at == null) continue;
+                double d = Double.parseDouble(p.getProperty("camsmoke"));
+                double cx = at.x, cy = at.y + 0.4, cz = at.z - d;
+                server.execute(() -> sp.connection.teleport(cx, cy - 1.62, cz, 0, 8));
+                log(String.format("camsmoke %s at %.2f,%.2f,%.2f", t.getClass().getSimpleName(), at.x, at.y, at.z));
+                break;
+            }
+        }
+        if (tick == 30 && p.containsKey("smokecheck")) {
+            smokeCheck(mc);
         }
         if (tick == 30 && p.containsKey("recipeaudit")) {
             server.execute(() -> recipeAudit(level));
@@ -1266,6 +1283,74 @@ public class AutoTest {
             for (var e : top.entrySet()) b.append(String.format(java.util.Locale.ROOT, " %.2f:%.2f", e.getKey() / 8f, e.getValue()));
             log("roof " + id + " #" + TiMGenericRegistry.TRANSPORTS.indexOf(holder) + b);
         }
+    }
+
+    /**
+     * smokecheck=1: for every locomotive with smoke, where it comes out against the model: the top of what is under
+     * it (the highest vertices within 0.45 across, their middle), how far across from that middle the smoke starts
+     * and how high over that top. A chimney's smoke should start at its middle, at its top
+     */
+    private static void smokeCheck(Minecraft mc) {
+        for (var holder : TiMGenericRegistry.TRANSPORTS) {
+            String id = BuiltInRegistries.ENTITY_TYPE.getKey(holder.get()).getPath();
+            try {
+                if (!(holder.get().create(mc.level) instanceof EntityTrainCore t)) continue;
+                t.setPos(0, 0, 0);
+                float[] rp = t.rotationPoints();
+                t.frontBogie = new ebf.tim.entities.EntityBogie(t, rp[1], 0, 0, true);
+                t.backBogie = new ebf.tim.entities.EntityBogie(t, rp[0], 0, 0, false);
+                double dir = rp[1] - rp[0] >= 0 ? 1 : -1;
+                float railY = 0.3f;
+                var pts = TrainSmoke.smokePoints(t, railY);
+                if (pts.isEmpty()) continue;
+                t.frontBogie.yOffset = t.backBogie.yOffset = railY;
+                t.renderData.needsModelUpdate = true;
+                var verts = new java.util.ArrayList<org.joml.Vector3f>();
+                fexcraft.tmt.slim.RenderContext.begin(new com.mojang.blaze3d.vertex.PoseStack(), null, 0, null);
+                fexcraft.tmt.slim.RenderContext.measure = verts;
+                ebf.tim.render.RenderWagon.measuring = true;
+                try {
+                    ebf.tim.render.RenderWagon.doRender(t, t.getYRot(), 0, railY, false, null);
+                } finally {
+                    ebf.tim.render.RenderWagon.measuring = false;
+                    fexcraft.tmt.slim.RenderContext.measure = null;
+                    fexcraft.tmt.slim.RenderContext.end();
+                }
+                StringBuilder b = new StringBuilder(), fix = new StringBuilder();
+                for (double[] q : pts) {
+                    double sx = q[0] * dir, sy = q[1], sz = q[2] * dir;
+                    float top = -Float.MAX_VALUE;
+                    for (var v : verts) if (Math.hypot(v.x - sx, v.z - sz) < 0.45) top = Math.max(top, v.y);
+                    if (top == -Float.MAX_VALUE) { b.append(String.format(java.util.Locale.ROOT, " [nothing under the smoke at %.2f,%.2f,%.2f]", sx, sy, sz)); continue; }
+                    double cx = 0, cz = 0; int n = 0;
+                    for (var v : verts) if (Math.hypot(v.x - sx, v.z - sz) < 0.45 && v.y >= top - 0.06) { cx += v.x; cz += v.z; n++; }
+                    cx /= n; cz /= n;
+                    b.append(String.format(java.util.Locale.ROOT, " [across %.2f (along %+.2f side %+.2f) over top %+.2f]", Math.hypot(sx - cx, sz - cz), (sx - cx) * dir, (sz - cz) * dir, sy - top));
+                    //the correction to the model-frame point (x backwards along, y down, z across) that puts it on
+                    //the middle of the top, a little over it; across only when one chimney is under it and it is off
+                    double across = Math.hypot(sx - cx, sz - cz);
+                    boolean move = pts.size() == 1 && across > 0.08;
+                    double dx = move ? -(cx - sx) * dir : 0, dz = move ? (cz - sz) * dir : 0, dy = sy - (top + 0.05);
+                    fix.append(String.format(java.util.Locale.ROOT, "%s{%.3ff, %.3ff, %.3ff}", fix.length() == 0 ? "" : ", ", dx, dy, dz));
+                }
+                log(String.format("smoke %-34s%s", id, b));
+                if (p.getProperty("smokecheck").equals(id)) {
+                    //the roof line along it near the first chimney's side position: highest vertex per quarter block
+                    double sx = pts.get(0)[0] * dir, sz = pts.get(0)[2] * dir;
+                    StringBuilder pr = new StringBuilder();
+                    for (double x = sx - 3; x <= sx + 3; x += 0.25) {
+                        float hi = -9;
+                        for (var v : verts) if (Math.abs(v.z - sz) < 0.6 && v.x >= x && v.x < x + 0.25) hi = Math.max(hi, v.y);
+                        pr.append(String.format(java.util.Locale.ROOT, " %+.2f:%.2f", (x - sx) * dir, hi));
+                    }
+                    log(String.format(java.util.Locale.ROOT, "roof of %s (smoke at y %.2f, along from it):%s", id, pts.get(0)[1], pr));
+                }
+                log(String.format(java.util.Locale.ROOT, "smokefix adjust(%s.class, new float[][]{%s});", t.getClass().getSimpleName(), fix));
+            } catch (Throwable e) {
+                log("smoke " + id + " failed: " + e);
+            }
+        }
+        log("smokecheck done");
     }
 
     private static void measureAll(Minecraft mc) {
