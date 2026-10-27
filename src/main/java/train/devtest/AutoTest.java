@@ -643,7 +643,9 @@ public class AutoTest {
                 if (phase == 0) {
                     String[] o = v[k + 1].split(",");
                     double dx = Double.parseDouble(o[0]), dy = Double.parseDouble(o[1]), dz = Double.parseDouble(o[2]);
-                    float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz)) + 180, pitch = (float) Math.toDegrees(Math.atan2(dy - 1, Math.hypot(dx, dz)));
+                    //dx,dy,dz,lookY  looking at that height over the rails instead
+                    double look = o.length > 3 ? Double.parseDouble(o[3]) : 1;
+                    float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz)) + 180, pitch = (float) Math.toDegrees(Math.atan2(dy - look, Math.hypot(dx, dz)));
                     server.execute(() -> {
                         sp.getAbilities().flying = true;
                         sp.onUpdateAbilities();
@@ -676,6 +678,27 @@ public class AutoTest {
                 server.execute(() -> sp.connection.teleport(cx, cy - 1.62, cz, 0, 8));
                 log(String.format("camsmoke %s at %.2f,%.2f,%.2f", t.getClass().getSimpleName(), at.x, at.y, at.z));
                 break;
+            }
+        }
+        if (tick == 30 && p.containsKey("gaugecheck")) {
+            gaugeCheck(mc);
+        }
+        if (tick == 30 && p.containsKey("wheelfitall")) {
+            //wheelfitall=1  what WheelFit does to every transport (with -Dtc.wheeldebug=true)
+            for (var holder : TiMGenericRegistry.TRANSPORTS) {
+                try {
+                    GenericRailTransport t = holder.get().create(mc.level);
+                    t.setPos(0, 0, 0);
+                    float[] rp = t.rotationPoints();
+                    t.frontBogie = new ebf.tim.entities.EntityBogie(t, rp[1], 0, 0, true);
+                    t.backBogie = new ebf.tim.entities.EntityBogie(t, rp[0], 0, 0, false);
+                    t.frontBogie.yOffset = t.backBogie.yOffset = 0.3f;
+                    t.renderData.modelList = t.getModel();
+                    t.renderData.bogies = t.bogies();
+                    ebf.tim.render.WheelFit.prepare(t);
+                } catch (Throwable e) {
+                    log("wheelfit failed " + e);
+                }
             }
         }
         if (tick == 30 && p.containsKey("shapecheck")) {
@@ -1167,9 +1190,15 @@ public class AutoTest {
             if (tick == at) server.execute(() -> sp.connection.teleport(t.getX(), t.getY() + 2.5, t.getZ(), d.length > 2 ? Float.parseFloat(d[2]) : sp.getYRot(), 0));
             //dropon=index@tick@yaw  then walks that way from 20 ticks after the drop, for 20
             if (d.length > 2 && tick == at + 20) mc.options.keyUp.setDown(true);
-            if (d.length > 2 && tick == at + 40) mc.options.keyUp.setDown(false);
-            if (tick > at && tick <= at + 40 && tick % 4 == 0) server.execute(() -> log(String.format("dropon t=%d over %.3f across %.2f ground=%s",
-                    tick, sp.getY() - t.getY() - t.entityData().get(GenericRailTransport.BOGIE_Y_OFFSET), Math.hypot(sp.getX() - t.getX(), sp.getZ() - t.getZ()), sp.onGround())));
+            if (d.length > 2 && d.length < 4 && tick == at + 40) mc.options.keyUp.setDown(false);
+            //dropon=index@tick@yaw@jump  also jumps while walking; @long logs for 160 ticks
+            boolean jump = d.length > 3 && d[3].equals("jump");
+            int span = p.getProperty("dropon").contains("long") ? 160 : 40;
+            if (jump && tick == at + 20) mc.options.keyJump.setDown(true);
+            if (jump && tick == at + span - 10) { mc.options.keyJump.setDown(false); mc.options.keyUp.setDown(false); }
+            if (tick > at && tick <= at + span && tick % 4 == 0) server.execute(() -> log(String.format("dropon t=%d over %.3f across %.2f ground=%s car y=%.3f pitch=%.1f roll=%.1f v=%.3f derailed=%s flung=%s",
+                    tick, sp.getY() - t.getY() - t.entityData().get(GenericRailTransport.BOGIE_Y_OFFSET), Math.hypot(sp.getX() - t.getX(), sp.getZ() - t.getZ()), sp.onGround(),
+                    t.getY() - base.getY(), t.getXRot(), t.getYRot(), t.getVelocity(), t.getBoolean(GenericRailTransport.boolValues.DERAILED), t.frontBogie != null && t.frontBogie.flung)));
         }
         if (p.containsKey("stroll")) {
             //stroll=x,z,yaw,fromTick,toTick  the player stands there (from the base, on the ground), holds forward and
@@ -1523,6 +1552,57 @@ public class AutoTest {
             }
         }
         log("shapecheck done");
+    }
+
+    /**
+     * gaugecheck=1: where every transport's wheels run across it: the lowest vertices of the model as drawn (the
+     * bottoms of the wheels and their flanges, within 0.06 of the lowest), their inner- and outermost distance from
+     * the middle; the middle of the two is where the wheel meets the rail. The classic track's railheads are at
+     * 0.309..0.352 (0.33 their middle). Logs the factor across that puts the wheels on them.
+     */
+    private static void gaugeCheck(Minecraft mc) {
+        for (var holder : TiMGenericRegistry.TRANSPORTS) {
+            String id = BuiltInRegistries.ENTITY_TYPE.getKey(holder.get()).getPath();
+            try {
+                GenericRailTransport t = holder.get().create(mc.level);
+                t.setPos(0, 0, 0);
+                float[] rp = t.rotationPoints();
+                t.frontBogie = new ebf.tim.entities.EntityBogie(t, rp[1], 0, 0, true);
+                t.backBogie = new ebf.tim.entities.EntityBogie(t, rp[0], 0, 0, false);
+                float railY = 0.3f;
+                t.frontBogie.yOffset = t.backBogie.yOffset = railY;
+                t.renderData.needsModelUpdate = true;
+                var verts = new java.util.ArrayList<org.joml.Vector3f>();
+                fexcraft.tmt.slim.RenderContext.begin(new com.mojang.blaze3d.vertex.PoseStack(), null, 0, null);
+                fexcraft.tmt.slim.RenderContext.measure = verts;
+                ebf.tim.render.RenderWagon.measuring = true;
+                try {
+                    ebf.tim.render.RenderWagon.doRender(t, t.getYRot(), 0, railY, false, null);
+                } finally {
+                    ebf.tim.render.RenderWagon.measuring = false;
+                    fexcraft.tmt.slim.RenderContext.measure = null;
+                    fexcraft.tmt.slim.RenderContext.end();
+                }
+                if (verts.isEmpty()) continue;
+                float lo = Float.MAX_VALUE;
+                for (var v : verts) lo = Math.min(lo, v.y);
+                float zin = Float.MAX_VALUE, zout = 0;
+                int n = 0;
+                for (var v : verts) {
+                    if (v.y > lo + 0.06f || Math.abs(v.z) < 0.05f) continue;
+                    zin = Math.min(zin, Math.abs(v.z));
+                    zout = Math.max(zout, Math.abs(v.z));
+                    n++;
+                }
+                if (n == 0) continue;
+                float mid = (zin + zout) / 2, k = 0.33f / mid;
+                log(String.format(java.util.Locale.ROOT, "gauge %-34s %-30s wheels %.3f..%.3f mid %.3f factor %.3f n %d",
+                        id, t.getClass().getSimpleName(), zin, zout, mid, k, n));
+            } catch (Throwable e) {
+                log("gauge " + id + " failed: " + e);
+            }
+        }
+        log("gaugecheck done");
     }
 
     /** the height of the first face a vertical ray down at (x, z) meets, or -MAX when none */

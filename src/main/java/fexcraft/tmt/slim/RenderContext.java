@@ -30,6 +30,9 @@ public final class RenderContext {
     public static java.util.List<Float> measureFaceUp;
     /** parts not drawn (an electric's folded pantograph while it is raised) */
     public static java.util.Set<ModelRendererTurbo> hidden;
+    /** parts moved across the transport (its wheels onto the rails), and the transport's frame they are moved in */
+    public static java.util.Map<ModelRendererTurbo, Float> shiftZ;
+    public static org.joml.Matrix4f shiftFrame;
     /** the part being drawn */
     public static ModelRendererTurbo currentPart;
     /**

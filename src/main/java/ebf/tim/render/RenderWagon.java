@@ -55,6 +55,8 @@ public class RenderWagon extends EntityRenderer<GenericRailTransport> {
         float pitch = Mth.lerp(partialTick, entity.xRotO, entity.getXRot());
         //an open car's inside, measured once per type for its load (draws the model into nothing: before ours)
         CargoRender.prepare(entity);
+        //its wheels onto the rails: found once (draws it into nothing too)
+        WheelFit.prepare(entity);
         RenderContext.begin(pose, buffers, packedLight, null);
         int depth = RenderContext.depth;
         RenderContext.lampsOn = entity.getBoolean(GenericRailTransport.boolValues.LAMP);
@@ -68,6 +70,8 @@ public class RenderWagon extends EntityRenderer<GenericRailTransport> {
             while (RenderContext.depth > depth) fexcraft.tmt.slim.GL11.glPopMatrix();
         } finally {
             RenderContext.lampsOn = false;
+            RenderContext.shiftZ = null;
+            RenderContext.shiftFrame = null;
             RenderContext.end();
         }
         renderCouplers(entity, partialTick, pose, buffers, packedLight);
@@ -251,6 +255,21 @@ public class RenderWagon extends EntityRenderer<GenericRailTransport> {
             s=entity.getTextureByID(Minecraft.getInstance().player,false, entity.getDefaultSkin());
         }
 
+        //the transport's frame (x along, z across): for measuring its parts, and moving its wheels in
+        org.joml.Matrix4f frame = new org.joml.Matrix4f(fexcraft.tmt.slim.RenderContext.pose.last().pose());
+        if (fexcraft.tmt.slim.RenderContext.classify != null && fexcraft.tmt.slim.RenderContext.classifyFrame == null) {
+            fexcraft.tmt.slim.RenderContext.classifyFrame = new org.joml.Matrix4f(frame).invert();
+        }
+        if (!measuring && Boolean.getBoolean("tc.onlywheels") && entity.renderData.wheelShift != null) {
+            //tests: only what was taken for its wheels
+            java.util.Set<fexcraft.tmt.slim.ModelRendererTurbo> rest = new java.util.HashSet<>(entity.renderData.allParts);
+            rest.removeAll(entity.renderData.wheelParts);
+            fexcraft.tmt.slim.RenderContext.hidden = rest;
+        }
+        if (!measuring && entity.renderData.wheelShift != null && !entity.renderData.wheelShift.isEmpty()) {
+            fexcraft.tmt.slim.RenderContext.shiftZ = entity.renderData.wheelShift;
+            fexcraft.tmt.slim.RenderContext.shiftFrame = frame;
+        }
         //an electric under the wire: its folded pantographs left out (the first raised frame only finds them)
         boolean pantoProbe = !measuring && !isPaintBucket && entity.level() != null
                 && Pantographs.begin(entity, new org.joml.Matrix4f(fexcraft.tmt.slim.RenderContext.pose.last().pose()).invert());

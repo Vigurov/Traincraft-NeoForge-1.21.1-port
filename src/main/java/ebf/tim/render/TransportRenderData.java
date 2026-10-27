@@ -13,6 +13,10 @@ import java.util.List;
 public class TransportRenderData {
     public ModelBase[] modelList = null;
     public Bogie[] bogies = null;
+    /** how far its wheels are moved across, to run on the rails (WheelFit); null until measured */
+    public java.util.Map<fexcraft.tmt.slim.ModelRendererTurbo, Float> wheelShift = null;
+    /** the parts taken for its wheels (moved or not), and all its parts: for tests (tc.onlywheels) */
+    public java.util.Set<fexcraft.tmt.slim.ModelRendererTurbo> wheelParts = new java.util.HashSet<>(), allParts = new java.util.HashSet<>();
     public List<AnimationBase> animatedPart = new ArrayList<>();
     public float wheelPitch=0;
     public float lastWheelPitch =0;

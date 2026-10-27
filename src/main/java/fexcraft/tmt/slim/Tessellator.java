@@ -144,6 +144,17 @@ public class Tessellator {
         VertexConsumer c = RenderContext.consumerNow();
         if (c == null) return;
         PoseStack.Pose pose = RenderContext.pose.last();
+        if (RenderContext.shiftZ != null && RenderContext.shiftFrame != null) {
+            Float dz = RenderContext.shiftZ.get(RenderContext.currentPart);
+            if (dz != null) {
+                //across the transport, whatever turns the part has of its own
+                org.joml.Vector3f d = RenderContext.shiftFrame.transformDirection(0, 0, dz, new org.joml.Vector3f());
+                PoseStack moved = new PoseStack();
+                moved.last().pose().set(new org.joml.Matrix4f().translation(d).mul(pose.pose()));
+                moved.last().normal().set(pose.normal());
+                pose = moved.last();
+            }
+        }
         if (nx == 0 && ny == 0 && nz == 0) {
             Vec3f a = new Vec3f(pts.get(0)[0], pts.get(0)[1], pts.get(0)[2]);
             Vec3f b = new Vec3f(pts.get(1)[0], pts.get(1)[1], pts.get(1)[2]);
