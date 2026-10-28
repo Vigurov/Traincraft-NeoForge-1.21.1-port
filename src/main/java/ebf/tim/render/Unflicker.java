@@ -15,13 +15,16 @@ import java.util.Map;
 /**
  * Faces of two parts lying in one plane and overlapping (a plate on a wall, two panels meeting in it) flicker: the
  * depth buffer cannot tell which is in front. Found once per transport from its model as drawn, in its frame; of
- * each such pair the smaller part is moved a hair off the plane, the way its face looks, so it is in front.
+ * each such pair the smaller part is moved a hair off the plane, the way its face looks, so it is in front. And
+ * the side walls are made thin. Each part's change: {move x, y, z} or {move x, y, z, outer z, squeeze across}.
  */
 public final class Unflicker {
     private Unflicker() {}
 
     /** how far a part is moved off, in blocks: too little to see, enough for the depth buffer some way off */
     public static final float HAIR = 0.003f;
+    /** how thick a side wall is made */
+    public static final float THIN = 1 / 64f;
 
     private record Face(ModelRendererTurbo part, int axis, int sign, float plane, float lo1, float hi1, float lo2, float hi2) {}
 
@@ -85,35 +88,52 @@ public final class Unflicker {
             }
             float d = w[0].get(ax);
             Face face = new Face(part, ax, n.get(ax) > 0 ? 1 : -1, d, lo1, hi1, lo2, hi2);
-            planes.computeIfAbsent(ax + ":" + Math.round(d * 4000), k -> new ArrayList<>()).add(face);
+            planes.computeIfAbsent(ax + ":" + Math.round(d * 1000), k -> new ArrayList<>()).add(face);
         }
-        //pairs in one plane (to a 4000th, either way they look), overlapping: the smaller part off, its face's way;
+        //pairs in one plane (or within 0.002 of it: as bad), either way they look, overlapping: the smaller part off, its face's way;
         //again while any are still together (three in one plane)
         for (int round = 0; round < 6; round++) {
             boolean moved = false;
             for (var e : planes.entrySet()) {
                 List<Face> l = new ArrayList<>(e.getValue());
                 String[] k = e.getKey().split(":");
-                List<Face> near = planes.get(k[0] + ":" + (Integer.parseInt(k[1]) + 1));
-                if (near != null) l.addAll(near);
+                for (int dk = 1; dk <= 2; dk++) {
+                    List<Face> near = planes.get(k[0] + ":" + (Integer.parseInt(k[1]) + dk));
+                    if (near != null) l.addAll(near);
+                }
                 for (int i = 0; i < l.size(); i++) for (int j = i + 1; j < l.size(); j++) {
                     Face a = l.get(i), b = l.get(j);
-                    if (a.part == b.part || Math.abs(a.plane - b.plane) > 0.0004f) continue;
+                    if (a.part == b.part || Math.abs(a.plane - b.plane) > 0.002f) continue;
                     if (Math.min(a.hi1, b.hi1) - Math.max(a.lo1, b.lo1) < 0.005f || Math.min(a.hi2, b.hi2) - Math.max(a.lo2, b.lo2) < 0.005f) continue;
                     Face mover = size(bounds.get(a.part)) <= size(bounds.get(b.part)) ? a : b;
                     Face other = mover == a ? b : a;
                     float[] m = moves.computeIfAbsent(mover.part, x -> new float[3]);
                     float[] o = moves.get(other.part);
                     float om = o == null ? 0 : o[mover.axis];
-                    //already apart on that axis
-                    if (Math.abs(m[mover.axis] - om) >= HAIR * 0.9f) continue;
-                    m[mover.axis] = om + mover.sign * HAIR;
+                    //already apart on that axis (as moved, from where they were)
+                    float gap = (mover.plane + m[mover.axis]) - (other.plane + om);
+                    if (gap * mover.sign >= HAIR * 0.9f) continue;
+                    m[mover.axis] = other.plane + om + mover.sign * HAIR - mover.plane;
                     moved = true;
                 }
             }
             if (!moved) break;
         }
-        moves.values().removeIf(m -> m[0] == 0 && m[1] == 0 && m[2] == 0);
+        //the side walls: thin boxes the length of the car at its sides, made a 64th thick from their outside (a
+        //sixteenth or more apart, inside and out, one sees the one from the other, a camera gets between them)
+        float half = 0;
+        for (float[] b : bounds.values()) half = Math.max(half, Math.max(-b[2], b[5]));
+        for (var e : bounds.entrySet()) {
+            float[] b = e.getValue();
+            float tz = b[5] - b[2];
+            boolean side = b[2] > half - 0.2f || b[5] < -(half - 0.2f);
+            if (!side || tz < 0.03f || tz > 0.13f || b[3] - b[0] < 0.4f || b[4] - b[1] < 0.1f) continue;
+            float outer = b[2] > 0 ? b[5] : b[2];
+            float[] m = moves.computeIfAbsent(e.getKey(), x -> new float[3]);
+            float[] w = {m[0], m[1], m[2], outer, THIN / tz};
+            moves.put(e.getKey(), w);
+        }
+        moves.values().removeIf(m -> m[0] == 0 && m[1] == 0 && m[2] == 0 && m.length < 5);
         return moves;
     }
 

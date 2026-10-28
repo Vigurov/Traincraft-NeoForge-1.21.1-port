@@ -106,6 +106,17 @@ public class Tessellator {
         emit(pts, 1f, n.xCoord, n.yCoord, n.zCoord);
     }
 
+    /**
+     * the part's matrix changed as Unflicker says, in the transport's frame: moved, and (a side wall) squeezed across
+     * toward its outside
+     */
+    private static org.joml.Matrix4f unflickered(float[] u, org.joml.Matrix4f m) {
+        org.joml.Matrix4f f = RenderContext.unflickerFrame;
+        org.joml.Matrix4f inFrame = new org.joml.Matrix4f().translation(u[0], u[1], u[2]);
+        if (u.length > 4) inFrame.translate(0, 0, u[3]).scale(1, 1, u[4]).translate(0, 0, -u[3]);
+        return new org.joml.Matrix4f(f).mul(inFrame).mul(new org.joml.Matrix4f(f).invert()).mul(m);
+    }
+
     /** quads as they are, triangles with the last vertex twice, larger polygons as a fan of quads */
     private static void emit(List<float[]> pts, float unused, float nx, float ny, float nz) {
         if (RenderContext.classify != null) {
@@ -123,7 +134,7 @@ public class Tessellator {
             org.joml.Matrix4f m = RenderContext.pose.last().pose();
             if (RenderContext.unflickerMeasure && RenderContext.unflicker != null && RenderContext.unflickerFrame != null) {
                 float[] u = RenderContext.unflicker.get(RenderContext.currentPart);
-                if (u != null) m = new org.joml.Matrix4f().translation(RenderContext.unflickerFrame.transformDirection(u[0], u[1], u[2], new org.joml.Vector3f())).mul(m);
+                if (u != null) m = unflickered(u, m);
             }
             org.joml.Vector3f[] face = new org.joml.Vector3f[pts.size()];
             for (int i = 0; i < pts.size(); i++) {
@@ -158,9 +169,8 @@ public class Tessellator {
         if (RenderContext.unflicker != null && RenderContext.unflickerFrame != null) {
             float[] u = RenderContext.unflicker.get(RenderContext.currentPart);
             if (u != null) {
-                org.joml.Vector3f d = RenderContext.unflickerFrame.transformDirection(u[0], u[1], u[2], new org.joml.Vector3f());
                 PoseStack moved = new PoseStack();
-                moved.last().pose().set(new org.joml.Matrix4f().translation(d).mul(pose.pose()));
+                moved.last().pose().set(unflickered(u, pose.pose()));
                 moved.last().normal().set(pose.normal());
                 pose = moved.last();
             }

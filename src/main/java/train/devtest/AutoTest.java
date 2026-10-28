@@ -1826,6 +1826,14 @@ public class AutoTest {
             //models with their own arrays of parts: by the array's name and index
             for (var m : t.renderData.modelList) {
                 for (var fld : m.getClass().getDeclaredFields()) {
+                    if (fexcraft.tmt.slim.ModelRendererTurbo.class.isAssignableFrom(fld.getType())) {
+                        try {
+                            fld.setAccessible(true);
+                            float[] b = boxes.get((fexcraft.tmt.slim.ModelRendererTurbo) fld.get(m));
+                            if (b != null) log(String.format(java.util.Locale.ROOT, "part %s %s x %.3f..%.3f y %.3f..%.3f z %.3f..%.3f", id, fld.getName(), b[0], b[3], b[1], b[4], b[2], b[5]));
+                        } catch (ReflectiveOperationException ignored) {}
+                        continue;
+                    }
                     if (fld.getType() != fexcraft.tmt.slim.ModelRendererTurbo[].class) continue;
                     try {
                         fld.setAccessible(true);
@@ -1999,14 +2007,19 @@ public class AutoTest {
                     }
                     float[] rec = {lo1, hi1, lo2, hi2, d};
                     partOf.put(rec, parts.get(f));
-                    String key = ax + (nrm.get(ax) > 0 ? "+" : "-") + Math.round(d * 2000);
+                    String key = ax + ":" + Math.round(d * 1000);
                     planes.computeIfAbsent(key, k -> new java.util.ArrayList<>()).add(rec);
                 }
                 for (var e : planes.entrySet()) {
-                    var l = e.getValue();
+                    var l = new java.util.ArrayList<>(e.getValue());
+                    String[] kk = e.getKey().split(":");
+                    for (int dk = 1; dk <= 2; dk++) {
+                        var near = planes.get(kk[0] + ":" + (Integer.parseInt(kk[1]) + dk));
+                        if (near != null) l.addAll(near);
+                    }
                     for (int i = 0; i < l.size(); i++) for (int j = i + 1; j < l.size(); j++) {
                         float[] a = l.get(i), b = l.get(j);
-                        if (partOf.get(a) == partOf.get(b)) continue;
+                        if (partOf.get(a) == partOf.get(b) || Math.abs(a[4] - b[4]) > 0.002f) continue;
                         float o1 = Math.min(a[1], b[1]) - Math.max(a[0], b[0]), o2 = Math.min(a[3], b[3]) - Math.max(a[2], b[2]);
                         if (o1 > 0.01f && o2 > 0.01f) {
                             count[pass]++;
