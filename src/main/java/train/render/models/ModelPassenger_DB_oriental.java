@@ -116,7 +116,7 @@ public class ModelPassenger_DB_oriental extends ModelBase
 
 		passenger_db_orientalModel[2].addBox(0F, 0F, 0F, 1, 7, 15, 0F); // Box 6
 		passenger_db_orientalModel[2].setRotationPoint(-4F, 13F, -10F);
-		passenger_db_orientalModel[2].rotateAngleZ = 6.10865238F;
+		passenger_db_orientalModel[2].rotateAngleZ = 0.17453293F; //leaning back toward the wall (was 10 degrees the other way)
 
 		passenger_db_orientalModel[3].addBox(0F, 0F, -1F, 6, 20, 1, 0F); // Box 8
 		passenger_db_orientalModel[3].setRotationPoint(-27F, 10F, 1.9F);
@@ -154,7 +154,7 @@ public class ModelPassenger_DB_oriental extends ModelBase
 		passenger_db_orientalModel[12].rotateAngleZ = -6.24827872F;
 
 		passenger_db_orientalModel[13].addBox(-6F, 0F, 0F, 6, 17, 0, 0F); // Box 25
-		passenger_db_orientalModel[13].setRotationPoint(-33F, 10F, 8F);
+		passenger_db_orientalModel[13].setRotationPoint(-33F, 10F, 10.5F); //flush with the car's side (was 2.5 in: a wall inside the vestibule)
 		passenger_db_orientalModel[13].rotateAngleY = 3.14159265F;
 
 		passenger_db_orientalModel[14].addBox(0F, 0F, 0F, 7, 1, 16, 0F); // Box 26
@@ -182,7 +182,7 @@ public class ModelPassenger_DB_oriental extends ModelBase
 
 		passenger_db_orientalModel[21].addBox(0F, 0F, 0F, 1, 7, 15, 0F); // Box 34
 		passenger_db_orientalModel[21].setRotationPoint(-20F, 13F, -10F);
-		passenger_db_orientalModel[21].rotateAngleZ = 6.10865238F;
+		passenger_db_orientalModel[21].rotateAngleZ = 0.17453293F; //leaning back toward the wall (was 10 degrees the other way)
 
 		passenger_db_orientalModel[22].addBox(0F, 0F, 0F, 1, 3, 3, 0F); // Box 36
 		passenger_db_orientalModel[22].setRotationPoint(-35F, 7F, -7F);
@@ -221,7 +221,7 @@ public class ModelPassenger_DB_oriental extends ModelBase
 		passenger_db_orientalModel[32].setRotationPoint(-19.7F, 13.7F, -10F);
 
 		passenger_db_orientalModel[33].addBox(-6F, 0F, 0F, 6, 17, 0, 0F); // Box 49
-		passenger_db_orientalModel[33].setRotationPoint(33F, 10F, 8F);
+		passenger_db_orientalModel[33].setRotationPoint(33F, 10F, 10.5F); //flush with the car's side (was 2.5 in: a wall inside the vestibule)
 
 		passenger_db_orientalModel[34].addBox(0F, 0F, 0F, 6, 1, 2, 0F); // Box 50
 		passenger_db_orientalModel[34].setRotationPoint(27F, 5F, 7F);
@@ -294,7 +294,7 @@ public class ModelPassenger_DB_oriental extends ModelBase
 
 		passenger_db_orientalModel[53].addBox(0F, 0F, 0F, 1, 7, 15, 0F); // Box 72
 		passenger_db_orientalModel[53].setRotationPoint(12F, 13F, -10F);
-		passenger_db_orientalModel[53].rotateAngleZ = 6.10865238F;
+		passenger_db_orientalModel[53].rotateAngleZ = 0.17453293F; //leaning back toward the wall (was 10 degrees the other way)
 
 		passenger_db_orientalModel[54].addBox(0F, -2F, 0F, 1, 3, 15, 0F); // Box 73
 		passenger_db_orientalModel[54].setRotationPoint(11F, 22F, -10F);
@@ -305,7 +305,7 @@ public class ModelPassenger_DB_oriental extends ModelBase
 		passenger_db_orientalModel[55].rotateAngleY = -3.14159265F;
 
 		passenger_db_orientalModel[56].addBox(-6F, 0F, 0F, 6, 17, 0, 0F); // Box 76
-		passenger_db_orientalModel[56].setRotationPoint(-33F, 10F, -8F);
+		passenger_db_orientalModel[56].setRotationPoint(-33F, 10F, -10.5F); //flush with the car's side (was 2.5 in: a wall inside the vestibule)
 		passenger_db_orientalModel[56].rotateAngleY = -3.14159265F;
 
 		passenger_db_orientalModel[57].addBox(0F, 0F, 0F, 1, 17, 6, 0F); // Box 77
@@ -355,7 +355,7 @@ public class ModelPassenger_DB_oriental extends ModelBase
 		passenger_db_orientalModel[71].setRotationPoint(34F, 6F, -2F);
 
 		passenger_db_orientalModel[72].addBox(0F, 0F, 0F, 6, 17, 0, 0F); // Box 100
-		passenger_db_orientalModel[72].setRotationPoint(33F, 10F, -8F);
+		passenger_db_orientalModel[72].setRotationPoint(33F, 10F, -10.5F); //flush with the car's side (was 2.5 in: a wall inside the vestibule)
 		passenger_db_orientalModel[72].rotateAngleY = -3.14159265F;
 
 		passenger_db_orientalModel[73].addBox(0F, 0F, 0F, 52, 19, 1, 0F); // Box 100
