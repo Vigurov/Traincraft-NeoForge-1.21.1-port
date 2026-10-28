@@ -1334,5 +1334,8 @@
  "message.traincraft.feeder.toofar": "Too far: a feeder is at most 24 blocks long",
  "message.traincraft.feeder.taken": "This mast already has a feeder",
  "message.traincraft.feeder.strung": "Feeder strung",
- "message.traincraft.feeder.full": "All three of the substation's bushings have a line already (or this one is joined)"
+ "message.traincraft.feeder.full": "All three of the substation's bushings have a line already (or this one is joined)",
+ "item.traincraft.passengerluxsleeper": "Luxury Sleeping Car",
+ "entity.traincraft.passengerluxsleeper": "Luxury Sleeping Car",
+ "description.passenger.luxsleeper.navy": "Navy and gold"
 }

@@ -79,6 +79,7 @@
 "bambooflatcarpassenger": {"a": 0.8697, "s": -2.0000, "front": 1.5316, "back": 1.5316},
 "passengerblue": {"a": 0.8700, "s": -2.0000, "front": 2.2500, "back": 2.2500},
 "passengerdboriental": {"a": 0.8697, "s": -2.0000, "front": 2.2503, "back": 2.2503},
+"passengerluxsleeper": {"a": 0.8697, "s": -2.0000, "front": 3.4378, "back": 3.4378},
 "passengerdenverriogrande": {"a": 0.8747, "s": -2.0000, "front": 3.6250, "back": 3.6250},
 "passengerdenverriograndecombo": {"a": 0.8747, "s": -2.0000, "front": 3.5625, "back": 3.6875},
 "passengergs4": {"a": 0.8697, "s": -2.0000, "front": 4.0003, "back": 3.9378},

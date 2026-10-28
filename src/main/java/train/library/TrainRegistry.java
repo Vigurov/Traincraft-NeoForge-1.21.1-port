@@ -89,6 +89,7 @@ public class TrainRegistry {
         TiMGenericRegistry.registerTransport("bambooflatcarpassenger", EntityPassengerBamboo.class, EntityPassengerBamboo::new);
         TiMGenericRegistry.registerTransport("passengerblue", EntityPassengerBlue.class, EntityPassengerBlue::new);
         TiMGenericRegistry.registerTransport("passengerdboriental", EntityPassengerDBOriental.class, EntityPassengerDBOriental::new);
+        TiMGenericRegistry.registerTransport("passengerluxsleeper", EntityPassengerLuxSleeper.class, EntityPassengerLuxSleeper::new);
         TiMGenericRegistry.registerTransport("passengerdenverriogrande", EntityPassengerDenverRioGrande.class, EntityPassengerDenverRioGrande::new);
         TiMGenericRegistry.registerTransport("passengerdenverriograndecombo", EntityPassengerDenverRioGrandeCombo.class, EntityPassengerDenverRioGrandeCombo::new);
         TiMGenericRegistry.registerTransport("passengergs4", EntityPassengerGS4.class, EntityPassengerGS4::new);

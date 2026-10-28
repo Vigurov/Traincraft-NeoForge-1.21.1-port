@@ -285,5 +285,8 @@
  "message.traincraft.feeder.toofar": "Задалеко: фідер щонайбільше 24 блоки",
  "message.traincraft.feeder.taken": "До цієї опори вже підведено фідер",
  "message.traincraft.feeder.strung": "Фідер натягнуто",
- "message.traincraft.feeder.full": "Усі три вводи підстанції вже зайняті (або цей генератор уже підключено)"
+ "message.traincraft.feeder.full": "Усі три вводи підстанції вже зайняті (або цей генератор уже підключено)",
+ "item.traincraft.passengerluxsleeper": "Люксовий спальний вагон",
+ "entity.traincraft.passengerluxsleeper": "Люксовий спальний вагон",
+ "description.passenger.luxsleeper.navy": "Синій із золотом"
 }
