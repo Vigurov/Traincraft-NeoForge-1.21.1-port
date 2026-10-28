@@ -24,6 +24,10 @@ public class ModelDRGCombo extends ModelConverter //Same as Filename
 		initbodyModel_1();
 		initbodyModel_2();
 
+		//the benches (and their legs) a seat wide by the wall, so there is an aisle to walk (they reached across
+		//all but a pixel of it)
+		squeezeAcross(range(new int[][]{{303, 305}, {307, 309}, {311, 313}, {494, 544}}), 9F, -5F, 1F);
+
 		translateAll(0F, 0F, 0F);
 
 

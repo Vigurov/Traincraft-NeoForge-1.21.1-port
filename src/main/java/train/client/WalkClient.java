@@ -17,12 +17,33 @@ public final class WalkClient {
     private WalkClient() {}
 
     private static int car = -1;
+    /** the head's turn kept while a seated rider is drawn with it clamped */
+    private static float[] heldHead;
     private static float[] local;
 
     public static void init() {
         NeoForge.EVENT_BUS.addListener(WalkClient::tick);
-        NeoForge.EVENT_BUS.addListener((RenderLivingEvent.Pre<?, ?> e) -> GenericRailTransport.renderingRider = e.getEntity());
-        NeoForge.EVENT_BUS.addListener((RenderLivingEvent.Post<?, ?> e) -> GenericRailTransport.renderingRider = null);
+        NeoForge.EVENT_BUS.addListener((RenderLivingEvent.Pre<?, ?> e) -> {
+            var le = e.getEntity();
+            GenericRailTransport.renderingRider = le;
+            //a seated rider's head drawn turned 75 degrees at most from the body (they look round freely)
+            if (le.getVehicle() instanceof GenericRailTransport t) {
+                float h = t.drawnHead(le, le.yHeadRot), ho = t.drawnHead(le, le.yHeadRotO);
+                if (!Float.isNaN(h)) {
+                    heldHead = new float[]{le.yHeadRot, le.yHeadRotO};
+                    le.yHeadRot = h;
+                    le.yHeadRotO = ho;
+                }
+            }
+        });
+        NeoForge.EVENT_BUS.addListener((RenderLivingEvent.Post<?, ?> e) -> {
+            GenericRailTransport.renderingRider = null;
+            if (heldHead != null) {
+                e.getEntity().yHeadRot = heldHead[0];
+                e.getEntity().yHeadRotO = heldHead[1];
+                heldHead = null;
+            }
+        });
         GenericRailTransport.localStand = (t, e) -> e == Minecraft.getInstance().player && t.getId() == car ? local : null;
     }
 

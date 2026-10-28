@@ -81,6 +81,44 @@ public class ModelConverter extends ModelBase {
 		rotate(steeringWheelModel, x, y, z);
 	}
 
+	/**
+	 * squeezes those parts of bodyModel across the model toward z = wall (in the model's own units, before flipAll):
+	 * what reached from the wall to z = from reaches to z = to (a bench as wide as the car made a seat for one, the
+	 * aisle beside it wider). Each vertex once; a part turned about x or y is moved, not squeezed.
+	 */
+	public void squeezeAcross(int[] parts, float wall, float from, float to){
+		float s = (to - wall) / (from - wall);
+		java.util.Set<Vec3f> done = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+		for (int k : parts) {
+			ModelRendererTurbo part = bodyModel[k];
+			if (part == null) continue;
+			//turned half round about y (radians): its z the other way; turned otherwise about x or y: moved as a whole
+			float sign = 1;
+			if (part.rotateAngleX == 0 && Math.abs(Math.abs(part.rotateAngleY) - (float) Math.PI) < 0.01f) sign = -1;
+			else if (part.rotateAngleX != 0 || part.rotateAngleY != 0) {
+				part.rotationPointZ += wall + (part.rotationPointZ - wall) * s - part.rotationPointZ;
+				continue;
+			}
+			//(a turn about z, a leaning back, leaves z as it is)
+			for (TexturedPolygon poly : part.faces) {
+				for (TexturedVertex v : poly.vertices) {
+					if (!done.add(v.vector3F)) continue;
+					float z = part.rotationPointZ + sign * v.vector3F.zCoord;
+					v.vector3F.zCoord = sign * (wall + (z - wall) * s - part.rotationPointZ);
+				}
+			}
+		}
+	}
+
+	/** from..to, both included */
+	public static int[] range(int[]... spans){
+		java.util.List<Integer> l = new java.util.ArrayList<>();
+		for (int[] r : spans) for (int k = r[0]; k <= r[r.length - 1]; k++) l.add(k);
+		int[] a = new int[l.size()];
+		for (int k = 0; k < a.length; k++) a[k] = l.get(k);
+		return a;
+	}
+
 	@Override
 	public void flipAll(){
 		super.flipAll();

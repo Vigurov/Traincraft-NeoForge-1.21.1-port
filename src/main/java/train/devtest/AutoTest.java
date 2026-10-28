@@ -585,6 +585,13 @@ public class AutoTest {
                 log("linked " + placed.size());
             });
         }
+        if (p.containsKey("spin") && tick >= 100 && tick < 100 + Integer.parseInt(p.getProperty("spin"))) {
+            //spin=ticks  turns the player 12 degrees a tick, as the mouse does; logs the angles and the camera's
+            mc.player.turn(12 / 0.15, 0);
+            var cam = mc.gameRenderer.getMainCamera();
+            log(String.format("spin t=%d yaw %.1f head %.1f body %.1f cam %.1f veh %s", tick, mc.player.getYRot(), mc.player.getYHeadRot(), mc.player.yBodyRot,
+                    cam.getYRot(), mc.player.getVehicle() == null ? "-" : String.format("%.1f", mc.player.getVehicle().getYRot())));
+        }
         if (p.containsKey("standat") && tick == 80) {
             //standat=index:along,across  the player standing there in that placed transport
             String[] sa = p.getProperty("standat").split(":"), ac = sa[1].split(",");
@@ -849,6 +856,7 @@ public class AutoTest {
                 break;
             }
         }
+        if (tick == 30 && p.containsKey("partdump")) partDump(mc, p.getProperty("partdump"));
         if (tick == 30 && p.containsKey("seatscan")) {
             seatScan(mc);
         }
@@ -1786,6 +1794,50 @@ public class AutoTest {
      * most of its inside has; the seats are patches 0.25 to 0.6 over the floor, flat; each patch is cut into seats
      * of about 0.6 along and 0.5 across, at its top
      */
+    /**
+     * partdump=id  each part of that transport's model by its index in bodyModel: its bounds in the transport's frame
+     * (x along, y down from the wheels, z across)
+     */
+    private static void partDump(Minecraft mc, String id) {
+        for (var holder : TiMGenericRegistry.TRANSPORTS) {
+            if (!BuiltInRegistries.ENTITY_TYPE.getKey(holder.get()).getPath().equals(id)) continue;
+            GenericRailTransport t = holder.get().create(mc.level);
+            t.setPos(0, 0, 0);
+            float[] rp = t.rotationPoints();
+            t.frontBogie = new ebf.tim.entities.EntityBogie(t, rp[1], 0, 0, true);
+            t.backBogie = new ebf.tim.entities.EntityBogie(t, rp[0], 0, 0, false);
+            t.frontBogie.yOffset = t.backBogie.yOffset = 0.3f;
+            t.renderData.needsModelUpdate = true;
+            var boxes = new java.util.HashMap<fexcraft.tmt.slim.ModelRendererTurbo, float[]>();
+            fexcraft.tmt.slim.RenderContext.begin(new com.mojang.blaze3d.vertex.PoseStack(), null, 0, null);
+            fexcraft.tmt.slim.RenderContext.classify = boxes;
+            fexcraft.tmt.slim.RenderContext.classifyFrame = null;
+            ebf.tim.render.RenderWagon.measuring = true;
+            try {
+                ebf.tim.render.RenderWagon.doRender(t, t.getYRot(), 0, 0.3f, false, null);
+            } finally {
+                ebf.tim.render.RenderWagon.measuring = false;
+                fexcraft.tmt.slim.RenderContext.classify = null;
+                fexcraft.tmt.slim.RenderContext.classifyFrame = null;
+                fexcraft.tmt.slim.RenderContext.end();
+            }
+            var fresh = t.getModel();
+            for (int mi2 = 0; mi2 < fresh.length; mi2++) {
+                if (!(fresh[mi2] instanceof fexcraft.tmt.slim.ModelConverter mc2) || mc2.bodyModel == null) continue;
+                var drawn = t.renderData.modelList[mi2].boxList;
+                int bi = 0;
+                for (int k = 0; k < mc2.bodyModel.length; k++) {
+                    var part = mc2.bodyModel[k];
+                    if (part == null || part.boxName != null && part.boxName.length() > 2) continue;
+                    float[] b = bi < drawn.size() ? boxes.get(drawn.get(bi)) : null;
+                    bi++;
+                    if (b == null) continue;
+                    log(String.format(java.util.Locale.ROOT, "part %s %d x %.3f..%.3f y %.3f..%.3f z %.3f..%.3f", id, k, b[0], b[3], b[1], b[4], b[2], b[5]));
+                }
+            }
+        }
+    }
+
     private static void seatScan(Minecraft mc) {
         StringBuilder json = new StringBuilder("{\n"), walkJson = new StringBuilder("{\n");
         int written = 0, walks = 0;

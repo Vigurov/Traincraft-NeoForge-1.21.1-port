@@ -559,8 +559,17 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
             passenger.setYRot(body);
             passenger.yRotO = body;
         }
-        float d = Mth.wrapDegrees(passenger.getYRot() - body);
-        passenger.setYHeadRot(body + Mth.clamp(d, -75, 75));
+        //the head where they look (the camera of one riding follows it); drawn turned 75 at most (drawnHead)
+        passenger.setYHeadRot(passenger.getYRot());
+    }
+
+    /** a seated rider's head as drawn: turned from their body 75 degrees at most, or NaN when not seated in a seat */
+    public float drawnHead(Entity passenger, float head) {
+        float[][] seats = seats();
+        Integer i = seatMap().get(passenger.getId());
+        if (!seatTops || seats == null || i == null || i >= seats.length || !shouldRiderSit()
+                || !(passenger instanceof net.minecraft.world.entity.LivingEntity le)) return Float.NaN;
+        return le.yBodyRot + Mth.clamp(Mth.wrapDegrees(head - le.yBodyRot), -75, 75);
     }
 
     /** whether the seats' heights are the tops of the seats in the model (a rider sits on them) */

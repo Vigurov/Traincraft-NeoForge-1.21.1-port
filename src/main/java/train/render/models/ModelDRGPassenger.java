@@ -24,6 +24,10 @@ public class ModelDRGPassenger extends ModelConverter //Same as Filename
 		initbodyModel_1();
 		initbodyModel_2();
 
+		//the benches (and their legs) a seat wide by the wall, so there is an aisle to walk (they reached across
+		//all but a pixel of it)
+		squeezeAcross(range(new int[][]{{348, 350}, {352, 354}, {356, 358}, {360, 362}, {453, 520}}), 9F, -5F, 1F);
+
 		translateAll(0F, 0F, 0F);
 
 
