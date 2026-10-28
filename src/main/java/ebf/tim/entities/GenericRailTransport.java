@@ -376,6 +376,12 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
                 }
                 //be sure the player has permission to enter the transport, and that the transport has a seat open.
                 if (seats() != null && getPermissions(p, false, true)) {
+                    float[] st = standOf(p), area = storeArea();
+                    if (p.getVehicle() == this && storage && st != null && area != null
+                            && st[0] >= area[0] && st[0] <= area[1] && st[1] >= area[2] && st[1] <= area[3]) {
+                        //standing where its store is kept (behind a bar): the store
+                        return interact(p, isFront, isBack, 1);
+                    }
                     if (p.getVehicle() == this) {
                         //riding it already: to the free seat clicked on
                         var m = seatMap();
@@ -490,6 +496,14 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
         boolean ok = e.startRiding(this, true);
         pendingSeat = -1;
         return ok;
+    }
+
+    /**
+     * where one standing in it opens its store by a click (along from, to, across from, to, as WalkTable has them), or
+     * null: elsewhere a click takes a seat
+     */
+    public float[] storeArea() {
+        return null;
     }
 
     /** the seat the next rider takes (chosen where they clicked), or -1 for the first free one */
@@ -847,7 +861,8 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
             float rail = entityData().get(BOGIE_Y_OFFSET);
             Vec3f at = new Vec3f(stand[0], 0, stand[1]).rotatePoint(getXRot(), getYRot(), 0f);
             float ground = w.floorAt(stand[0], stand[1]);
-            double feet = Math.min(ground, ground + w.roomAt(stand[0], stand[1]) - 0.1 - passenger.getEyeHeight());
+            //(a quarter at most: under a shelf over a bar one ducks, not sinks through the floor)
+            double feet = Math.max(ground - 0.25, Math.min(ground, ground + w.roomAt(stand[0], stand[1]) - 0.1 - passenger.getEyeHeight()));
             callback.accept(passenger, getX() + at.xCoord, getY() + rail + feet + at.yCoord, getZ() + at.zCoord);
             return;
         }

@@ -35,7 +35,10 @@ public class EntityPassengerGS4_Observatory extends GenericRailTransport {
     @Override
     public boolean isFictional(){return false;}
     @Override
-    public int getInventoryRows(){return 0;}
+    public int getInventoryRows(){return 3;}
+    /** behind the bar (where one stands in it, as WalkTable has it): the bar's store opens there */
+    @Override
+    public float[] storeArea(){return new float[]{-1.1f, 1.1f, -0.3f, 0f};}
     @Override
     public List<TrainsInMotion.transportTypes> getTypes(){
         return TrainsInMotion.transportTypes.PASSENGER.singleton();

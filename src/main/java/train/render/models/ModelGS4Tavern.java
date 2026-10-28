@@ -615,6 +615,9 @@ public class ModelGS4Tavern extends ModelBase
 		gs4tavernModel[146].addShapeBox(0F, 0F, 0F, 1, 1, 1, 0F, 0F, -0.5F, 0F, -0.5F, -0.5F, 0F, -0.5F, -0.5F, 0F, 0F, -0.5F, 0F, 0F, 0F, 0F, -0.5F, 0F, 0F, -0.5F, 0F, 0F, 0F, 0F, 0F); // Box 220
 		gs4tavernModel[146].setRotationPoint(7.25F, -17.25F, 5F);
 
+		//the bar's board and top at one end left out, a way in behind it
+		gs4tavernModel[58].showModel = false;
+		gs4tavernModel[59].showModel = false;
 		bodyModel=gs4tavernModel;
 		fixRotation(bodyModel);
 

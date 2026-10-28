@@ -592,6 +592,26 @@ public class AutoTest {
             log(String.format("spin t=%d yaw %.1f head %.1f body %.1f cam %.1f veh %s", tick, mc.player.getYRot(), mc.player.getYHeadRot(), mc.player.yBodyRot,
                     cam.getYRot(), mc.player.getVehicle() == null ? "-" : String.format("%.1f", mc.player.getVehicle().getYRot())));
         }
+        if (p.containsKey("hideparts") && tick >= 75 && !placed.isEmpty()) {
+            //hideparts=field.index,...  those parts of the placed transports' models not drawn (to tell which is which)
+            java.util.Set<fexcraft.tmt.slim.ModelRendererTurbo> hide = new java.util.HashSet<>();
+            //(in the last one only, to compare with the others)
+            for (var st : java.util.List.of(placed.get(placed.size() - 1))) {
+                //(the client's entity: the one drawn)
+                if (!(mc.level.getEntity(st.getId()) instanceof GenericRailTransport t) || t.renderData.modelList == null) continue;
+                for (var m : t.renderData.modelList) for (String name : p.getProperty("hideparts").split(",")) {
+                    String[] fi = name.split("\\.");
+                    try {
+                        var fld = m.getClass().getDeclaredField(fi[0]);
+                        fld.setAccessible(true);
+                        Object v = fld.get(m);
+                        if (v instanceof fexcraft.tmt.slim.ModelRendererTurbo[] arr) hide.add(arr[Integer.parseInt(fi[1])]);
+                        else if (v instanceof fexcraft.tmt.slim.ModelRendererTurbo one) hide.add(one);
+                    } catch (ReflectiveOperationException ignored) {}
+                }
+            }
+            for (var part : hide) part.showModel = false;
+        }
         if (p.containsKey("standat") && tick == 80) {
             //standat=index:along,across  the player standing there in that placed transport
             String[] sa = p.getProperty("standat").split(":"), ac = sa[1].split(",");
@@ -630,6 +650,9 @@ public class AutoTest {
                             + (st == null ? "" : String.format(" standing %.2f,%.2f", st[0], st[1])) + String.format(" yaw %.0f car %.0f", mc.player.getYRot(), t.getYRot()));
                 }
             }
+        }
+        if (p.containsKey("useclick") && tick == Integer.parseInt(p.getProperty("useclick")) + 10) {
+            log("after the click the screen is " + (mc.screen == null ? "none" : mc.screen.getClass().getSimpleName()));
         }
         if (p.containsKey("useclick") && tick == Integer.parseInt(p.getProperty("useclick"))) {
             //useclick=tick  a right click as the player makes it (what the crosshair is on)
