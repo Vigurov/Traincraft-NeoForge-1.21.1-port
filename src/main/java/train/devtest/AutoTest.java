@@ -858,6 +858,7 @@ public class AutoTest {
         }
         if (tick == 30 && p.containsKey("partdump")) partDump(mc, p.getProperty("partdump"));
         if (tick == 30 && p.containsKey("wallscan")) wallScan(mc);
+        if (tick == 30 && p.containsKey("gapscan")) gapScan(mc);
         if (tick == 30 && p.containsKey("zfight")) zfightScan(mc, p.getProperty("zfight"));
         if (tick == 30 && p.containsKey("seatscan")) {
             seatScan(mc);
@@ -2033,6 +2034,67 @@ public class AutoTest {
             log(String.format(java.util.Locale.ROOT, "zfight %-34s plain %4d apart %4d%s", id, count[0], count[1], count[0] > 0 && only != null ? example : ""));
         }
         log("zfight total plain " + total[0] + " apart " + total[1]);
+    }
+
+    /**
+     * gapscan=1  each coach as drawn plainly and as Unflicker changes it: across its middle third, on each side, how far
+     * its floor (and its ceiling) stop short of its wall's inside
+     */
+    private static void gapScan(Minecraft mc) {
+        for (var holder : TiMGenericRegistry.TRANSPORTS) {
+            String id = BuiltInRegistries.ENTITY_TYPE.getKey(holder.get()).getPath();
+            var w = ebf.tim.utility.WalkTable.of(id);
+            if (w == null) continue;
+            StringBuilder out = new StringBuilder();
+            for (int pass = 0; pass < 2; pass++) {
+                GenericRailTransport t = holder.get().create(mc.level);
+                t.setPos(0, 0, 0);
+                float[] rp = t.rotationPoints();
+                t.frontBogie = new ebf.tim.entities.EntityBogie(t, rp[1], 0, 0, true);
+                t.backBogie = new ebf.tim.entities.EntityBogie(t, rp[0], 0, 0, false);
+                t.frontBogie.yOffset = t.backBogie.yOffset = 0.3f;
+                t.renderData.needsModelUpdate = true;
+                if (pass == 1) ebf.tim.render.Unflicker.prepare(t);
+                var faces = new java.util.ArrayList<org.joml.Vector3f[]>();
+                fexcraft.tmt.slim.RenderContext.begin(new com.mojang.blaze3d.vertex.PoseStack(), null, 0, null);
+                fexcraft.tmt.slim.RenderContext.measure = new java.util.ArrayList<>();
+                fexcraft.tmt.slim.RenderContext.measureFaces = faces;
+                fexcraft.tmt.slim.RenderContext.unflickerMeasure = pass == 1;
+                fexcraft.tmt.slim.RenderContext.unflicker = pass == 1 ? t.renderData.unflicker : null;
+                ebf.tim.render.RenderWagon.measuring = true;
+                try {
+                    ebf.tim.render.RenderWagon.doRender(t, t.getYRot(), 0, 0.3f, false, null);
+                } finally {
+                    ebf.tim.render.RenderWagon.measuring = false;
+                    fexcraft.tmt.slim.RenderContext.measure = null;
+                    fexcraft.tmt.slim.RenderContext.measureFaces = null;
+                    fexcraft.tmt.slim.RenderContext.unflickerMeasure = false;
+                    fexcraft.tmt.slim.RenderContext.unflicker = null;
+                    fexcraft.tmt.slim.RenderContext.end();
+                }
+                float a0 = w.minAlong() + (w.maxAlong() - w.minAlong()) / 3, a1 = w.maxAlong() - (w.maxAlong() - w.minAlong()) / 3;
+                float fl = 0.3f + w.floor(), ce = 0.3f + w.ceil();
+                for (int side = -1; side <= 1; side += 2) {
+                    float wall = Float.MAX_VALUE, floorEdge = 0, ceilEdge = 0;
+                    for (var v : faces) {
+                        if (v.length < 3) continue;
+                        var n = new org.joml.Vector3f(v[1]).sub(v[0]).cross(new org.joml.Vector3f(v[2]).sub(v[0]));
+                        if (n.lengthSquared() < 1e-14f) continue;
+                        n.normalize();
+                        float lx = Float.MAX_VALUE, hx = -Float.MAX_VALUE, ly = Float.MAX_VALUE, hy = -Float.MAX_VALUE, lz = Float.MAX_VALUE, hz = -Float.MAX_VALUE;
+                        for (var q : v) { lx = Math.min(lx, q.x); hx = Math.max(hx, q.x); ly = Math.min(ly, q.y); hy = Math.max(hy, q.y); lz = Math.min(lz, q.z); hz = Math.max(hz, q.z); }
+                        if (hx < a0 || lx > a1) continue;
+                        float zs = side < 0 ? -lz : hz, zi = side < 0 ? -hz : lz;
+                        if (Math.abs(n.z) > 0.95f && hz - lz < 1e-3f && zi > 0.3f && ly < fl + 0.4f && hy > fl + 0.6f && hx - lx > 0.3f) wall = Math.min(wall, zi);
+                        if (Math.abs(n.y) > 0.95f && Math.abs(ly - fl) < 0.04f && zs > 0) floorEdge = Math.max(floorEdge, zs);
+                        if (Math.abs(n.y) > 0.95f && Math.abs(ly - ce) < 0.06f && zs > 0) ceilEdge = Math.max(ceilEdge, zs);
+                    }
+                    out.append(String.format(java.util.Locale.ROOT, " %s%s wall %.3f floor gap %.3f ceil gap %.3f", pass == 0 ? "plain" : "fixed", side < 0 ? "L" : "R",
+                            wall, wall - floorEdge, wall - ceilEdge));
+                }
+            }
+            log("gap " + id + out);
+        }
     }
 
     private static void seatScan(Minecraft mc) {

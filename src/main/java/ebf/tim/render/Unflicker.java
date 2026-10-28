@@ -123,15 +123,41 @@ public final class Unflicker {
         //sixteenth or more apart, inside and out, one sees the one from the other, a camera gets between them)
         float half = 0;
         for (float[] b : bounds.values()) half = Math.max(half, Math.max(-b[2], b[5]));
+        //each wall: x from, to, its inside before and after
+        List<float[]> left = new ArrayList<>(), right = new ArrayList<>();
+        java.util.Set<ModelRendererTurbo> walls = java.util.Collections.newSetFromMap(new IdentityHashMap<>());
         for (var e : bounds.entrySet()) {
             float[] b = e.getValue();
             float tz = b[5] - b[2];
             boolean side = b[2] > half - 0.2f || b[5] < -(half - 0.2f);
             if (!side || tz < 0.03f || tz > 0.13f || b[3] - b[0] < 0.4f || b[4] - b[1] < 0.1f) continue;
-            float outer = b[2] > 0 ? b[5] : b[2];
-            float[] m = moves.computeIfAbsent(e.getKey(), x -> new float[3]);
-            float[] w = {m[0], m[1], m[2], outer, THIN / tz};
-            moves.put(e.getKey(), w);
+            boolean onRight = b[2] > 0;
+            float outer = onRight ? b[5] : b[2];
+            float[] m = moves.getOrDefault(e.getKey(), new float[3]);
+            moves.put(e.getKey(), new float[]{m[0], m[1], m[2], outer, THIN / tz});
+            walls.add(e.getKey());
+            if (onRight) right.add(new float[]{b[0], b[3], b[2], outer - THIN});
+            else left.add(new float[]{b[0], b[3], b[5], outer + THIN});
+        }
+        //what met a wall's inside (the floor, the ceiling, seats, frames) reaches its new inside
+        for (var e : bounds.entrySet()) {
+            if (walls.contains(e.getKey())) continue;
+            float[] b = e.getValue();
+            float lo = b[2], hi = b[5], nlo = lo, nhi = hi;
+            for (float[] w : left) if (Math.abs(lo - w[2]) < 0.012f && Math.min(b[3], w[1]) - Math.max(b[0], w[0]) > 0.01f) nlo = Math.min(nlo, w[3]);
+            for (float[] w : right) if (Math.abs(hi - w[2]) < 0.012f && Math.min(b[3], w[1]) - Math.max(b[0], w[0]) > 0.01f) nhi = Math.max(nhi, w[3]);
+            if (nlo == lo && nhi == hi) continue;
+            float[] m = moves.getOrDefault(e.getKey(), new float[3]);
+            if (hi - lo < 1e-4f) {
+                //flat against it: moved there
+                moves.put(e.getKey(), new float[]{m[0], m[1], m[2] + (nlo != lo ? nlo - lo : nhi - hi)});
+                continue;
+            }
+            //stretched across: lo..hi onto nlo..nhi, as z' = p + (z - p) * f
+            float f = (nhi - nlo) / (hi - lo);
+            if (Math.abs(1 - f) < 1e-6f) continue;
+            float p = (nlo - lo * f) / (1 - f);
+            moves.put(e.getKey(), new float[]{m[0], m[1], m[2], p, f});
         }
         moves.values().removeIf(m -> m[0] == 0 && m[1] == 0 && m[2] == 0 && m.length < 5);
         return moves;
