@@ -375,11 +375,6 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
                     return interact(p, isFront, isBack, 1);
                 }
                 //be sure the player has permission to enter the transport, and that the transport has a seat open.
-                //boarding is from the sides only: at its ends one pushes it (and couples there)
-                if (p.getVehicle() != this && walk() != null) {
-                    double along = p.position().subtract(position()).dot(alongDir());
-                    if (Math.abs(along) > getHitboxSize()[0] * 0.5 - 0.2) return false;
-                }
                 if (seats() != null && getPermissions(p, false, true)) {
                     if (p.getVehicle() == this) {
                         //riding it already: to the free seat clicked on
