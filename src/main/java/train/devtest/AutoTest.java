@@ -1984,7 +1984,7 @@ public class AutoTest {
     /**
      * the inside of a coach one can walk: cells of a sixteenth with floor (a surface facing up at the floor's
      * height), nothing over it up to 1.2 (seats, tables) and no wall through it (a vertical face between 0.25 and
-     * 1.1 over the floor), joined to the middle of the coach. Its cells next to where there is no floor are doors:
+     * 1.1 over the floor), joined to the middle of the coach, and the other floors of 30 cells or more. Its cells next to where there is no floor are doors:
      * 'E' at the ends (to the next coach), 'S' at the sides (out). The ceiling: the lowest surface facing down over
      * the walkable cells, most of them. As json: "id": {x0, z0, c, nx, nz, floor, ceil, walk: rows of 0/1/E/S}
      */
@@ -2035,17 +2035,40 @@ public class AutoTest {
             if (d < bd) { bd = d; best = i * nz + j; }
         }
         if (best < 0 || Math.abs(x0 + c * (best / nz + 0.5f)) > 1.5f) return null;
-        boolean[] in = new boolean[nx * nz];
-        java.util.ArrayDeque<Integer> q = new java.util.ArrayDeque<>();
-        q.add(best); in[best] = true;
+        //and every other floor of 30 cells or more by itself (a corridor and compartments with their doors shut)
+        boolean[] in = new boolean[nx * nz], seen = new boolean[nx * nz];
         int count = 0;
-        while (!q.isEmpty()) {
-            int k = q.poll(), i = k / nz, j = k % nz;
-            count++;
-            int[] nb = {i > 0 ? k - nz : -1, i < nx - 1 ? k + nz : -1, j > 0 ? k - 1 : -1, j < nz - 1 ? k + 1 : -1};
-            for (int n : nb) if (n >= 0 && !in[n] && state[n] == 1) { in[n] = true; q.add(n); }
+        for (int s0 = 0; s0 < nx * nz; s0++) {
+            if (state[s0] != 1 || seen[s0]) continue;
+            java.util.List<Integer> part = new java.util.ArrayList<>();
+            java.util.ArrayDeque<Integer> q = new java.util.ArrayDeque<>();
+            q.add(s0); seen[s0] = true;
+            while (!q.isEmpty()) {
+                int k = q.poll(), i = k / nz, j = k % nz;
+                part.add(k);
+                int[] nb = {i > 0 ? k - nz : -1, i < nx - 1 ? k + nz : -1, j > 0 ? k - 1 : -1, j < nz - 1 ? k + 1 : -1};
+                for (int n : nb) if (n >= 0 && !seen[n] && state[n] == 1) { seen[n] = true; q.add(n); }
+            }
+            if (part.size() < 30 && !part.contains(best)) continue;
+            for (int k : part) in[k] = true;
+            if (part.contains(best)) count = part.size();
         }
         if (count < 30) return null;
+        //a door drawn shut (one or two cells of wall with floor both sides): open
+        boolean[] was = in.clone();
+        for (int i = 1; i < nx - 2; i++) for (int j = 0; j < nz; j++) {
+            int k = i * nz + j;
+            if (was[k]) continue;
+            if (was[k - nz] && was[k + nz]) in[k] = true;
+            else if (was[k - nz] && !was[k + nz] && was[k + 2 * nz]) { in[k] = true; in[k + nz] = true; }
+        }
+        //and across (a compartment's door to the corridor)
+        for (int i = 0; i < nx; i++) for (int j = 1; j < nz - 2; j++) {
+            int k = i * nz + j;
+            if (was[k]) continue;
+            if (was[k - 1] && was[k + 1]) in[k] = true;
+            else if (was[k - 1] && !was[k + 1] && was[k + 2]) { in[k] = true; in[k + 1] = true; }
+        }
         //the doors: walkable cells next to a cell with no floor and no wall (outside)
         float halfLong = Math.max(Math.abs(x0), Math.abs(x0 + c * nx));
         StringBuilder rows = new StringBuilder();

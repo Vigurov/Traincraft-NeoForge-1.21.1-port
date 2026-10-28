@@ -43,7 +43,8 @@ public final class WalkClient {
         double yaw = Math.toRadians(p.getYRot());
         double mx = str * Math.cos(yaw) - fwd * Math.sin(yaw), mz = fwd * Math.cos(yaw) + str * Math.sin(yaw);
         double len = Math.hypot(mx, mz);
-        double speed = mc.options.keySprint.isDown() ? 0.2 : 0.14;
+        //as fast as the shrunk rider walks
+        double speed = (mc.options.keySprint.isDown() ? 0.2 : 0.14) * GenericRailTransport.SEATED_SCALE;
         mx *= speed / len;
         mz *= speed / len;
         Vec3 u = t.alongDir(), v = t.acrossDir();

@@ -560,8 +560,8 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
     /*
      * <h2>standing and walking in a coach</h2>
      * A rider of a coach whose inside is known (WalkTable) can stand up in it (shift while seated) and walk its aisle:
-     * they stay its passenger, so they go along with it smoothly, and their client moves them about in it (the
-     * models are smaller than a player: their legs go through the floor, their eyes are under the ceiling). At the
+     * they stay its passenger, so they go along with it smoothly, and their client moves them about in it (shrunk
+     * like a seated rider, on the floor). At the
      * ends of the aisle they go on into the coach coupled there, or out when there is none.
      */
     private ebf.tim.utility.WalkTable.Walk walkCache;
@@ -687,9 +687,11 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
         return null;
     }
 
-    /** shift in a coach: a seated rider stands up in the aisle; a standing one gets out as before */
-    /** standing up and walking in coaches: off (the user did not want it after all); on with -Dtc.walk=true */
-    public static final boolean WALKING = Boolean.getBoolean("tc.walk");
+    /**
+     * shift in a coach: a seated rider stands up in the aisle; a standing one gets out as before. On (riders are
+     * shrunk in coaches, so they fit standing); off with -Dtc.walk=false
+     */
+    public static final boolean WALKING = !"false".equals(System.getProperty("tc.walk"));
 
     public static void onDismount(net.neoforged.neoforge.event.entity.EntityMountEvent e) {
         if (!WALKING || !e.isDismounting() || e.getLevel().isClientSide() || !(e.getEntityBeingMounted() instanceof GenericRailTransport t)
@@ -704,7 +706,8 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
         Integer seat = t.seatMap().get(p.getId());
         float[][] seats = t.seats();
         if (seat == null || seats == null || seat >= seats.length) return;
-        float[] at = t.walk().nearestAisle(seats[seat][0], seats[seat][2]);
+        //up beside the seat (in its compartment, if it has one)
+        float[] at = t.walk().nearest(seats[seat][0], seats[seat][2]);
         if (at == null) return;
         t.setStand(p, at[0], at[1]);
         t.holdShift.add(p.getUUID());
@@ -763,6 +766,7 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
         if (level().isClientSide) return;
         if (pendingStand != null) {
             setStand(passenger, pendingStand[0], pendingStand[1]);
+            seatedScale(passenger, true);
             return;
         }
         var m = seatMap();
@@ -785,14 +789,17 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
     private static final net.minecraft.resources.ResourceLocation SEATED_SCALE_ID =
             net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("traincraft", "seated_in_coach");
 
-    /** a rider of the seats in a coach's model shrinks to SEATED_SCALE while seated (the attribute syncs itself) */
+    /**
+     * a rider of the seats in a coach's model, or of a coach one walks in, shrinks to SEATED_SCALE while in it (the
+     * attribute syncs itself)
+     */
     private void seatedScale(Entity passenger, boolean on) {
         if (!(passenger instanceof net.minecraft.world.entity.LivingEntity le)) return;
         var scale = le.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.SCALE);
         if (scale == null) return;
         scale.removeModifier(SEATED_SCALE_ID);
         seats();
-        if (on && seatTops && shouldRiderSit()) {
+        if (on && (seatTops && shouldRiderSit() || WALKING && walk() != null)) {
             scale.addTransientModifier(new net.minecraft.world.entity.ai.attributes.AttributeModifier(SEATED_SCALE_ID, SEATED_SCALE - 1,
                     net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
         }
@@ -818,10 +825,11 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
         if (stand == null) stand = standOf(passenger);
         var w = walk();
         if (stand != null && w != null) {
-            //eyes a quarter under the ceiling, the legs through the floor
+            //on the floor (shrunk), sunk a little where the ceiling is lower than their eyes and 0.1
             float rail = entityData().get(BOGIE_Y_OFFSET);
             Vec3f at = new Vec3f(stand[0], 0, stand[1]).rotatePoint(getXRot(), getYRot(), 0f);
-            callback.accept(passenger, getX() + at.xCoord, getY() + rail + w.ceil() - 0.25 - 1.62 + at.yCoord, getZ() + at.zCoord);
+            double feet = Math.min(w.floor(), w.ceil() - 0.1 - passenger.getEyeHeight());
+            callback.accept(passenger, getX() + at.xCoord, getY() + rail + feet + at.yCoord, getZ() + at.zCoord);
             return;
         }
         float[][] seats = seats();

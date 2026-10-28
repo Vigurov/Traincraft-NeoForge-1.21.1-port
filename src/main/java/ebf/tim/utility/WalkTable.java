@@ -20,8 +20,8 @@ public final class WalkTable {
 
     /** half the width of a player as they walk the aisle (they are wider, but the models are small) */
     private static final float RADIUS = 0.12f;
-    /** across: the aisles of the models are as narrow as two pixels */
-    private static final float SIDE = 0.04f;
+    /** across: the aisles of the models are as narrow as two pixels, a door one (within half a cell) */
+    private static final float SIDE = 0.03f;
 
     public record Walk(float x0, float z0, float c, int nx, int nz, float floor, float ceil, String cells, float minAlong, float maxAlong) {
         char at(float along, float across) {
