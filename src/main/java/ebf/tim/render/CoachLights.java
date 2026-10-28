@@ -25,6 +25,12 @@ public final class CoachLights {
     public static float[] begin(GenericRailTransport t, org.joml.Matrix4f frame) {
         var w = t.walk();
         float[] hull = t.renderData.hull;
+        //tests: -Dtc.cut=h leaves out the faces more than h over the rails (the roof off, to see the seats)
+        RenderContext.cutY = Float.NaN;
+        if (hull != null && System.getProperty("tc.cut") != null) {
+            RenderContext.cutY = hull[4] - Float.parseFloat(System.getProperty("tc.cut"));
+            RenderContext.interiorFrameInv = new org.joml.Matrix4f(frame).invert();
+        }
         if (Boolean.getBoolean("tc.lightdebug") && t.tickCount % 40 == 0) System.out.println("[TCTEST] lights " + t.getClass().getSimpleName() + " walk " + (w != null) + " hull " + (hull != null)
                 + " block " + LightTexture.block(RenderContext.light) + " sky " + LightTexture.sky(RenderContext.light) + " day " + (t.level() instanceof net.minecraft.client.multiplayer.ClientLevel cl ? cl.getSkyDarken(1f) : -1));
         if (w == null || hull == null || t.level() == null) return null;
@@ -32,7 +38,10 @@ public final class CoachLights {
         //the daylight now (1 by day, 0.2 at night: what the client lights the world with)
         float day = t.level() instanceof net.minecraft.client.multiplayer.ClientLevel cl ? cl.getSkyDarken(1f) : 1f;
         float seen = Math.max(block, sky * day);
-        if (seen >= 9) return null;
+        if (seen >= 9) {
+            if (RenderContext.cutY != RenderContext.cutY) RenderContext.interiorFrameInv = null;
+            return null;
+        }
         //the frame's y points down from the wheels, which are on the rails
         float bottom = hull[4];
         float zc = (hull[2] + hull[5]) / 2, half = (hull[5] - hull[2]) / 2;
@@ -45,6 +54,7 @@ public final class CoachLights {
 
     /** after the model, its frame still on: the lamps on the ceiling, and the inside light off again */
     public static void end(float[] lamps) {
+        RenderContext.cutY = Float.NaN;
         RenderContext.interiorBox = null;
         RenderContext.interiorLight = -1;
         RenderContext.interiorFrameInv = null;

@@ -43,6 +43,8 @@ public final class RenderContext {
     public static float[] interiorBox;
     public static int interiorLight = -1;
     public static org.joml.Matrix4f interiorFrameInv;
+    /** tests: faces whose middle is over this y of the interior frame (y down) are not drawn; NaN: all are */
+    public static float cutY = Float.NaN;
     /** the light for the face being drawn (an inside one lit), or -1 */
     static int faceLight = -1;
     /** the part being drawn */

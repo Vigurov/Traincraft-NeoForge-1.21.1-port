@@ -480,6 +480,12 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
 
     /** seats someone in that seat (tests) */
     public boolean seat(Entity e, int seat) {
+        if (e.getVehicle() == this) {
+            var m = seatMap();
+            m.put(e.getId(), seat);
+            setSeatMap(m);
+            return true;
+        }
         pendingSeat = seat;
         boolean ok = e.startRiding(this, true);
         pendingSeat = -1;
@@ -771,12 +777,32 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
             m.put(passenger.getId(), seat);
             setSeatMap(m);
         }
+        seatedScale(passenger, true);
+    }
+
+    /** how big one seated in a coach is: the models are smaller than the world, two sit side by side on a bench */
+    public static final float SEATED_SCALE = 0.6f;
+    private static final net.minecraft.resources.ResourceLocation SEATED_SCALE_ID =
+            net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("traincraft", "seated_in_coach");
+
+    /** a rider of the seats in a coach's model shrinks to SEATED_SCALE while seated (the attribute syncs itself) */
+    private void seatedScale(Entity passenger, boolean on) {
+        if (!(passenger instanceof net.minecraft.world.entity.LivingEntity le)) return;
+        var scale = le.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.SCALE);
+        if (scale == null) return;
+        scale.removeModifier(SEATED_SCALE_ID);
+        seats();
+        if (on && seatTops && shouldRiderSit()) {
+            scale.addTransientModifier(new net.minecraft.world.entity.ai.attributes.AttributeModifier(SEATED_SCALE_ID, SEATED_SCALE - 1,
+                    net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
+        }
     }
 
     @Override
     protected void removePassenger(Entity passenger) {
         super.removePassenger(passenger);
         if (level().isClientSide) return;
+        seatedScale(passenger, false);
         clearStand(passenger);
         holdShift.remove(passenger.getUUID());
         var m = seatMap();
@@ -810,7 +836,7 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
             //on the seat in the model: a sitting rider's hips (where the legs turn forward) are 0.75 over their feet,
             //the seat's top is over the rails
             float rail = entityData().get(BOGIE_Y_OFFSET);
-            double feet = seats[i][1] - 0.75;
+            double feet = seats[i][1] - 0.75 * (passenger instanceof net.minecraft.world.entity.LivingEntity le ? le.getScale() : 1);
             //sunk into the seat as far as it takes to keep the eyes 0.3 under the ceiling (the models are small)
             if (seats[i].length > 4) feet = Math.min(feet, seats[i][4] - 0.3 - passenger.getEyeHeight());
             Vec3f low = new Vec3f(seats[i][0], 0, seats[i][2]).rotatePoint(getXRot(), getYRot(), 0f);

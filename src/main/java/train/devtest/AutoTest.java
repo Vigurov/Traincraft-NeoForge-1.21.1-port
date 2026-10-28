@@ -492,20 +492,28 @@ public class AutoTest {
             String[] sv = p.getProperty("steve").split(";");
             String[] ix = sv[0].split(":");
             GenericRailTransport t = placed.get(Integer.parseInt(ix[0]));
-            if (tick == 72) server.execute(() -> log("steve seat " + ix[1] + " -> " + t.seat(sp, Integer.parseInt(ix[1])) + " map=" + t.entityData().get(GenericRailTransport.SEAT_MAP)));
+            if (tick == 72) server.execute(() -> log("steve seat " + ix[1] + " -> " + t.seat(sp, ix[1].equals("all") ? 0 : Integer.parseInt(ix[1])) + " map=" + t.entityData().get(GenericRailTransport.SEAT_MAP)));
             int k = (tick - 85) / 15, ph = (tick - 85) % 15;
-            if (tick >= 85 && k + 1 < sv.length) {
-                if (ph == 0 && sv[k + 1].startsWith("fp")) {
+            //steve=index:all;views...  every seat in turn, each seen from all the views (tc-steve-N.png, N counting on)
+            int nv = sv.length - 1, total = ix[1].equals("all") ? (t.seats() == null ? 0 : t.seats().length) * nv : nv;
+            if (ix[1].equals("all") && tick >= 85 && k + 1 < total && ph == 14 && (k + 1) % nv == 0) {
+                int si = (k + 1) / nv;
+                server.execute(() -> log("steve seat " + si + " -> " + t.seat(sp, si)));
+            }
+            if (tick >= 85 && k < total) {
+                String view = sv[1 + k % nv];
+                if (ph == 0 && view.startsWith("fp")) {
                     //fp,yaw,pitch  through the player's own eyes, turned that much from the transport's way
-                    String[] o = sv[k + 1].split(",");
+                    String[] o = view.split(",");
                     mc.setCameraEntity(mc.player);
                     mc.options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON);
                     //turned as the mouse turns one (Entity.turn: the seat keeps the body, the head turns as far as it may)
-                    float want = t.getYRot() - 90 + Float.parseFloat(o[1]);
+                    //(in the seat-by-seat run: from the way the seat faces)
+                    float want = (ix[1].equals("all") ? mc.player.yBodyRot : t.getYRot() - 90) + Float.parseFloat(o[1]);
                     float dyaw = Mth.wrapDegrees(want - mc.player.getYRot()), dpitch = Float.parseFloat(o[2]) - mc.player.getXRot();
                     for (int st = 0; st < 10; st++) mc.player.turn(dyaw / 10 / 0.15, dpitch / 10 / 0.15);
                 } else if (ph == 0) {
-                    String[] o = sv[k + 1].split(",");
+                    String[] o = view.split(",");
                     double dx = Double.parseDouble(o[0]), dy = Double.parseDouble(o[1]), dz = Double.parseDouble(o[2]);
                     double look = Double.parseDouble(o[3]), tx = o.length > 4 ? Double.parseDouble(o[4]) : 0, ex = dx - tx;
                     float yaw = (float) Math.toDegrees(Math.atan2(-ex, dz)) + 180, pitch = (float) Math.toDegrees(Math.atan2(dy - look, Math.hypot(ex, dz)));
@@ -1749,6 +1757,9 @@ public class AutoTest {
                 if (t instanceof EntityTrainCore || t.getRiderOffsets() == null) continue;
                 var types = t.getTypes();
                 if (!types.contains(ebf.tim.TrainsInMotion.transportTypes.PASSENGER) && !types.contains(ebf.tim.TrainsInMotion.transportTypes.WORKCAR)) continue;
+                //cabooses, brake vans, work and mail cars: no seats in their models (beds, stoves, crates); they keep
+                //their own riding places (their insides are still measured, for the lamps)
+                boolean noSeats = id.contains("caboose") || id.contains("brakevan") || id.contains("workcart") || id.contains("mailwagon");
                 t.setPos(0, 0, 0);
                 float[] rp = t.rotationPoints();
                 t.frontBogie = new ebf.tim.entities.EntityBogie(t, rp[1], 0, 0, true);
@@ -1783,6 +1794,9 @@ public class AutoTest {
                 float x0 = Float.MAX_VALUE, x1 = -Float.MAX_VALUE, z0 = Float.MAX_VALUE, z1 = -Float.MAX_VALUE;
                 for (var v : verts) { x0 = Math.min(x0, v.x); x1 = Math.max(x1, v.x); z0 = Math.min(z0, v.z); z1 = Math.max(z1, v.z); }
                 float c = 1 / 16f;
+                //the body's middle and half its width across: a seated player (shrunk, GenericRailTransport.SEATED_SCALE;
+                //arms and all 0.47 either side of the middle at full size) stays inside it
+                float zMid = (z0 + z1) / 2, zRoom = Math.max(0, (z1 - z0) / 2 - 0.47f * GenericRailTransport.SEATED_SCALE);
                 //a quarter of a block round the model, so its outer walls are inside the grid
                 x0 -= 0.25f; z0 -= 0.25f; x1 += 0.25f; z1 += 0.25f;
                 int nx = (int) Math.ceil((x1 - x0) / c), nz = (int) Math.ceil((z1 - z0) / c);
@@ -1813,7 +1827,8 @@ public class AutoTest {
                 for (var e : hist.entrySet()) if (e.getValue() > best) { best = e.getValue(); floorBin = e.getKey(); }
                 if (floorBin < 0) continue;
                 float floor = floorBin / 32f;
-                if (p.getProperty("seatscan").equals(id)) {
+                if (java.util.Arrays.asList(p.getProperty("seatscan").split(",")).contains(id)) {
+                    boolean[] wl = wallCells(faces, up, railY, floor + 0.95f, floor + 1.0f, x0, z0, c, nx, nz, true);
                     //the heights over the floor (in 1/16) of all the surfaces facing up between the floor and 1.2 over it
                     StringBuilder mp = new StringBuilder();
                     for (int j = 0; j < nz; j++) {
@@ -1825,21 +1840,30 @@ public class AutoTest {
                                 for (float[] h : l) if (h[0] > floor + 0.05f && h[0] < floor + 1.2f) lo = Math.min(lo, h[0]);
                                 if (lo != Float.MAX_VALUE) cell = String.format("%2d", Math.round((lo - floor) * 16));
                             }
+                            if (wl[i * nz + j]) cell = "##";
                             mp.append(cell);
                         }
                         mp.append("\n");
                     }
                     log("seatmap " + id + " floor " + floor + " x0 " + x0 + "\n" + mp);
                 }
-                //the seats' tops: the lowest surface 0.25..0.6 over the floor in each cell
+                //the seats' tops: the lowest surface 0.08..0.42 over the floor in each cell (higher: tables, crates)
                 float[] seat = new float[nx * nz];
                 java.util.Arrays.fill(seat, Float.NaN);
                 for (int k = 0; k < nx * nz; k++) {
                     if (hs[k] == null) continue;
-                    for (float[] h : hs[k]) if (h[0] > floor + 0.08f && h[0] < floor + 0.6f && (Float.isNaN(seat[k]) || h[0] < seat[k])) seat[k] = h[0];
+                    for (float[] h : hs[k]) if (h[0] > floor + 0.08f && h[0] < floor + 0.42f && (Float.isNaN(seat[k]) || h[0] < seat[k])) seat[k] = h[0];
                 }
+                //partitions across the car as high as a seated rider's head (between compartments, back to back
+                //benches): a patch does not go through one
+                boolean[] wall = wallCells(faces, up, railY, floor + 0.95f, floor + 1.0f, x0, z0, c, nx, nz, true);
+                for (int k = 0; k < nx * nz; k++) if (wall[k]) seat[k] = Float.NaN;
                 boolean[] seen = new boolean[nx * nz];
                 java.util.List<float[]> found = new java.util.ArrayList<>();
+                //the patches: first, last cell along and across, top, facing
+                java.util.List<float[]> patches = new java.util.ArrayList<>();
+                //the partitions a seat's back is against
+                boolean[] backWall = wallCells(faces, up, railY, floor + 0.6f, floor + 0.9f, x0, z0, c, nx, nz, true);
                 for (int s0 = 0; s0 < nx * nz; s0++) {
                     if (Float.isNaN(seat[s0]) || seen[s0]) continue;
                     java.util.ArrayDeque<Integer> q = new java.util.ArrayDeque<>();
@@ -1851,22 +1875,61 @@ public class AutoTest {
                         n++; top += seat[k];
                         mi = Math.min(mi, i); ma = Math.max(ma, i); mj = Math.min(mj, j); mb = Math.max(mb, j);
                         int[] nb = {i > 0 ? k - nz : -1, i < nx - 1 ? k + nz : -1, j > 0 ? k - 1 : -1, j < nz - 1 ? k + 1 : -1};
-                        for (int q2 : nb) if (q2 >= 0 && !seen[q2] && !Float.isNaN(seat[q2]) && Math.abs(seat[q2] - seat[k]) < 0.07f) { seen[q2] = true; q.add(q2); }
+                        for (int q2 : nb) if (q2 >= 0 && !seen[q2] && !Float.isNaN(seat[q2]) && Math.abs(seat[q2] - seat[k]) < 0.04f) { seen[q2] = true; q.add(q2); }
                     }
                     if (n < 12) continue;
                     top /= n;
                     float lx = (ma - mi + 1) * c, lz = (mb - mj + 1) * c;
-                    if (lx < 0.2f || lz < 0.2f) continue;
-                    int ca = Math.max(1, Math.round(lx / 0.6f)), cb = Math.max(1, Math.round(lz / 0.5f));
+                    if (lx < 0.15f || lz < 0.2f) continue;
                     //which way it faces: away from its back, the higher part next to it along the car (0: none)
                     float back0 = 0, back1 = 0;
                     for (int j = mj; j <= mb; j++) for (int g = 1; g <= 3; g++) {
-                        back0 = Math.max(back0, highest(hs, mi - g, j, nz, nx) - top);
-                        back1 = Math.max(back1, highest(hs, ma + g, j, nz, nx) - top);
+                        back0 = Math.max(back0, highest(hs, mi - g, j, nz, nx, top + 0.8f) - top);
+                        back1 = Math.max(back1, highest(hs, ma + g, j, nz, nx, top + 0.8f) - top);
+                        if (mi - g >= 0 && backWall[(mi - g) * nz + j]) back0 = Math.max(back0, 1);
+                        if (ma + g < nx && backWall[(ma + g) * nz + j]) back1 = Math.max(back1, 1);
                     }
-                    float facing = back0 > 0.2f && back0 > back1 ? 1 : back1 > 0.2f ? -1 : 0;
+                    //(a table next to it is lower than a back: 0.25 over the seat)
+                    float facing = back0 > 0.3f && back0 > back1 ? 1 : back1 > 0.3f ? -1 : 0;
+                    //a partition as high as a back within 5 cells on one side only: that is its back (a booth's
+                    //divider in the middle of two back to back benches)
+                    boolean wall0 = false, wall1 = false;
+                    for (int j = mj; j <= mb; j++) for (int g = 1; g <= 5; g++) {
+                        if (mi - g >= 0 && backWall[(mi - g) * nz + j]) wall0 = true;
+                        if (ma + g < nx && backWall[(ma + g) * nz + j]) wall1 = true;
+                    }
+                    if (wall0 != wall1) facing = wall0 ? 1 : -1;
+                    //a low back (0.15..0.3) counts when nothing rises on the other side
+                    if (facing == 0) facing = back0 > 0.15f && back1 < 0.08f ? 1 : back1 > 0.15f && back0 < 0.08f ? -1 : 0;
+                    patches.add(new float[]{mi, ma, mj, mb, top, facing});
+                    if (java.util.Arrays.asList(p.getProperty("seatscan").split(",")).contains(id) || p.containsKey("patchlog"))
+                        log(String.format(java.util.Locale.ROOT, "patch %s x %d..%d z %d..%d n %d top %.2f back %.2f %.2f facing %.0f", id, mi, ma, mj, mb, n, top, back0, back1, facing));
+                }
+                for (float[] pa : patches) {
+                    int mi = (int) pa[0], ma = (int) pa[1], mj = (int) pa[2], mb = (int) pa[3];
+                    float top = pa[4], facing = pa[5];
+                    //a table: a seat lower than it close by along, beside it; short along, or with no back
+                    boolean table = false;
+                    for (float[] o : patches) {
+                        if (o == pa || o[4] > top - 0.12f || o[3] < mj || o[2] > mb) continue;
+                        if (o[0] - ma <= 8 && mi - o[1] <= 8) table = true;
+                    }
+                    if (table && (facing == 0 || (ma - mi + 1) * c <= 0.7f)) continue;
+                    //a footboard under a table: seats a little higher right next to it along on both sides
+                    boolean higher0 = false, higher1 = false;
+                    for (float[] o : patches) {
+                        if (o == pa || o[4] < top + 0.03f || o[4] > top + 0.12f || o[3] < mj || o[2] > mb) continue;
+                        if (mi - o[1] >= 1 && mi - o[1] <= 3) higher0 = true;
+                        if (o[0] - ma >= 1 && o[0] - ma <= 3) higher1 = true;
+                    }
+                    if (higher0 && higher1) continue;
+                    //the baggage room of the Denver combine (crates as high as seats)
+                    if (id.equals("passengerdenverriograndecombo") && x0 + c * mi > 0.8f) continue;
+                    float lx = (ma - mi + 1) * c, lz = (mb - mj + 1) * c;
+                    int ca = Math.max(1, Math.round(lx / 0.6f)), cb = Math.max(1, Math.round(lz / 0.5f));
                     for (int u = 0; u < ca; u++) for (int w = 0; w < cb; w++) {
                         float sx = x0 + c * mi + lx * (u + 0.5f) / ca, sz = z0 + c * mj + lz * (w + 0.5f) / cb;
+                        sz = Mth.clamp(sz, zMid - zRoom, zMid + zRoom);
                         //the ceiling over it: the lowest surface facing down over the seat's top
                         float ceil = 9;
                         for (var f : downs) {
@@ -1882,13 +1945,18 @@ public class AutoTest {
                                 if (h > top + 0.4f) ceil = Math.min(ceil, h);
                             }
                         }
-                        found.add(new float[]{sx, top, sz, facing, ceil});
+                        //one seat in a place: of two (a seat's cushion and its arm) the lower
+                        float[] place = {sx, top, sz, facing, ceil};
+                        float[] near = null;
+                        for (float[] o : found) if (Math.abs(o[0] - sx) < 0.3f && Math.abs(o[2] - sz) < 0.3f) near = o;
+                        if (near == null) found.add(place);
+                        else if (top < near[1]) found.set(found.indexOf(near), place);
                     }
                 }
                 log(String.format(java.util.Locale.ROOT, "seats %-32s floor %.2f seats %d", id, floor, found.size()));
                 String walk = ebf.tim.utility.WalkShapes.of(id) != null ? null : walkGrid(id, faces, up, hs, x0, z0, c, nx, nz, floor, railY);
                 if (walk != null) walkJson.append(walks++ == 0 ? "" : ",\n").append(walk);
-                if (found.isEmpty()) continue;
+                if (found.isEmpty() || noSeats) continue;
                 json.append(written++ == 0 ? "" : ",\n").append("\"").append(id).append("\": [");
                 for (int k = 0; k < found.size(); k++) {
                     float[] f = found.get(k);
@@ -2017,10 +2085,45 @@ public class AutoTest {
     }
 
     /** the highest surface facing up in that cell (0 off the grid or none), over the rails */
-    private static float highest(java.util.List<float[]>[] hs, int i, int j, int nz, int nx) {
+    /**
+     * the cells (of the seat scan's grid) a vertical face goes through somewhere between lo and hi over the rails;
+     * acrossOnly: just the faces standing across the car
+     */
+    private static boolean[] wallCells(java.util.List<org.joml.Vector3f[]> faces, java.util.List<Float> up, float railY, float lo, float hi,
+                                       float x0, float z0, float c, int nx, int nz, boolean acrossOnly) {
+        boolean[] blocked = new boolean[nx * nz];
+        for (int f = 0; f < faces.size(); f++) {
+            if (Math.abs(up.get(f)) > 0.3f) continue;
+            var v = faces.get(f);
+            float fl = Float.MAX_VALUE, fh = -Float.MAX_VALUE, ax = Float.MAX_VALUE, bx = -Float.MAX_VALUE, az = Float.MAX_VALUE, bz = -Float.MAX_VALUE;
+            for (var q : v) {
+                fl = Math.min(fl, q.y - railY); fh = Math.max(fh, q.y - railY);
+                ax = Math.min(ax, q.x); bx = Math.max(bx, q.x); az = Math.min(az, q.z); bz = Math.max(bz, q.z);
+            }
+            if (fh < lo || fl > hi) continue;
+            //only the ones standing across the car (facing along it, maybe leaning: a seat's back), 0.15 wide or more
+            if (acrossOnly) {
+                var nrm = new org.joml.Vector3f(v[1]).sub(v[0]).cross(new org.joml.Vector3f(v[2]).sub(v[0]));
+                if (nrm.lengthSquared() < 1e-12f || Math.abs(nrm.normalize().x) < 0.85f || bz - az < 0.15f) continue;
+            }
+            for (int k = 0; k < v.length; k++) {
+                var a = v[k]; var b = v[(k + 1) % v.length];
+                int steps = (int) Math.ceil(Math.hypot(b.x - a.x, b.z - a.z) / (c / 4)) + 1;
+                for (int q = 0; q <= steps; q++) {
+                    float px = a.x + (b.x - a.x) * q / steps, pz = a.z + (b.z - a.z) * q / steps;
+                    int i = (int) Math.floor((px - x0) / c), j = (int) Math.floor((pz - z0) / c);
+                    if (i >= 0 && j >= 0 && i < nx && j < nz) blocked[i * nz + j] = true;
+                }
+            }
+        }
+        return blocked;
+    }
+
+    /** the highest surface facing up in that cell under max (a seat's back, not a rack over it) */
+    private static float highest(java.util.List<float[]>[] hs, int i, int j, int nz, int nx, float max) {
         if (i < 0 || i >= nx || hs[i * nz + j] == null) return 0;
         float m = 0;
-        for (float[] h : hs[i * nz + j]) if (h[0] < 1.6f) m = Math.max(m, h[0]);
+        for (float[] h : hs[i * nz + j]) if (h[0] < max) m = Math.max(m, h[0]);
         return m;
     }
 
