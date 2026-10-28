@@ -738,8 +738,9 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
         Integer seat = t.seatMap().get(p.getId());
         float[][] seats = t.seats();
         if (seat == null || seats == null || seat >= seats.length) return;
-        //up beside the seat (in its compartment, if it has one)
-        float[] at = t.walk().nearest(seats[seat][0], seats[seat][2]);
+        //up in front of the seat, the way it faces (in its compartment, not through the wall into the corridor)
+        float facing = seats[seat].length > 3 ? seats[seat][3] : 0;
+        float[] at = t.walk().nearest(seats[seat][0] + facing * 0.35f, seats[seat][2]);
         if (at == null) return;
         t.setStand(p, at[0], at[1]);
         t.holdShift.add(p.getUUID());
