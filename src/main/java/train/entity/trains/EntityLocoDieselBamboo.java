@@ -126,10 +126,6 @@ public class EntityLocoDieselBamboo extends EntityTrainCore {
 
     //these only change in very specific use cases.
     @Override
-    public boolean shouldRiderSit(){
-        return false;
-    }
-    @Override
     public float getMaxFuel(){return 1;}
 
 }

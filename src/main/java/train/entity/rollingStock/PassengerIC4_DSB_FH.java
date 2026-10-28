@@ -78,10 +78,6 @@ public class PassengerIC4_DSB_FH extends GenericRailTransport {
 
     //these only change in very specific use cases.
     @Override
-    public boolean shouldRiderSit(){
-        return false;
-    }
-    @Override
     public float getMaxFuel(){return 1;}
 
 }

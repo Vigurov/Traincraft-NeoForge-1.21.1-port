@@ -486,6 +486,24 @@ public class AutoTest {
                 log("jukebox t=" + tick + " playing=" + cj.isPlaying() + " url=" + cj.getStreamURL() + " " + JukeboxClient.status(cj));
             }
         }
+        if (p.containsKey("seatmob") && tick == 70 && !placed.isEmpty()) {
+            //seatmob=index:seat,seat,...  villagers in those seats of that placed transport
+            String[] sm = p.getProperty("seatmob").split(":");
+            GenericRailTransport t = placed.get(Integer.parseInt(sm[0]));
+            server.execute(() -> {
+                for (String seat : sm[1].split(",")) {
+                    var v = net.minecraft.world.entity.EntityType.VILLAGER.create(level);
+                    v.setPos(t.getX(), t.getY() + 1, t.getZ());
+                    v.setNoAi(true);
+                    level.addFreshEntity(v);
+                    log("seatmob " + seat + " -> " + t.seat(v, Integer.parseInt(seat)) + " map=" + t.entityData().get(GenericRailTransport.SEAT_MAP));
+                }
+            });
+        }
+        if (p.containsKey("thirdperson") && tick == Integer.parseInt(p.getProperty("thirdperson"))) {
+            //thirdperson=tick  the camera behind the player from then (F5)
+            mc.options.setCameraType(net.minecraft.client.CameraType.THIRD_PERSON_FRONT);
+        }
         if (p.containsKey("rclick") && tick == Integer.parseInt(p.getProperty("rclick").split("@")[1])) {
             //rclick=index@tick[@sneak]  the player right clicks that placed transport (empty hand); logs what opened
             String[] r = p.getProperty("rclick").split("@");
@@ -495,7 +513,13 @@ public class AutoTest {
                 var res = t.interact(sp, net.minecraft.world.InteractionHand.MAIN_HAND);
                 sp.setShiftKeyDown(false);
                 log("rclick " + t.getClass().getSimpleName() + " sneak=" + (r.length > 2) + " -> " + res + " menu=" + sp.containerMenu.getClass().getSimpleName()
-                        + " riding=" + (sp.getVehicle() == t));
+                        + " riding=" + (sp.getVehicle() == t) + " seats=" + (t.seats() == null ? 0 : t.seats().length) + " map=" + t.entityData().get(GenericRailTransport.SEAT_MAP));
+            });
+            server.execute(() -> server.tell(new net.minecraft.server.TickTask(server.getTickCount() + 3, () -> {
+                if (sp.getVehicle() == t) log(String.format("seated at along %.2f side %.2f", (sp.getX() - t.getX()) * Math.cos(Math.toRadians(t.getYRot())) + (sp.getZ() - t.getZ()) * Math.sin(Math.toRadians(t.getYRot())),
+                        -(sp.getX() - t.getX()) * Math.sin(Math.toRadians(t.getYRot())) + (sp.getZ() - t.getZ()) * Math.cos(Math.toRadians(t.getYRot()))));
+            })));
+            if (false) server.execute(() -> {
             });
         }
         if (p.containsKey("load") && tick == 40) {
@@ -645,7 +669,9 @@ public class AutoTest {
                     double dx = Double.parseDouble(o[0]), dy = Double.parseDouble(o[1]), dz = Double.parseDouble(o[2]);
                     //dx,dy,dz,lookY  looking at that height over the rails instead
                     double look = o.length > 3 ? Double.parseDouble(o[3]) : 1;
-                    float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz)) + 180, pitch = (float) Math.toDegrees(Math.atan2(dy - look, Math.hypot(dx, dz)));
+                    //dx,dy,dz,lookY,lookX  looking at that point along x from its middle
+                    double tx = o.length > 4 ? Double.parseDouble(o[4]) : 0, ex = dx - tx;
+                    float yaw = (float) Math.toDegrees(Math.atan2(-ex, dz)) + 180, pitch = (float) Math.toDegrees(Math.atan2(dy - look, Math.hypot(ex, dz)));
                     server.execute(() -> {
                         sp.getAbilities().flying = true;
                         sp.onUpdateAbilities();

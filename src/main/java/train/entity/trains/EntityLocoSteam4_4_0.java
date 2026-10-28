@@ -197,10 +197,6 @@ public class EntityLocoSteam4_4_0 extends EntityTrainCore {
     /**
      * @return true if the rider(s) should be sitting, false if the rider should be standing.
      */
-    @Override
-    public boolean shouldRiderSit(){
-        return false;
-    }
 
     /**
      * Fluid tank capacity.

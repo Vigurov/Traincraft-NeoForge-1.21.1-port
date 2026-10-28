@@ -98,10 +98,6 @@ public class EntityLocoSteamC41 extends EntityTrainCore {
 
     //these only change in very specific use cases.
     @Override
-    public boolean shouldRiderSit(){
-        return true;
-    }
-    @Override
     public float getMaxFuel(){return 1;}
 
 }

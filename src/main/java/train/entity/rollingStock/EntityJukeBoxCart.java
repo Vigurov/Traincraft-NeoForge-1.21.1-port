@@ -159,9 +159,5 @@ public class EntityJukeBoxCart extends GenericRailTransport {
 	public float[] rotationPoints() {return new float[]{1.85f, -1.85f};}
 
 	@Override
-	public boolean shouldRiderSit(){
-		return false;
-	}
-	@Override
 	public float getMaxFuel(){return 1;}
 }

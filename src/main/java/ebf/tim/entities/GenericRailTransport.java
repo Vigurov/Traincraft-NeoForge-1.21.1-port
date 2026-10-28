@@ -213,6 +213,8 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
     public static final EntityDataAccessor<Integer> CARGO = SynchedEntityData.defineId(GenericRailTransport.class, EntityDataSerializers.INT);
     /** what its filled slots hold, in slot order (item ids): the open cars show the very load (CargoRender) */
     public static final EntityDataAccessor<String> CARGO_ITEMS = SynchedEntityData.defineId(GenericRailTransport.class, EntityDataSerializers.STRING);
+    /** which seat each rider sits in: "entityId:seat entityId:seat" (a coach has many, one sits where one chose) */
+    public static final EntityDataAccessor<String> SEAT_MAP = SynchedEntityData.defineId(GenericRailTransport.class, EntityDataSerializers.STRING);
     public static final EntityDataAccessor<Integer> FUEL_CONSUMPTION = SynchedEntityData.defineId(GenericRailTransport.class, EntityDataSerializers.INT);
     public static final EntityDataAccessor<Integer> BOILER_HEAT = SynchedEntityData.defineId(GenericRailTransport.class, EntityDataSerializers.INT);
     public static final EntityDataAccessor<Float> BOGIE_Y_OFFSET = SynchedEntityData.defineId(GenericRailTransport.class, EntityDataSerializers.FLOAT);
@@ -236,6 +238,7 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
         builder.define(WIRE_HEIGHT, 0f);
         builder.define(CARGO, 0);
         builder.define(CARGO_ITEMS, "");
+        builder.define(SEAT_MAP, "");
     }
 
     /**1.12 name of the synced data; vanilla's own entityData field is the XML data here*/
@@ -365,13 +368,16 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
                 //its inventory or tanks: sneaking, or on one there is no seat in (a freight car could not be loaded at
                 //all: its screen only opened from a seat)
                 boolean storage = (inventory != null && !inventory.isEmpty()) || getTankCapacity() != null;
-                if (storage && (p.isShiftKeyDown() || getRiderOffsets() == null)) {
+                if (storage && (p.isShiftKeyDown() || seats() == null)) {
                     return interact(p, isFront, isBack, 1);
                 }
                 //be sure the player has permission to enter the transport, and that the transport has a seat open.
-                if (getRiderOffsets() != null && getPermissions(p, false, true)) {
-                    if (getPassengers().size() < getRiderOffsets().length && !p.isPassenger()) {
-                        return p.startRiding(this);
+                if (seats() != null && getPermissions(p, false, true)) {
+                    if (getPassengers().size() < seats().length && !p.isPassenger()) {
+                        pendingSeat = seatFor(p);
+                        boolean ok = p.startRiding(this);
+                        pendingSeat = -1;
+                        return ok;
                     }
                     return false;
                 }
@@ -455,16 +461,123 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
      */
     @Override
     protected boolean canAddPassenger(Entity passenger) {
-        return getRiderOffsets() != null && getPassengers().size() < getRiderOffsets().length;
+        return seats() != null && getPassengers().size() < seats().length;
+    }
+
+    /** seats someone in that seat (tests) */
+    public boolean seat(Entity e, int seat) {
+        pendingSeat = seat;
+        boolean ok = e.startRiding(this, true);
+        pendingSeat = -1;
+        return ok;
+    }
+
+    /** the seat the next rider takes (chosen where they clicked), or -1 for the first free one */
+    private int pendingSeat = -1;
+    private float[][] generatedSeats;
+
+    /**
+     * the seats: the transport's own, or, for a coach (or caboose) the 1.12 model gave one seat in the middle, two
+     * rows down its length either side of the aisle, every 0.9 of a block, at that seat's height
+     */
+    public float[][] seats() {
+        float[][] own = getRiderOffsets();
+        if (own == null || own.length != 1 || this instanceof EntityTrainCore
+                || !(getTypes().contains(TrainsInMotion.transportTypes.PASSENGER) || getTypes().contains(TrainsInMotion.transportTypes.WORKCAR))) {
+            return own;
+        }
+        if (generatedSeats == null) {
+            float half = getHitboxSize()[0] * 0.5f - 0.6f, across = Math.min(0.3f, getHitboxSize()[2] * 0.5f - 0.25f);
+            int n = Math.max(1, (int) Math.floor(2 * half / 0.9f) + 1);
+            float[][] seats = new float[n * 2][];
+            for (int i = 0; i < n; i++) {
+                float along = n == 1 ? own[0][0] : -half + 2 * half * i / (n - 1);
+                seats[2 * i] = new float[]{along, own[0][1], -across};
+                seats[2 * i + 1] = new float[]{along, own[0][1], across};
+            }
+            generatedSeats = seats;
+        }
+        return generatedSeats;
+    }
+
+    /** the seat each rider has, from the synced map */
+    private java.util.Map<Integer, Integer> seatMap() {
+        java.util.Map<Integer, Integer> m = new java.util.HashMap<>();
+        for (String e : entityData().get(SEAT_MAP).split(" ")) {
+            int c = e.indexOf(':');
+            if (c > 0) m.put(Integer.parseInt(e.substring(0, c)), Integer.parseInt(e.substring(c + 1)));
+        }
+        return m;
+    }
+
+    private void setSeatMap(java.util.Map<Integer, Integer> m) {
+        StringBuilder b = new StringBuilder();
+        for (var e : m.entrySet()) b.append(b.length() == 0 ? "" : " ").append(e.getKey()).append(':').append(e.getValue());
+        entityData().set(SEAT_MAP, b.toString());
+    }
+
+    /** the free seat nearest to where the player looks at the transport, on their side of it */
+    private int seatFor(Player p) {
+        float[][] seats = seats();
+        if (seats == null) return -1;
+        java.util.Set<Integer> taken = new java.util.HashSet<>(seatMap().values());
+        //where the look meets the transport's middle line: along it, and which side the player stands
+        double r = Math.toRadians(getYRot());
+        double ux = Math.cos(r), uz = Math.sin(r);
+        Vec3 eye = p.getEyePosition(), look = p.getLookAngle();
+        double sx = -uz, sz = ux;
+        double side = (eye.x - getX()) * sx + (eye.z - getZ()) * sz;
+        double ls = look.x * sx + look.z * sz;
+        double t = Math.abs(ls) < 1e-3 ? 0 : -side / ls;
+        t = Math.max(0, Math.min(6, t));
+        double along = (eye.x + look.x * t - getX()) * ux + (eye.z + look.z * t - getZ()) * uz;
+        int best = -1;
+        double bestD = Double.MAX_VALUE;
+        for (int i = 0; i < seats.length; i++) {
+            if (taken.contains(i)) continue;
+            Vec3f at = new Vec3f(seats[i][0], 0, seats[i][2]).rotatePoint(0, getYRot(), 0f);
+            double sa = at.xCoord * ux + at.zCoord * uz, ss = at.xCoord * sx + at.zCoord * sz;
+            double d = Math.abs(sa - along) + (Math.signum(ss) == Math.signum(side) ? 0 : 0.35);
+            if (d < bestD) { bestD = d; best = i; }
+        }
+        return best;
+    }
+
+    @Override
+    protected void addPassenger(Entity passenger) {
+        super.addPassenger(passenger);
+        if (level().isClientSide) return;
+        var m = seatMap();
+        java.util.Set<Integer> taken = new java.util.HashSet<>(m.values());
+        int seat = pendingSeat;
+        if (seat < 0 || taken.contains(seat)) {
+            seat = -1;
+            float[][] seats = seats();
+            for (int i = 0; seats != null && i < seats.length; i++) if (!taken.contains(i)) { seat = i; break; }
+        }
+        if (seat >= 0) {
+            m.put(passenger.getId(), seat);
+            setSeatMap(m);
+        }
+    }
+
+    @Override
+    protected void removePassenger(Entity passenger) {
+        super.removePassenger(passenger);
+        if (level().isClientSide) return;
+        var m = seatMap();
+        if (m.remove(passenger.getId()) != null) setSeatMap(m);
     }
 
     @Override
     protected void positionRider(Entity passenger, MoveFunction callback) {
-        int i = getPassengers().indexOf(passenger);
-        if (i < 0 || getRiderOffsets() == null || i >= getRiderOffsets().length) {
+        float[][] seats = seats();
+        Integer mapped = seatMap().get(passenger.getId());
+        int i = mapped != null ? mapped : getPassengers().indexOf(passenger);
+        if (i < 0 || seats == null || i >= seats.length) {
             return;
         }
-        Vec3f seat = new Vec3f(getRiderOffsets()[i][0], getRiderOffsets()[i][1], getRiderOffsets()[i][2])
+        Vec3f seat = new Vec3f(seats[i][0], seats[i][1], seats[i][2])
                 .rotatePoint(getXRot(), getYRot(), 0f);
         // the 1.7.10 seat height is the eyes: put them 0.45 above the seat, which matches the view from inside the cab
         callback.accept(passenger, getX() + seat.xCoord, getY() + seat.yCoord + 0.45 - passenger.getEyeHeight(), getZ() + seat.zCoord);
@@ -1536,8 +1649,13 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
     public boolean shouldRiderSit(int seat){
         return shouldRiderSit();
     }
+    /**
+     * riders sit: in coaches and in diesel and electric cabs; a steam locomotive's crew stands (the 1.12 models had
+     * most riders standing, coaches too)
+     */
+    @Override
     public boolean shouldRiderSit(){
-        return true;
+        return !getTypes().contains(TrainsInMotion.transportTypes.STEAM) && !getTypes().contains(TrainsInMotion.transportTypes.NUCLEAR_STEAM);
     }
 
     /** the 1.12 Railcraft link distance, used for the rest spacing of a new coupling */

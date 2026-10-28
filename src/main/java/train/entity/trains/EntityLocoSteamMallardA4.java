@@ -107,10 +107,6 @@ public class EntityLocoSteamMallardA4 extends EntityTrainCore {
 
 
     //these only change in very specific use cases.
-    @Override
-    public boolean shouldRiderSit(){
-        return false;
-    }
 
     @Override
     public ItemStackSlot fuelSlot(){

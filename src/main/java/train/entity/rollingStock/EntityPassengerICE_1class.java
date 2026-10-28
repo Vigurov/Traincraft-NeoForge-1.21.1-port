@@ -82,10 +82,6 @@ public class EntityPassengerICE_1class extends GenericRailTransport {
 
     //these only change in very specific use cases.
     @Override
-    public boolean shouldRiderSit(){
-        return false;
-    }
-    @Override
     public float getMaxFuel(){return 1;}
 
 }
