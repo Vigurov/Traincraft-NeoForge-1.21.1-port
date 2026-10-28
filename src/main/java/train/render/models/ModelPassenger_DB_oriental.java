@@ -169,7 +169,7 @@ public class ModelPassenger_DB_oriental extends ModelBase
 		passenger_db_orientalModel[16].setRotationPoint(-9F, 10F, -7F);
 		passenger_db_orientalModel[16].rotateAngleY = 5.77703982F;
 
-		passenger_db_orientalModel[17].addBox(0F, 0F, 0F, 1, 19, 16, 0F); // Box 29 (a pixel deeper: up to the corridor's wall, no slit)
+		passenger_db_orientalModel[17].addBox(0F, 0F, 0F, 1, 19, 15, 0F); // Box 29
 		passenger_db_orientalModel[17].setRotationPoint(26F, 8F, -11F);
 
 		passenger_db_orientalModel[18].addBox(0F, 0F, 0F, 7, 1, 3, 0F); // Box 31
@@ -371,7 +371,7 @@ public class ModelPassenger_DB_oriental extends ModelBase
 		passenger_db_orientalModel[75].rotateAngleX = 3.14159265F;
 		passenger_db_orientalModel[75].rotateAngleZ = -6.23082543F;
 
-		passenger_db_orientalModel[76].addBox(0F, 0F, 0F, 1, 19, 16, 0F); // Box 104 (up to the corridor's wall, no slit)
+		passenger_db_orientalModel[76].addBox(0F, 0F, 0F, 1, 19, 13, 0F); // Box 104
 		passenger_db_orientalModel[76].setRotationPoint(-27F, 8F, -11F);
 		passenger_db_orientalModel[76].rotateAngleY = -0.01745329F;
 
