@@ -585,6 +585,12 @@ public class AutoTest {
                 log("linked " + placed.size());
             });
         }
+        if (p.containsKey("standat") && tick == 80) {
+            //standat=index:along,across  the player standing there in that placed transport
+            String[] sa = p.getProperty("standat").split(":"), ac = sa[1].split(",");
+            GenericRailTransport t = placed.get(Integer.parseInt(sa[0]));
+            server.execute(() -> t.boardStanding(sp, Float.parseFloat(ac[0]), Float.parseFloat(ac[1])));
+        }
         if (p.containsKey("walkends") && tick >= 80 && placed.size() > 1) {
             //walkends=1  for each placed transport but the last, the player standing in its aisle by its end toward
             //the next, holding back (the train's transports all face one way) for 40 ticks: where they are then
@@ -598,13 +604,20 @@ public class AutoTest {
                     if (at != null) t.boardStanding(sp, at[0], at[1]);
                     log("walkends " + k + " " + t.getClass().getSimpleName() + " end " + end + " at " + (at == null ? "none" : at[0] + "," + at[1]));
                 });
+                if (ph >= 1 && ph < 45) {
+                    //facing away from the next one (walking back toward it), every tick (whatever the mouse does)
+                    int end = next.position().subtract(t.position()).dot(t.alongDir()) >= 0 ? 1 : -1;
+                    float yaw = t.getYRot() - 90 + (end > 0 ? 180 : 0);
+                    mc.player.setYRot(yaw);
+                    mc.player.yRotO = yaw;
+                }
                 if (ph == 2) mc.options.keyDown.setDown(true);
                 if (ph == 45) {
                     mc.options.keyDown.setDown(false);
                     var v = mc.player.getVehicle();
                     float[] st = v instanceof GenericRailTransport g ? g.standOf(mc.player) : null;
                     log("walkends " + k + " -> " + (v == null ? "nothing" : v.getClass().getSimpleName() + (v.getId() == next.getId() ? " NEXT" : v.getId() == t.getId() ? " SAME" : " OTHER"))
-                            + (st == null ? "" : String.format(" standing %.2f,%.2f", st[0], st[1])));
+                            + (st == null ? "" : String.format(" standing %.2f,%.2f", st[0], st[1])) + String.format(" yaw %.0f car %.0f", mc.player.getYRot(), t.getYRot()));
                 }
             }
         }
@@ -2013,47 +2026,99 @@ public class AutoTest {
      */
     private static String walkGrid(String id, java.util.List<org.joml.Vector3f[]> faces, java.util.List<Float> up, java.util.List<float[]>[] hs,
                                    float x0, float z0, float c, int nx, int nz, float floor, float railY) {
-        boolean[] blocked = new boolean[nx * nz];
+        //the walls through each cell: how low and high each goes (over the rails)
+        java.util.List<float[]>[] walls = new java.util.List[nx * nz];
         java.util.List<float[]> ceilings = new java.util.ArrayList<>();
         for (int f = 0; f < faces.size(); f++) {
             if (Math.abs(up.get(f)) > 0.3f) continue;
             var v = faces.get(f);
             float lo = Float.MAX_VALUE, hi = -Float.MAX_VALUE;
             for (var p : v) { lo = Math.min(lo, p.y - railY); hi = Math.max(hi, p.y - railY); }
-            if (hi < floor + 0.25f || lo > floor + 1.1f) continue;
+            if (hi < floor + 0.1f || lo > floor + 2f) continue;
             //its line on the floor, every quarter of a cell
+            java.util.Set<Integer> cellsOf = new java.util.HashSet<>();
             for (int k = 0; k < v.length; k++) {
                 var a = v[k]; var b = v[(k + 1) % v.length];
                 int steps = (int) Math.ceil(Math.hypot(b.x - a.x, b.z - a.z) / (c / 4)) + 1;
                 for (int q = 0; q <= steps; q++) {
                     float px = a.x + (b.x - a.x) * q / steps, pz = a.z + (b.z - a.z) * q / steps;
                     int i = (int) Math.floor((px - x0) / c), j = (int) Math.floor((pz - z0) / c);
-                    if (i >= 0 && j >= 0 && i < nx && j < nz) blocked[i * nz + j] = true;
+                    if (i >= 0 && j >= 0 && i < nx && j < nz) cellsOf.add(i * nz + j);
+                }
+            }
+            for (int k : cellsOf) {
+                if (walls[k] == null) walls[k] = new java.util.ArrayList<>();
+                walls[k].add(new float[]{lo, hi});
+            }
+        }
+        //the ceiling over each cell: the faces turned down, as a vertical ray up meets them
+        java.util.List<float[]>[] downs = new java.util.List[nx * nz];
+        for (int f = 0; f < faces.size(); f++) {
+            if (up.get(f) > -0.7f) continue;
+            var v = faces.get(f);
+            float h = 0;
+            for (var p : v) h += p.y - railY;
+            h /= v.length;
+            if (h > floor + 0.9f) ceilings.add(new float[]{h});
+            float ax = Float.MAX_VALUE, bx = -Float.MAX_VALUE, az = Float.MAX_VALUE, bz = -Float.MAX_VALUE;
+            for (var p : v) { ax = Math.min(ax, p.x); bx = Math.max(bx, p.x); az = Math.min(az, p.z); bz = Math.max(bz, p.z); }
+            int i0 = Math.max(0, (int) Math.floor((ax - x0) / c)), i1 = Math.min(nx - 1, (int) Math.floor((bx - x0) / c));
+            int j0 = Math.max(0, (int) Math.floor((az - z0) / c)), j1 = Math.min(nz - 1, (int) Math.floor((bz - z0) / c));
+            for (int i = i0; i <= i1; i++) for (int j = j0; j <= j1; j++) {
+                float px = x0 + c * (i + 0.5f), pz = z0 + c * (j + 0.5f);
+                for (int t = 1; t + 1 < v.length; t++) {
+                    var a = v[0]; var b = v[t]; var d = v[t + 1];
+                    float den = (b.z - d.z) * (a.x - d.x) + (d.x - b.x) * (a.z - d.z);
+                    if (Math.abs(den) < 1e-7f) continue;
+                    float l1 = ((b.z - d.z) * (px - d.x) + (d.x - b.x) * (pz - d.z)) / den;
+                    float l2 = ((d.z - a.z) * (px - d.x) + (a.x - d.x) * (pz - d.z)) / den;
+                    float l3 = 1 - l1 - l2;
+                    if (l1 < -1e-4f || l2 < -1e-4f || l3 < -1e-4f) continue;
+                    int k = i * nz + j;
+                    if (downs[k] == null) downs[k] = new java.util.ArrayList<>();
+                    downs[k].add(new float[]{l1 * a.y + l2 * b.y + l3 * d.y - railY});
+                    break;
                 }
             }
         }
-        for (int f = 0; f < faces.size(); f++) {
-            if (up.get(f) > -0.7f) continue;
-            float h = 0;
-            for (var p : faces.get(f)) h += p.y - railY;
-            h /= faces.get(f).length;
-            if (h > floor + 0.9f) ceilings.add(new float[]{h});
-        }
-        int[] state = new int[nx * nz];
+        //each cell's ground: the lowest surface facing up from the floor to 0.8 over it with room over it (nothing
+        //facing up for 1.2 over the floor, 1 over a raised one: a deck, a stair) and no wall through that room
+        float[] level = new float[nx * nz];
+        java.util.Arrays.fill(level, Float.NaN);
         for (int k = 0; k < nx * nz; k++) {
-            if (hs[k] == null || blocked[k]) continue;
-            boolean hasFloor = false, cluttered = false;
-            for (float[] h : hs[k]) {
-                if (Math.abs(h[0] - floor) < 0.07f) hasFloor = true;
-                else if (h[0] > floor + 0.07f && h[0] < floor + 1.2f) cluttered = true;
+            if (hs[k] == null) continue;
+            java.util.List<Float> cand = new java.util.ArrayList<>();
+            for (float[] h : hs[k]) if (h[0] > floor - 0.07f && h[0] < floor + 0.8f) cand.add(h[0]);
+            java.util.Collections.sort(cand);
+            for (float g : cand) {
+                boolean low = g < floor + 0.07f;
+                float room = low ? 1.2f : 1f;
+                boolean free = true;
+                for (float[] h : hs[k]) if (h[0] > g + 0.07f && h[0] < g + room) free = false;
+                if (free && walls[k] != null) for (float[] w : walls[k]) if (w[1] > g + 0.25f && w[0] < g + 1.1f) free = false;
+                if (free) { level[k] = low ? floor : g; break; }
             }
-            if (hasFloor && !cluttered) state[k] = 1;
+        }
+        //a raised ground counts when it is large, its stairs and all (a deck): not a seat's cushion
+        boolean[] seenUp = new boolean[nx * nz];
+        for (int s0 = 0; s0 < nx * nz; s0++) {
+            if (Float.isNaN(level[s0]) || level[s0] == floor || seenUp[s0]) continue;
+            java.util.List<Integer> part = new java.util.ArrayList<>();
+            java.util.ArrayDeque<Integer> q = new java.util.ArrayDeque<>();
+            q.add(s0); seenUp[s0] = true;
+            while (!q.isEmpty()) {
+                int k = q.poll(), i = k / nz, j = k % nz;
+                part.add(k);
+                int[] nb = {i > 0 ? k - nz : -1, i < nx - 1 ? k + nz : -1, j > 0 ? k - 1 : -1, j < nz - 1 ? k + 1 : -1};
+                for (int n : nb) if (n >= 0 && !seenUp[n] && !Float.isNaN(level[n]) && level[n] != floor && Math.abs(level[n] - level[k]) <= 0.2f) { seenUp[n] = true; q.add(n); }
+            }
+            if (part.size() < 100) for (int k : part) level[k] = Float.NaN;
         }
         //joined to the middle
-        int mi = Math.round((0 - x0) / c), best = -1;
+        int best = -1;
         float bd = Float.MAX_VALUE;
         for (int i = 0; i < nx; i++) for (int j = 0; j < nz; j++) {
-            if (state[i * nz + j] != 1) continue;
+            if (Float.isNaN(level[i * nz + j]) || level[i * nz + j] != floor) continue;
             float d = Math.abs(x0 + c * (i + 0.5f)) + 2 * Math.abs(z0 + c * (j + 0.5f));
             if (d < bd) { bd = d; best = i * nz + j; }
         }
@@ -2061,21 +2126,25 @@ public class AutoTest {
             log("walk " + id + ": no floor");
             return null;
         }
-        //and every other floor of 30 cells or more by itself (a corridor and compartments with their doors shut)
+        //and every other floor of 30 cells or more by itself (a corridor and compartments with their doors shut);
+        //cells join where one steps up or down 0.2 or less (a stair); a part with no cell on the floor (a table, a
+        //bench with no back) is none
         boolean[] in = new boolean[nx * nz], seen = new boolean[nx * nz];
         int count = 0;
         for (int s0 = 0; s0 < nx * nz; s0++) {
-            if (state[s0] != 1 || seen[s0]) continue;
+            if (Float.isNaN(level[s0]) || seen[s0]) continue;
             java.util.List<Integer> part = new java.util.ArrayList<>();
             java.util.ArrayDeque<Integer> q = new java.util.ArrayDeque<>();
             q.add(s0); seen[s0] = true;
+            boolean onFloor = false;
             while (!q.isEmpty()) {
                 int k = q.poll(), i = k / nz, j = k % nz;
                 part.add(k);
+                if (level[k] == floor) onFloor = true;
                 int[] nb = {i > 0 ? k - nz : -1, i < nx - 1 ? k + nz : -1, j > 0 ? k - 1 : -1, j < nz - 1 ? k + 1 : -1};
-                for (int n : nb) if (n >= 0 && !seen[n] && state[n] == 1) { seen[n] = true; q.add(n); }
+                for (int n : nb) if (n >= 0 && !seen[n] && !Float.isNaN(level[n]) && Math.abs(level[n] - level[k]) <= 0.2f) { seen[n] = true; q.add(n); }
             }
-            if (part.size() < 30 && !part.contains(best)) continue;
+            if (!onFloor || part.size() < 30 && !part.contains(best)) continue;
             for (int k : part) in[k] = true;
             count += part.size();
         }
@@ -2083,14 +2152,15 @@ public class AutoTest {
             log("walk " + id + ": floor only " + count + " cells");
             return null;
         }
-        //a door drawn shut (up to three cells of wall with floor both sides): open
+        //a door drawn shut (up to three cells of wall with floor both sides, at one height): open
         boolean[] was = in.clone();
         for (int i = 1; i < nx; i++) for (int j = 0; j < nz; j++) {
             int k = i * nz + j;
             if (was[k] || !was[k - nz]) continue;
             for (int g = 1; g <= 3 && i + g < nx; g++) {
                 if (!was[k + g * nz]) continue;
-                for (int f2 = 0; f2 < g; f2++) in[k + f2 * nz] = true;
+                if (Math.abs(level[k + g * nz] - level[k - nz]) <= 0.07f)
+                    for (int f2 = 0; f2 < g; f2++) { in[k + f2 * nz] = true; level[k + f2 * nz] = level[k - nz]; }
                 break;
             }
         }
@@ -2100,27 +2170,30 @@ public class AutoTest {
             if (was[k] || !was[k - 1]) continue;
             for (int g = 1; g <= 3 && j + g < nz; g++) {
                 if (!was[k + g]) continue;
-                for (int f2 = 0; f2 < g; f2++) in[k + f2] = true;
+                if (Math.abs(level[k + g] - level[k - 1]) <= 0.07f)
+                    for (int f2 = 0; f2 < g; f2++) { in[k + f2] = true; level[k + f2] = level[k - 1]; }
                 break;
             }
         }
+        ceilings.sort((a, b) -> Float.compare(a[0], b[0]));
+        float ceil = ceilings.isEmpty() ? floor + 1.4f : ceilings.get(ceilings.size() / 4)[0];
         //the doors: walkable cells next to a cell with no floor and no wall (outside)
-        float halfLong = Math.max(Math.abs(x0), Math.abs(x0 + c * nx));
-        StringBuilder rows = new StringBuilder();
-        int ends = 0, sides = 0;
+        StringBuilder rows = new StringBuilder(), lifts = new StringBuilder(), rooms = new StringBuilder();
+        int ends = 0, sides = 0, raised = 0;
         float minA = Float.MAX_VALUE, maxA = -Float.MAX_VALUE;
         for (int k = 0; k < nx * nz; k++) if (in[k]) { float a = x0 + c * (k / nz + 0.5f); minA = Math.min(minA, a); maxA = Math.max(maxA, a); }
         for (int i = 0; i < nx; i++) {
             for (int j = 0; j < nz; j++) {
                 int k = i * nz + j;
                 char ch = '0';
+                int lift = 0, room = 0;
                 if (in[k]) {
                     ch = '1';
                     int[] nb = {i > 0 ? k - nz : -1, i < nx - 1 ? k + nz : -1, j > 0 ? k - 1 : -1, j < nz - 1 ? k + 1 : -1};
                     for (int n : nb) {
                         //outside: no wall there, and no floor (or step) near the floor's height
                         boolean outside = n < 0;
-                        if (n >= 0 && !blocked[n]) {
+                        if (n >= 0 && walls[n] == null) {
                             boolean anyFloor = false;
                             if (hs[n] != null) for (float[] h : hs[n]) if (Math.abs(h[0] - floor) < 0.3f) anyFloor = true;
                             outside = !anyFloor;
@@ -2131,15 +2204,25 @@ public class AutoTest {
                         if (a < minA + 0.2f || a > maxA - 0.2f) { ch = 'E'; ends++; } else { ch = 'S'; sides++; }
                         break;
                     }
+                    //in sixteenths: how high over the floor, and the room over it up to its ceiling (35 or more: 35)
+                    lift = Math.max(0, Math.min(35, Math.round((level[k] - floor) * 16)));
+                    if (lift > 0) raised++;
+                    float top = ceil;
+                    if (downs[k] != null) {
+                        top = Float.MAX_VALUE;
+                        for (float[] d : downs[k]) if (d[0] > level[k] + 0.5f) top = Math.min(top, d[0]);
+                        if (top == Float.MAX_VALUE) top = ceil;
+                    }
+                    room = Math.max(0, Math.min(35, Math.round((top - level[k]) * 16)));
                 }
                 rows.append(ch);
+                lifts.append(Character.forDigit(lift, 36));
+                rooms.append(Character.forDigit(room, 36));
             }
         }
-        ceilings.sort((a, b) -> Float.compare(a[0], b[0]));
-        float ceil = ceilings.isEmpty() ? floor + 1.4f : ceilings.get(ceilings.size() / 4)[0];
-        log(String.format(java.util.Locale.ROOT, "walk %-32s cells %d end doors %d side doors %d ceiling %.2f", id, count, ends, sides, ceil));
-        return String.format(java.util.Locale.ROOT, "\"%s\": {\"x0\": %.4f, \"z0\": %.4f, \"c\": %.4f, \"nx\": %d, \"nz\": %d, \"floor\": %.3f, \"ceil\": %.3f, \"walk\": \"%s\"}",
-                id, x0, z0, c, nx, nz, floor, ceil, rows);
+        log(String.format(java.util.Locale.ROOT, "walk %-32s cells %d raised %d end doors %d side doors %d ceiling %.2f", id, count, raised, ends, sides, ceil));
+        return String.format(java.util.Locale.ROOT, "\"%s\": {\"x0\": %.4f, \"z0\": %.4f, \"c\": %.4f, \"nx\": %d, \"nz\": %d, \"floor\": %.3f, \"ceil\": %.3f, \"walk\": \"%s\", \"lift\": \"%s\", \"room\": \"%s\"}",
+                id, x0, z0, c, nx, nz, floor, ceil, rows, lifts, rooms);
     }
 
     /** the highest surface facing up in that cell (0 off the grid or none), over the rails */

@@ -55,10 +55,15 @@ public final class WalkClient {
         float a = local[0], c = local[1];
         //each way by itself, so one slides along a wall; along, a little to the side if needed (the aisles are
         //narrow: one keeps to their middle)
-        for (float off : new float[]{0, -0.03f, 0.03f, -0.06f, 0.06f, -0.1f, 0.1f}) {
-            if (w.ok(a + da, c + off)) {
+        //(or onto the middle of a cell across: a stair one cell wide)
+        float mid = w.z0() + w.c() * ((float) Math.floor((c - w.z0()) / w.c()) + 0.5f);
+        java.util.List<Float> tries = new java.util.ArrayList<>(java.util.List.of(c, c - 0.03f, c + 0.03f, mid, mid - w.c(), mid + w.c(), c - 0.06f, c + 0.06f, c - 0.1f, c + 0.1f));
+        final float from = c;
+        tries.sort((x, y) -> Float.compare(Math.abs(x - from), Math.abs(y - from)));
+        for (float to : tries) {
+            if (Math.abs(to - from) <= 0.1f && w.ok(a + da, to)) {
                 a += da;
-                c += off;
+                c = to;
                 break;
             }
         }

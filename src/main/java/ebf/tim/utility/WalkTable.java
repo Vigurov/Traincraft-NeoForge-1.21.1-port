@@ -23,17 +23,52 @@ public final class WalkTable {
     /** across: the aisles of the models are as narrow as two pixels, a door one (within half a cell) */
     private static final float SIDE = 0.03f;
 
-    public record Walk(float x0, float z0, float c, int nx, int nz, float floor, float ceil, String cells, float minAlong, float maxAlong) {
-        char at(float along, float across) {
+    /**
+     * lifts: each cell's ground over the floor in sixteenths (a raised deck, a stair), rooms: from there up to its
+     * ceiling, in sixteenths (35: that or more), as base-36 digits; null when not known (all on the floor)
+     */
+    public record Walk(float x0, float z0, float c, int nx, int nz, float floor, float ceil, String cells, float minAlong, float maxAlong,
+                       String lifts, String rooms) {
+        private int index(float along, float across) {
             int i = (int) Math.floor((along - x0) / c), j = (int) Math.floor((across - z0) / c);
-            if (i < 0 || j < 0 || i >= nx || j >= nz) return '0';
-            return cells.charAt(i * nz + j);
+            return i < 0 || j < 0 || i >= nx || j >= nz ? -1 : i * nz + j;
         }
 
-        /** whether one can stand there */
+        char at(float along, float across) {
+            int k = index(along, across);
+            return k < 0 ? '0' : cells.charAt(k);
+        }
+
+        private int lift(float along, float across) {
+            int k = index(along, across);
+            return k < 0 || lifts == null ? 0 : Character.digit(lifts.charAt(k), 36);
+        }
+
+        /** the ground there, over the rails */
+        public float floorAt(float along, float across) {
+            return floor + lift(along, across) / 16f;
+        }
+
+        /** from the ground there up to its ceiling */
+        public float roomAt(float along, float across) {
+            int k = index(along, across);
+            return k < 0 || rooms == null ? ceil - floor : Character.digit(rooms.charAt(k), 36) / 16f;
+        }
+
+        /**
+         * whether one can stand there: room all round, on one ground (a stair: over the width of a rider no more than
+         * half a block, a steep stair)
+         */
         public boolean ok(float along, float across) {
-            return at(along, across) != '0' && at(along + RADIUS, across) != '0' && at(along - RADIUS, across) != '0'
-                    && at(along, across + SIDE) != '0' && at(along, across - SIDE) != '0';
+            float[][] probes = {{0, 0}, {RADIUS, 0}, {-RADIUS, 0}, {0, SIDE}, {0, -SIDE}};
+            int lo = Integer.MAX_VALUE, hi = Integer.MIN_VALUE;
+            for (float[] p : probes) {
+                if (at(along + p[0], across + p[1]) == '0') return false;
+                int l = lift(along + p[0], across + p[1]);
+                lo = Math.min(lo, l);
+                hi = Math.max(hi, l);
+            }
+            return hi - lo <= 8;
         }
 
         /** the nearest place one can stand to that one, within 1.5, or null */
@@ -88,7 +123,8 @@ public final class WalkTable {
                             hi = Math.max(hi, a);
                         }
                         walks.put(e.getKey(), new Walk(x0, w.get("z0").getAsFloat(), c, nx, nz, w.get("floor").getAsFloat(),
-                                w.get("ceil").getAsFloat(), cells, lo, hi));
+                                w.get("ceil").getAsFloat(), cells, lo, hi, w.has("lift") ? w.get("lift").getAsString() : null,
+                                w.has("room") ? w.get("room").getAsString() : null));
                     }
                 }
             } catch (Exception ex) {

@@ -824,10 +824,11 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
         if (stand == null) stand = standOf(passenger);
         var w = walk();
         if (stand != null && w != null) {
-            //on the floor (shrunk), sunk a little where the ceiling is lower than their eyes and 0.1
+            //on the ground there (shrunk; a deck, a stair), sunk a little where the ceiling is lower than their eyes and 0.1
             float rail = entityData().get(BOGIE_Y_OFFSET);
             Vec3f at = new Vec3f(stand[0], 0, stand[1]).rotatePoint(getXRot(), getYRot(), 0f);
-            double feet = Math.min(w.floor(), w.ceil() - 0.1 - passenger.getEyeHeight());
+            float ground = w.floorAt(stand[0], stand[1]);
+            double feet = Math.min(ground, ground + w.roomAt(stand[0], stand[1]) - 0.1 - passenger.getEyeHeight());
             callback.accept(passenger, getX() + at.xCoord, getY() + rail + feet + at.yCoord, getZ() + at.zCoord);
             return;
         }
