@@ -687,8 +687,11 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
     }
 
     /** shift in a coach: a seated rider stands up in the aisle; a standing one gets out as before */
+    /** standing up and walking in coaches: off (the user did not want it after all); on with -Dtc.walk=true */
+    public static final boolean WALKING = Boolean.getBoolean("tc.walk");
+
     public static void onDismount(net.neoforged.neoforge.event.entity.EntityMountEvent e) {
-        if (!e.isDismounting() || e.getLevel().isClientSide() || !(e.getEntityBeingMounted() instanceof GenericRailTransport t)
+        if (!WALKING || !e.isDismounting() || e.getLevel().isClientSide() || !(e.getEntityBeingMounted() instanceof GenericRailTransport t)
                 || !(e.getEntityMounting() instanceof Player p) || t.letGo == p || !p.isAlive() || t.isRemoved() || !p.isShiftKeyDown()) {
             return;
         }
