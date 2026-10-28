@@ -121,6 +121,10 @@ public class Tessellator {
         }
         if (RenderContext.measure != null) {
             org.joml.Matrix4f m = RenderContext.pose.last().pose();
+            if (RenderContext.unflickerMeasure && RenderContext.unflicker != null && RenderContext.unflickerFrame != null) {
+                float[] u = RenderContext.unflicker.get(RenderContext.currentPart);
+                if (u != null) m = new org.joml.Matrix4f().translation(RenderContext.unflickerFrame.transformDirection(u[0], u[1], u[2], new org.joml.Vector3f())).mul(m);
+            }
             org.joml.Vector3f[] face = new org.joml.Vector3f[pts.size()];
             for (int i = 0; i < pts.size(); i++) {
                 float[] p = pts.get(i);
@@ -128,6 +132,7 @@ public class Tessellator {
                 RenderContext.measure.add(face[i]);
             }
             if (RenderContext.measureFaces != null) RenderContext.measureFaces.add(face);
+            if (RenderContext.measureFacePart != null) RenderContext.measureFacePart.add(RenderContext.currentPart);
             if (RenderContext.measureFaceUV != null) {
                 float[] uv = new float[pts.size() * 2];
                 for (int i = 0; i < pts.size(); i++) { uv[2 * i] = pts.get(i)[3]; uv[2 * i + 1] = pts.get(i)[4]; }
@@ -150,6 +155,16 @@ public class Tessellator {
         VertexConsumer c = RenderContext.consumerNow();
         if (c == null) return;
         PoseStack.Pose pose = RenderContext.pose.last();
+        if (RenderContext.unflicker != null && RenderContext.unflickerFrame != null) {
+            float[] u = RenderContext.unflicker.get(RenderContext.currentPart);
+            if (u != null) {
+                org.joml.Vector3f d = RenderContext.unflickerFrame.transformDirection(u[0], u[1], u[2], new org.joml.Vector3f());
+                PoseStack moved = new PoseStack();
+                moved.last().pose().set(new org.joml.Matrix4f().translation(d).mul(pose.pose()));
+                moved.last().normal().set(pose.normal());
+                pose = moved.last();
+            }
+        }
         if (RenderContext.shiftZ != null && RenderContext.shiftFrame != null) {
             Float dz = RenderContext.shiftZ.get(RenderContext.currentPart);
             if (dz != null) {

@@ -1616,7 +1616,7 @@ public class ModelDRGPassenger extends ModelConverter //Same as Filename
 		bodyModel[350].setRotationPoint(18F, -1F, -5F);
 
 		bodyModel[351].addShapeBox(0F, 0F, 0F, 9, 1, 2, 0F,0F, 0F, 0F, -1F, 0F, 0F, -1F, 0F, 0F, 0F, 0F, 0F, -1F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, -1F, 0F, 0F); // Box 481
-		bodyModel[351].setRotationPoint(18F, -5.5F, -7F);
+		bodyModel[351].setRotationPoint(18F, -5.5F, -1F); //the armrest at the bench's end (moved with it, a seat wide by the wall)
 
 		bodyModel[352].addShapeBox(0F, 0F, 0F, 3, 1, 1, 0F,0F, 0F, 0F, -0.5F, 0F, 0F, -0.5F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, -0.5F, 0F, 0F, -0.5F, 0F, 0F, 0F, 0F, 0F); // Box 484
 		bodyModel[352].setRotationPoint(6F, -1F, -5F);
@@ -1628,7 +1628,7 @@ public class ModelDRGPassenger extends ModelConverter //Same as Filename
 		bodyModel[354].setRotationPoint(0F, -1F, -5F);
 
 		bodyModel[355].addShapeBox(0F, 0F, 0F, 9, 1, 2, 0F,0F, 0F, 0F, -1F, 0F, 0F, -1F, 0F, 0F, 0F, 0F, 0F, -1F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, -1F, 0F, 0F); // Box 487
-		bodyModel[355].setRotationPoint(0F, -5.5F, -7F);
+		bodyModel[355].setRotationPoint(0F, -5.5F, -1F); //the armrest at the bench's end (moved with it, a seat wide by the wall)
 
 		bodyModel[356].addShapeBox(0F, 0F, 0F, 3, 1, 1, 0F,0F, 0F, 0F, -0.5F, 0F, 0F, -0.5F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, -0.5F, 0F, 0F, -0.5F, 0F, 0F, 0F, 0F, 0F); // Box 490
 		bodyModel[356].setRotationPoint(-12F, -1F, -5F);
@@ -1640,7 +1640,7 @@ public class ModelDRGPassenger extends ModelConverter //Same as Filename
 		bodyModel[358].setRotationPoint(-18F, -1F, -5F);
 
 		bodyModel[359].addShapeBox(0F, 0F, 0F, 9, 1, 2, 0F,0F, 0F, 0F, -1F, 0F, 0F, -1F, 0F, 0F, 0F, 0F, 0F, -1F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, -1F, 0F, 0F); // Box 493
-		bodyModel[359].setRotationPoint(-18F, -5.5F, -7F);
+		bodyModel[359].setRotationPoint(-18F, -5.5F, -1F); //the armrest at the bench's end (moved with it, a seat wide by the wall)
 
 		bodyModel[360].addShapeBox(0F, 0F, 0F, 3, 1, 1, 0F,0F, 0F, 0F, -0.5F, 0F, 0F, -0.5F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, -0.5F, 0F, 0F, -0.5F, 0F, 0F, 0F, 0F, 0F); // Box 496
 		bodyModel[360].setRotationPoint(-30F, -1F, -5F);
@@ -1652,7 +1652,7 @@ public class ModelDRGPassenger extends ModelConverter //Same as Filename
 		bodyModel[362].setRotationPoint(-36F, -1F, -5F);
 
 		bodyModel[363].addShapeBox(0F, 0F, 0F, 9, 1, 2, 0F,0F, 0F, 0F, -1F, 0F, 0F, -1F, 0F, 0F, 0F, 0F, 0F, -1F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, -1F, 0F, 0F); // Box 499
-		bodyModel[363].setRotationPoint(-36F, -5.5F, -7F);
+		bodyModel[363].setRotationPoint(-36F, -5.5F, -1F); //the armrest at the bench's end (moved with it, a seat wide by the wall)
 
 		bodyModel[364].addShapeBox(0F, 0F, 0F, 6, 1, 1, 0F,0F, -0.5F, 0F, 0F, -0.5F, 0F, 0F, -0.5F, -0.5F, 0F, -0.5F, -0.5F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, -0.5F, 0F, 0F, -0.5F); // Box 392
 		bodyModel[364].setRotationPoint(-3F, -22F, 6F);

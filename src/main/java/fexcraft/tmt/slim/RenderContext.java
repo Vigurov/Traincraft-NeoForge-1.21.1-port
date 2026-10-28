@@ -31,6 +31,17 @@ public final class RenderContext {
     /** while measuring: each face's texture coordinates (u, v per corner) and texture (null untextured) */
     public static java.util.List<float[]> measureFaceUV;
     public static java.util.List<ResourceLocation> measureFaceTex;
+    /**
+     * parts moved a hair (in the transport's frame) off others lying in the same plane, which would flicker; and the
+     * frame (tests: applied while measuring too, with unflickerMeasure)
+     */
+    public static java.util.Map<ModelRendererTurbo, float[]> unflicker;
+    public static org.joml.Matrix4f unflickerFrame;
+    public static boolean unflickerMeasure;
+    /** while measuring: the transport's frame, inverted (set by RenderWagon) */
+    public static org.joml.Matrix4f measuredFrameInv;
+    /** while measuring: the part of each face */
+    public static java.util.List<ModelRendererTurbo> measureFacePart;
     /** parts not drawn (an electric's folded pantograph while it is raised) */
     public static java.util.Set<ModelRendererTurbo> hidden;
     /** parts moved across the transport (its wheels onto the rails), and the transport's frame they are moved in */

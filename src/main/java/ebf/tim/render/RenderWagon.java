@@ -59,6 +59,8 @@ public class RenderWagon extends EntityRenderer<GenericRailTransport> {
         WheelFit.prepare(entity);
         //its windows, glazed: found once
         GlassPanes.prepare(entity);
+        //its parts lying in one plane, moved apart a hair so they do not flicker: found once
+        Unflicker.prepare(entity);
         RenderContext.begin(pose, buffers, packedLight, null);
         int depth = RenderContext.depth;
         RenderContext.lampsOn = entity.getBoolean(GenericRailTransport.boolValues.LAMP);
@@ -74,6 +76,8 @@ public class RenderWagon extends EntityRenderer<GenericRailTransport> {
             RenderContext.lampsOn = false;
             RenderContext.shiftZ = null;
             RenderContext.shiftFrame = null;
+            RenderContext.unflicker = null;
+            RenderContext.unflickerFrame = null;
             RenderContext.end();
         }
         renderCouplers(entity, partialTick, pose, buffers, packedLight);
@@ -269,6 +273,12 @@ public class RenderWagon extends EntityRenderer<GenericRailTransport> {
             rest.removeAll(entity.renderData.wheelParts);
             fexcraft.tmt.slim.RenderContext.hidden = rest;
         }
+        if (measuring && fexcraft.tmt.slim.RenderContext.measure != null) fexcraft.tmt.slim.RenderContext.measuredFrameInv = new org.joml.Matrix4f(frame).invert();
+        if (!measuring && entity.renderData.unflicker != null && !entity.renderData.unflicker.isEmpty()) {
+            fexcraft.tmt.slim.RenderContext.unflicker = entity.renderData.unflicker;
+            fexcraft.tmt.slim.RenderContext.unflickerFrame = frame;
+        }
+        if (fexcraft.tmt.slim.RenderContext.unflickerMeasure) fexcraft.tmt.slim.RenderContext.unflickerFrame = frame;
         if (!measuring && entity.renderData.wheelShift != null && !entity.renderData.wheelShift.isEmpty()) {
             fexcraft.tmt.slim.RenderContext.shiftZ = entity.renderData.wheelShift;
             fexcraft.tmt.slim.RenderContext.shiftFrame = frame;

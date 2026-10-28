@@ -1370,6 +1370,7 @@ public class ModelRendererTurbo {
         for (TexturedPolygon poly : faces) {
             Tessellator.getInstance().drawTexturedVertsWithNormal(poly, scale);
         }
+
         if(rotationPointX != 0.0F || rotationPointY != 0.0F || rotationPointZ != 0.0F){
             GL11.glTranslatef(-rotationPointX * scale, -rotationPointY * scale, -rotationPointZ * scale);
         }

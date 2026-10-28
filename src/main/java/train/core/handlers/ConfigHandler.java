@@ -83,6 +83,8 @@ public final class ConfigHandler {
     /** the transport's kind is not switched off */
     public static boolean enabled(GenericRailTransport t) {
         if (t == null) return true;
+        //retired: the Adler car (no room in it to sit or walk); out of the tab and the recipes, kept for old worlds
+        if (t instanceof train.entity.rollingStock.EntityPassengerAdler) return false;
         var types = t.getTypes();
         return !(types.contains(TrainsInMotion.transportTypes.STEAM) && !get(ENABLE_STEAM)
                 || types.contains(TrainsInMotion.transportTypes.DIESEL) && !get(ENABLE_DIESEL)

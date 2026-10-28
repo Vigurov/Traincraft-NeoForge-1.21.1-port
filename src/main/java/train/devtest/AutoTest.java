@@ -857,6 +857,8 @@ public class AutoTest {
             }
         }
         if (tick == 30 && p.containsKey("partdump")) partDump(mc, p.getProperty("partdump"));
+        if (tick == 30 && p.containsKey("wallscan")) wallScan(mc);
+        if (tick == 30 && p.containsKey("zfight")) zfightScan(mc, p.getProperty("zfight"));
         if (tick == 30 && p.containsKey("seatscan")) {
             seatScan(mc);
         }
@@ -1821,6 +1823,21 @@ public class AutoTest {
                 fexcraft.tmt.slim.RenderContext.classifyFrame = null;
                 fexcraft.tmt.slim.RenderContext.end();
             }
+            //models with their own arrays of parts: by the array's name and index
+            for (var m : t.renderData.modelList) {
+                for (var fld : m.getClass().getDeclaredFields()) {
+                    if (fld.getType() != fexcraft.tmt.slim.ModelRendererTurbo[].class) continue;
+                    try {
+                        fld.setAccessible(true);
+                        var arr = (fexcraft.tmt.slim.ModelRendererTurbo[]) fld.get(m);
+                        if (arr == null) continue;
+                        for (int k = 0; k < arr.length; k++) {
+                            float[] b = boxes.get(arr[k]);
+                            if (b != null) log(String.format(java.util.Locale.ROOT, "part %s %s.%d x %.3f..%.3f y %.3f..%.3f z %.3f..%.3f", id, fld.getName(), k, b[0], b[3], b[1], b[4], b[2], b[5]));
+                        }
+                    } catch (ReflectiveOperationException ignored) {}
+                }
+            }
             var fresh = t.getModel();
             for (int mi2 = 0; mi2 < fresh.length; mi2++) {
                 if (!(fresh[mi2] instanceof fexcraft.tmt.slim.ModelConverter mc2) || mc2.bodyModel == null) continue;
@@ -1836,6 +1853,173 @@ public class AutoTest {
                 }
             }
         }
+    }
+
+    /**
+     * wallscan=1  each coach's side walls: at heights over its floor and along it, rays across from the middle out;
+     * the faces facing across they pass (z, which way), the inner and outer of each side and how thick
+     */
+    private static void wallScan(Minecraft mc) {
+        for (var holder : TiMGenericRegistry.TRANSPORTS) {
+            String id = BuiltInRegistries.ENTITY_TYPE.getKey(holder.get()).getPath();
+            var w = ebf.tim.utility.WalkTable.of(id);
+            if (w == null) continue;
+            GenericRailTransport t = holder.get().create(mc.level);
+            t.setPos(0, 0, 0);
+            float[] rp = t.rotationPoints();
+            t.frontBogie = new ebf.tim.entities.EntityBogie(t, rp[1], 0, 0, true);
+            t.backBogie = new ebf.tim.entities.EntityBogie(t, rp[0], 0, 0, false);
+            float railY = 0.3f;
+            t.frontBogie.yOffset = t.backBogie.yOffset = railY;
+            t.renderData.needsModelUpdate = true;
+            var verts = new java.util.ArrayList<org.joml.Vector3f>();
+            var faces = new java.util.ArrayList<org.joml.Vector3f[]>();
+            fexcraft.tmt.slim.RenderContext.begin(new com.mojang.blaze3d.vertex.PoseStack(), null, 0, null);
+            fexcraft.tmt.slim.RenderContext.measure = verts;
+            fexcraft.tmt.slim.RenderContext.measureFaces = faces;
+            ebf.tim.render.RenderWagon.measuring = true;
+            try {
+                ebf.tim.render.RenderWagon.doRender(t, t.getYRot(), 0, railY, false, null);
+            } finally {
+                ebf.tim.render.RenderWagon.measuring = false;
+                fexcraft.tmt.slim.RenderContext.measure = null;
+                fexcraft.tmt.slim.RenderContext.measureFaces = null;
+                fexcraft.tmt.slim.RenderContext.end();
+            }
+            StringBuilder out = new StringBuilder();
+            float[] thick = new float[2];
+            int[] n = new int[2];
+            for (float h : new float[]{0.35f, 0.6f, 0.95f}) {
+                float y = railY + w.floor() + h;
+                for (float a = w.minAlong() + 0.3f; a < w.maxAlong() - 0.3f; a += 0.37f) {
+                    for (int side = 0; side < 2; side++) {
+                        float sg = side == 0 ? -1 : 1;
+                        java.util.TreeMap<Float, Boolean> hits = new java.util.TreeMap<>();
+                        for (var f : faces) {
+                            for (int k = 1; k + 1 < f.length; k++) {
+                                var p0 = f[0]; var p1 = f[k]; var p2 = f[k + 1];
+                                var nrm = new org.joml.Vector3f(p1).sub(p0).cross(new org.joml.Vector3f(p2).sub(p0));
+                                if (nrm.lengthSquared() < 1e-12f) continue;
+                                nrm.normalize();
+                                if (Math.abs(nrm.z) < 0.9f) continue;
+                                //where the line (a, y, z) meets the plane, inside the triangle
+                                float den = (p1.x - p0.x) * (p2.y - p0.y) - (p2.x - p0.x) * (p1.y - p0.y);
+                                if (Math.abs(den) < 1e-9f) continue;
+                                float u = ((a - p0.x) * (p2.y - p0.y) - (p2.x - p0.x) * (y - p0.y)) / den;
+                                float v = ((p1.x - p0.x) * (y - p0.y) - (a - p0.x) * (p1.y - p0.y)) / den;
+                                if (u < -1e-4f || v < -1e-4f || u + v > 1 + 1e-4f) continue;
+                                float z = p0.z + u * (p1.z - p0.z) + v * (p2.z - p0.z);
+                                if (z * sg > 0.05f) hits.put(Math.abs(z), true);
+                                break;
+                            }
+                        }
+                        if (hits.size() < 2) continue;
+                        float outer = hits.lastKey(), inner = hits.firstKey();
+                        thick[side] += outer - inner;
+                        n[side]++;
+                        if (h == 0.6f && Math.abs(a - (w.minAlong() + w.maxAlong()) / 2) < 0.2f) out.append(String.format(java.util.Locale.ROOT, " side%d %s", side, hits.keySet()));
+                    }
+                }
+            }
+            log(String.format(java.util.Locale.ROOT, "wall %-32s thick %.3f %.3f%s", id, n[0] > 0 ? thick[0] / n[0] : -1, n[1] > 0 ? thick[1] / n[1] : -1, out));
+        }
+    }
+
+    /**
+     * zfight=all|id,...  for each transport: the pairs of faces of two parts lying in one plane, facing one way and
+     * overlapping (they flicker), as drawn plainly and as drawn grown (RenderContext.unflicker)
+     */
+    private static void zfightScan(Minecraft mc, String which) {
+        java.util.Set<String> only = which.equals("all") ? null : new java.util.HashSet<>(java.util.Arrays.asList(which.split(",")));
+        int[] total = new int[2];
+        for (var holder : TiMGenericRegistry.TRANSPORTS) {
+            String id = BuiltInRegistries.ENTITY_TYPE.getKey(holder.get()).getPath();
+            if (only != null && !only.contains(id)) continue;
+            int[] count = new int[2];
+            String example = "";
+            for (int pass = 0; pass < 2; pass++) {
+                GenericRailTransport t;
+                try { t = holder.get().create(mc.level); } catch (Throwable e) { continue; }
+                if (t == null) continue;
+                t.setPos(0, 0, 0);
+                float[] rp = t.rotationPoints();
+                t.frontBogie = new ebf.tim.entities.EntityBogie(t, rp[1], 0, 0, true);
+                t.backBogie = new ebf.tim.entities.EntityBogie(t, rp[0], 0, 0, false);
+                t.frontBogie.yOffset = t.backBogie.yOffset = 0.3f;
+                t.renderData.needsModelUpdate = true;
+                var verts = new java.util.ArrayList<org.joml.Vector3f>();
+                var faces = new java.util.ArrayList<org.joml.Vector3f[]>();
+                var parts = new java.util.ArrayList<fexcraft.tmt.slim.ModelRendererTurbo>();
+                fexcraft.tmt.slim.RenderContext.begin(new com.mojang.blaze3d.vertex.PoseStack(), null, 0, null);
+                fexcraft.tmt.slim.RenderContext.measure = verts;
+                fexcraft.tmt.slim.RenderContext.measureFaces = faces;
+                fexcraft.tmt.slim.RenderContext.measureFacePart = parts;
+                fexcraft.tmt.slim.RenderContext.unflickerMeasure = pass == 1;
+                if (pass == 1) {
+                    ebf.tim.render.Unflicker.prepare(t);
+                    fexcraft.tmt.slim.RenderContext.begin(new com.mojang.blaze3d.vertex.PoseStack(), null, 0, null);
+                    fexcraft.tmt.slim.RenderContext.measure = verts;
+                    fexcraft.tmt.slim.RenderContext.measureFaces = faces;
+                    fexcraft.tmt.slim.RenderContext.measureFacePart = parts;
+                    fexcraft.tmt.slim.RenderContext.unflickerMeasure = true;
+                    fexcraft.tmt.slim.RenderContext.unflicker = t.renderData.unflicker;
+                }
+                ebf.tim.render.RenderWagon.measuring = true;
+                try {
+                    ebf.tim.render.RenderWagon.doRender(t, t.getYRot(), 0, 0.3f, false, null);
+                } catch (Throwable e) {
+                    continue;
+                } finally {
+                    ebf.tim.render.RenderWagon.measuring = false;
+                    fexcraft.tmt.slim.RenderContext.measure = null;
+                    fexcraft.tmt.slim.RenderContext.measureFaces = null;
+                    fexcraft.tmt.slim.RenderContext.measureFacePart = null;
+                    fexcraft.tmt.slim.RenderContext.unflickerMeasure = false;
+                    fexcraft.tmt.slim.RenderContext.unflicker = null;
+                    fexcraft.tmt.slim.RenderContext.end();
+                }
+                //faces turned along an axis, by axis, way and plane (to a 2000th)
+                java.util.Map<String, java.util.List<float[]>> planes = new java.util.HashMap<>();
+                java.util.Map<float[], fexcraft.tmt.slim.ModelRendererTurbo> partOf = new java.util.IdentityHashMap<>();
+                for (int f = 0; f < faces.size() && f < parts.size(); f++) {
+                    var v = faces.get(f);
+                    if (v.length < 3) continue;
+                    var nrm = new org.joml.Vector3f(v[1]).sub(v[0]).cross(new org.joml.Vector3f(v[2]).sub(v[0]));
+                    if (nrm.lengthSquared() < 1e-14f) continue;
+                    nrm.normalize();
+                    int ax = Math.abs(nrm.x) > 0.999f ? 0 : Math.abs(nrm.y) > 0.999f ? 1 : Math.abs(nrm.z) > 0.999f ? 2 : -1;
+                    if (ax < 0) continue;
+                    float[] c = {v[0].x, v[0].y, v[0].z};
+                    float d = c[ax];
+                    int a1 = (ax + 1) % 3, a2 = (ax + 2) % 3;
+                    float lo1 = Float.MAX_VALUE, hi1 = -Float.MAX_VALUE, lo2 = Float.MAX_VALUE, hi2 = -Float.MAX_VALUE;
+                    for (var p : v) {
+                        float[] q = {p.x, p.y, p.z};
+                        lo1 = Math.min(lo1, q[a1]); hi1 = Math.max(hi1, q[a1]); lo2 = Math.min(lo2, q[a2]); hi2 = Math.max(hi2, q[a2]);
+                    }
+                    float[] rec = {lo1, hi1, lo2, hi2, d};
+                    partOf.put(rec, parts.get(f));
+                    String key = ax + (nrm.get(ax) > 0 ? "+" : "-") + Math.round(d * 2000);
+                    planes.computeIfAbsent(key, k -> new java.util.ArrayList<>()).add(rec);
+                }
+                for (var e : planes.entrySet()) {
+                    var l = e.getValue();
+                    for (int i = 0; i < l.size(); i++) for (int j = i + 1; j < l.size(); j++) {
+                        float[] a = l.get(i), b = l.get(j);
+                        if (partOf.get(a) == partOf.get(b)) continue;
+                        float o1 = Math.min(a[1], b[1]) - Math.max(a[0], b[0]), o2 = Math.min(a[3], b[3]) - Math.max(a[2], b[2]);
+                        if (o1 > 0.01f && o2 > 0.01f) {
+                            count[pass]++;
+                            if (pass == 0 && example.length() < 300) example += String.format(java.util.Locale.ROOT, " [%s %.2f..%.2f %.2f..%.2f]", e.getKey(), Math.max(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.min(a[3], b[3]));
+                        }
+                    }
+                }
+            }
+            total[0] += count[0];
+            total[1] += count[1];
+            log(String.format(java.util.Locale.ROOT, "zfight %-34s plain %4d apart %4d%s", id, count[0], count[1], count[0] > 0 && only != null ? example : ""));
+        }
+        log("zfight total plain " + total[0] + " apart " + total[1]);
     }
 
     private static void seatScan(Minecraft mc) {

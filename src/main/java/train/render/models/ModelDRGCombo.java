@@ -1478,7 +1478,7 @@ public class ModelDRGCombo extends ModelConverter //Same as Filename
 		bodyModel[305].setRotationPoint(1F, -1F, -5F);
 
 		bodyModel[306].addShapeBox(0F, 0F, 0F, 9, 1, 2, 0F,0F, 0F, 0F, -1F, 0F, 0F, -1F, 0F, 0F, 0F, 0F, 0F, -1F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, -1F, 0F, 0F); // Box 487
-		bodyModel[306].setRotationPoint(1F, -5.5F, -7F);
+		bodyModel[306].setRotationPoint(1F, -5.5F, -1F); //the armrest at the bench's end (moved with it, a seat wide by the wall)
 
 		bodyModel[307].addShapeBox(0F, 0F, 0F, 3, 1, 1, 0F,0F, 0F, 0F, -0.5F, 0F, 0F, -0.5F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, -0.5F, 0F, 0F, -0.5F, 0F, 0F, 0F, 0F, 0F); // Box 490
 		bodyModel[307].setRotationPoint(-11F, -1F, -5F);
@@ -1490,7 +1490,7 @@ public class ModelDRGCombo extends ModelConverter //Same as Filename
 		bodyModel[309].setRotationPoint(-17F, -1F, -5F);
 
 		bodyModel[310].addShapeBox(0F, 0F, 0F, 9, 1, 2, 0F,0F, 0F, 0F, -1F, 0F, 0F, -1F, 0F, 0F, 0F, 0F, 0F, -1F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, -1F, 0F, 0F); // Box 493
-		bodyModel[310].setRotationPoint(-17F, -5.5F, -7F);
+		bodyModel[310].setRotationPoint(-17F, -5.5F, -1F); //the armrest at the bench's end (moved with it, a seat wide by the wall)
 
 		bodyModel[311].addShapeBox(0F, 0F, 0F, 3, 1, 1, 0F,0F, 0F, 0F, -0.5F, 0F, 0F, -0.5F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, -0.5F, 0F, 0F, -0.5F, 0F, 0F, 0F, 0F, 0F); // Box 496
 		bodyModel[311].setRotationPoint(-29F, -1F, -5F);
@@ -1502,7 +1502,7 @@ public class ModelDRGCombo extends ModelConverter //Same as Filename
 		bodyModel[313].setRotationPoint(-35F, -1F, -5F);
 
 		bodyModel[314].addShapeBox(0F, 0F, 0F, 9, 1, 2, 0F,0F, 0F, 0F, -1F, 0F, 0F, -1F, 0F, 0F, 0F, 0F, 0F, -1F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, -1F, 0F, 0F); // Box 499
-		bodyModel[314].setRotationPoint(-35F, -5.5F, -7F);
+		bodyModel[314].setRotationPoint(-35F, -5.5F, -1F); //the armrest at the bench's end (moved with it, a seat wide by the wall)
 
 		bodyModel[315].addShapeBox(0F, 0F, 0F, 6, 1, 1, 0F,0F, -0.5F, 0F, 0F, -0.5F, 0F, 0F, -0.5F, -0.5F, 0F, -0.5F, -0.5F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, -0.5F, 0F, 0F, -0.5F); // Box 392
 		bodyModel[315].setRotationPoint(-2F, -22F, 6F);
