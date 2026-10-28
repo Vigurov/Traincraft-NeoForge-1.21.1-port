@@ -273,6 +273,8 @@ public class RenderWagon extends EntityRenderer<GenericRailTransport> {
             fexcraft.tmt.slim.RenderContext.shiftZ = entity.renderData.wheelShift;
             fexcraft.tmt.slim.RenderContext.shiftFrame = frame;
         }
+        //a coach at night: its inside lit by its lamps, only its inside
+        float[] lamps = !measuring ? CoachLights.begin(entity, frame) : null;
         //an electric under the wire: its folded pantographs left out (the first raised frame only finds them)
         boolean pantoProbe = !measuring && !isPaintBucket && entity.level() != null
                 && Pantographs.begin(entity, new org.joml.Matrix4f(fexcraft.tmt.slim.RenderContext.pose.last().pose()).invert());
@@ -292,6 +294,7 @@ public class RenderWagon extends EntityRenderer<GenericRailTransport> {
             entity.renderData.modelList[i].render(entity, 0,0,0,0,0, 0.0625f);
             GL11.glPopMatrix();
         }
+        if (lamps != null) CoachLights.end(lamps);
         if (pantoProbe) {
             Pantographs.classified(entity);
         } else if (!measuring && !isPaintBucket && entity.level() != null) {

@@ -168,6 +168,15 @@ public class Tessellator {
             Vec3f n = new Vec3f(b.subtract(d)).crossProduct(b.subtract(a)).normalize();
             nx = n.xCoord; ny = n.yCoord; nz = n.zCoord;
         }
+        RenderContext.faceLight = -1;
+        if (RenderContext.interiorBox != null && RenderContext.interiorFrameInv != null) {
+            float cx = 0, cy = 0, cz = 0;
+            for (float[] p : pts) { cx += p[0]; cy += p[1]; cz += p[2]; }
+            org.joml.Vector3f m = new org.joml.Matrix4f(RenderContext.interiorFrameInv).mul(pose.pose())
+                    .transformPosition(cx / pts.size(), cy / pts.size(), cz / pts.size(), new org.joml.Vector3f());
+            float[] b = RenderContext.interiorBox;
+            if (m.x > b[0] && m.x < b[1] && m.y > b[2] && m.y < b[3] && m.z > b[4] && m.z < b[5]) RenderContext.faceLight = RenderContext.interiorLight;
+        }
         if (pts.size() == 4) {
             for (float[] p : pts) put(c, pose, p, nx, ny, nz);
         } else if (pts.size() == 3) {

@@ -36,6 +36,15 @@ public final class RenderContext {
     /** parts moved across the transport (its wheels onto the rails), and the transport's frame they are moved in */
     public static java.util.Map<ModelRendererTurbo, Float> shiftZ;
     public static org.joml.Matrix4f shiftFrame;
+    /**
+     * the inside of a coach lit (its lamps on at night): the faces whose middle is in this box of the transport's
+     * frame (x0, x1 along; y0, y1 with y down; z0, z1 across) get this light; the frame's inverse
+     */
+    public static float[] interiorBox;
+    public static int interiorLight = -1;
+    public static org.joml.Matrix4f interiorFrameInv;
+    /** the light for the face being drawn (an inside one lit), or -1 */
+    static int faceLight = -1;
     /** the part being drawn */
     public static ModelRendererTurbo currentPart;
     /**
@@ -80,7 +89,7 @@ public final class RenderContext {
     private static net.minecraft.client.renderer.texture.TextureAtlasSprite white;
 
     /**the white sprite in the block atlas, for untextured drawing*/
-    static net.minecraft.client.renderer.texture.TextureAtlasSprite white() {
+    public static net.minecraft.client.renderer.texture.TextureAtlasSprite white() {
         if (white == null || white.atlasLocation() == null) {
             white = net.minecraft.client.Minecraft.getInstance().getTextureAtlas(net.minecraft.world.inventory.InventoryMenu.BLOCK_ATLAS).apply(WHITE);
         }
@@ -102,6 +111,7 @@ public final class RenderContext {
     }
 
     static int lightNow() {
+        if (faceLight >= 0 && !fullBright) return faceLight;
         return fullBright ? LightTexture.FULL_BRIGHT : light;
     }
 }

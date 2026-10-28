@@ -50,6 +50,9 @@ public final class WheelFit {
         //the frame's y points down: the lowest point is the largest
         float bottom = -Float.MAX_VALUE;
         for (float[] b : boxes.values()) bottom = Math.max(bottom, b[4]);
+        float[] hull = {Float.MAX_VALUE, Float.MAX_VALUE, Float.MAX_VALUE, -Float.MAX_VALUE, -Float.MAX_VALUE, -Float.MAX_VALUE};
+        for (float[] b : boxes.values()) for (int k = 0; k < 3; k++) { hull[k] = Math.min(hull[k], b[k]); hull[k + 3] = Math.max(hull[k + 3], b[k + 3]); }
+        t.renderData.hull = hull;
         t.renderData.allParts.addAll(boxes.keySet());
         for (var e : boxes.entrySet()) {
             float[] b = e.getValue();
