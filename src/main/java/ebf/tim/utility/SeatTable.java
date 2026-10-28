@@ -31,7 +31,7 @@ public final class SeatTable {
                         float[][] s = new float[arr.size()][];
                         for (int i = 0; i < s.length; i++) {
                             var a = arr.get(i).getAsJsonArray();
-                            s[i] = new float[]{a.get(0).getAsFloat(), a.get(1).getAsFloat(), a.get(2).getAsFloat(), a.size() > 3 ? a.get(3).getAsFloat() : 0};
+                            s[i] = new float[]{a.get(0).getAsFloat(), a.get(1).getAsFloat(), a.get(2).getAsFloat(), a.size() > 3 ? a.get(3).getAsFloat() : 0, a.size() > 4 ? a.get(4).getAsFloat() : 9};
                         }
                         seats.put(e.getKey(), s);
                     }

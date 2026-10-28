@@ -629,7 +629,11 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
             //on the seat in the model: a sitting rider's hips (where the legs turn forward) are 0.75 over their feet,
             //the seat's top is over the rails
             float rail = entityData().get(BOGIE_Y_OFFSET);
-            callback.accept(passenger, getX() + seat.xCoord, getY() + rail + seat.yCoord - 0.75, getZ() + seat.zCoord);
+            double feet = seats[i][1] - 0.75;
+            //sunk into the seat as far as it takes to keep the eyes 0.3 under the ceiling (the models are small)
+            if (seats[i].length > 4) feet = Math.min(feet, seats[i][4] - 0.3 - passenger.getEyeHeight());
+            Vec3f low = new Vec3f(seats[i][0], 0, seats[i][2]).rotatePoint(getXRot(), getYRot(), 0f);
+            callback.accept(passenger, getX() + low.xCoord, getY() + rail + feet + low.yCoord, getZ() + low.zCoord);
             clampSeated(passenger);
             return;
         }

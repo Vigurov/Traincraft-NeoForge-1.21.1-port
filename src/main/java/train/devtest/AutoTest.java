@@ -1722,7 +1722,11 @@ public class AutoTest {
                 }
                 if (verts.isEmpty() || up.size() != faces.size()) continue;
                 var tops = new java.util.ArrayList<org.joml.Vector3f[]>();
-                for (int f = 0; f < faces.size(); f++) if (up.get(f) > 0.7f) tops.add(faces.get(f));
+                var downs = new java.util.ArrayList<org.joml.Vector3f[]>();
+                for (int f = 0; f < faces.size(); f++) {
+                    if (up.get(f) > 0.7f) tops.add(faces.get(f));
+                    if (up.get(f) < -0.7f) downs.add(faces.get(f));
+                }
                 float x0 = Float.MAX_VALUE, x1 = -Float.MAX_VALUE, z0 = Float.MAX_VALUE, z1 = -Float.MAX_VALUE;
                 for (var v : verts) { x0 = Math.min(x0, v.x); x1 = Math.max(x1, v.x); z0 = Math.min(z0, v.z); z1 = Math.max(z1, v.z); }
                 float c = 1 / 16f;
@@ -1808,7 +1812,22 @@ public class AutoTest {
                     float facing = back0 > 0.2f && back0 > back1 ? 1 : back1 > 0.2f ? -1 : 0;
                     for (int u = 0; u < ca; u++) for (int w = 0; w < cb; w++) {
                         float sx = x0 + c * mi + lx * (u + 0.5f) / ca, sz = z0 + c * mj + lz * (w + 0.5f) / cb;
-                        found.add(new float[]{sx, top, sz, facing});
+                        //the ceiling over it: the lowest surface facing down over the seat's top
+                        float ceil = 9;
+                        for (var f : downs) {
+                            for (int kk = 1; kk + 1 < f.length; kk++) {
+                                var a = f[0]; var b = f[kk]; var d = f[kk + 1];
+                                float den = (b.z - d.z) * (a.x - d.x) + (d.x - b.x) * (a.z - d.z);
+                                if (Math.abs(den) < 1e-7f) continue;
+                                float l1 = ((b.z - d.z) * (sx - d.x) + (d.x - b.x) * (sz - d.z)) / den;
+                                float l2 = ((d.z - a.z) * (sx - d.x) + (a.x - d.x) * (sz - d.z)) / den;
+                                float l3 = 1 - l1 - l2;
+                                if (l1 < -1e-4f || l2 < -1e-4f || l3 < -1e-4f) continue;
+                                float h = l1 * a.y + l2 * b.y + l3 * d.y - railY;
+                                if (h > top + 0.4f) ceil = Math.min(ceil, h);
+                            }
+                        }
+                        found.add(new float[]{sx, top, sz, facing, ceil});
                     }
                 }
                 log(String.format(java.util.Locale.ROOT, "seats %-32s floor %.2f seats %d", id, floor, found.size()));
@@ -1816,7 +1835,7 @@ public class AutoTest {
                 json.append(written++ == 0 ? "" : ",\n").append("\"").append(id).append("\": [");
                 for (int k = 0; k < found.size(); k++) {
                     float[] f = found.get(k);
-                    json.append(k == 0 ? "" : ", ").append(String.format(java.util.Locale.ROOT, "[%.3f, %.3f, %.3f, %.0f]", f[0], f[1], f[2], f[3]));
+                    json.append(k == 0 ? "" : ", ").append(String.format(java.util.Locale.ROOT, "[%.3f, %.3f, %.3f, %.0f, %.3f]", f[0], f[1], f[2], f[3], f[4]));
                 }
                 json.append("]");
             } catch (Throwable e) {
