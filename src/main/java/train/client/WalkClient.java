@@ -68,6 +68,17 @@ public final class WalkClient {
             }
         }
         if (w.ok(a, c + dc)) c += dc;
+        else if (dc != 0) {
+            //across, onto the middle of a cell along (a door, a gap a cell or two wide)
+            float midA = w.x0() + w.c() * ((float) Math.floor((a - w.x0()) / w.c()) + 0.5f);
+            for (float to : new float[]{midA, midA - w.c(), midA + w.c()}) {
+                if (Math.abs(to - a) <= 0.1f && w.ok(to, c) && w.ok(to, c + dc)) {
+                    a = to;
+                    c += dc;
+                    break;
+                }
+            }
+        }
         if (a == local[0] && c == local[1]) {
             //at an end of the aisle, the server takes one through its door
             if (w.end(a + da) != 0) PacketDistributor.sendToServer(new PacketWalk(t.getId(), a + Math.signum(da) * 0.01f, c));

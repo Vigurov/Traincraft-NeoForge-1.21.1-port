@@ -612,6 +612,9 @@ public class AutoTest {
                     mc.player.yRotO = yaw;
                 }
                 if (ph == 2) mc.options.keyDown.setDown(true);
+                //sideways a while each way too, as one steers round a bench's end into the vestibule
+                mc.options.keyLeft.setDown(ph >= 18 && ph < 26);
+                mc.options.keyRight.setDown(ph >= 30 && ph < 40);
                 if (ph == 45) {
                     mc.options.keyDown.setDown(false);
                     var v = mc.player.getVehicle();
@@ -1935,6 +1938,20 @@ public class AutoTest {
                         if (ma + g < nx && backWall[(ma + g) * nz + j]) wall1 = true;
                     }
                     if (wall0 != wall1) facing = wall0 ? 1 : -1;
+                    //a partition right behind it along all its width (within 2 cells) on one side only: its back
+                    int cov0 = 0, cov1 = 0;
+                    for (int j = mj; j <= mb; j++) {
+                        boolean h0 = false, h1 = false;
+                        for (int g = 1; g <= 2; g++) {
+                            if (mi - g >= 0 && backWall[(mi - g) * nz + j]) h0 = true;
+                            if (ma + g < nx && backWall[(ma + g) * nz + j]) h1 = true;
+                        }
+                        if (h0) cov0++;
+                        if (h1) cov1++;
+                    }
+                    int span = mb - mj + 1;
+                    if (cov0 > 0.7f * span && cov1 < 0.3f * span) facing = 1;
+                    else if (cov1 > 0.7f * span && cov0 < 0.3f * span) facing = -1;
                     //a low back (0.15..0.3) counts when nothing rises on the other side
                     if (facing == 0) facing = back0 > 0.15f && back1 < 0.08f ? 1 : back1 > 0.15f && back0 < 0.08f ? -1 : 0;
                     patches.add(new float[]{mi, ma, mj, mb, top, facing});
@@ -2126,7 +2143,7 @@ public class AutoTest {
             log("walk " + id + ": no floor");
             return null;
         }
-        //and every other floor of 30 cells or more by itself (a corridor and compartments with their doors shut);
+        //and every other floor of 12 cells or more by itself (a corridor and compartments with their doors shut);
         //cells join where one steps up or down 0.2 or less (a stair); a part with no cell on the floor (a table, a
         //bench with no back) is none
         boolean[] in = new boolean[nx * nz], seen = new boolean[nx * nz];
@@ -2144,13 +2161,27 @@ public class AutoTest {
                 int[] nb = {i > 0 ? k - nz : -1, i < nx - 1 ? k + nz : -1, j > 0 ? k - 1 : -1, j < nz - 1 ? k + 1 : -1};
                 for (int n : nb) if (n >= 0 && !seen[n] && !Float.isNaN(level[n]) && Math.abs(level[n] - level[k]) <= 0.2f) { seen[n] = true; q.add(n); }
             }
-            if (!onFloor || part.size() < 30 && !part.contains(best)) continue;
+            int pi0 = nx, pi1 = 0, pj0 = nz, pj1 = 0;
+            for (int k : part) { pi0 = Math.min(pi0, k / nz); pi1 = Math.max(pi1, k / nz); pj0 = Math.min(pj0, k % nz); pj1 = Math.max(pj1, k % nz); }
+            //(a strip under a railing, along an end wall: none)
+            if (!onFloor || (part.size() < 12 || pi1 - pi0 < 2 || pj1 - pj0 < 2) && !part.contains(best)) continue;
             for (int k : part) in[k] = true;
             count += part.size();
         }
         if (count < 30) {
             log("walk " + id + ": floor only " + count + " cells");
             return null;
+        }
+        if (java.util.Arrays.asList(p.getProperty("seatscan").split(",")).contains(id)) {
+            StringBuilder m = new StringBuilder();
+            for (int j = 0; j < nz; j++) {
+                for (int i = 0; i < nx; i++) {
+                    int k = i * nz + j;
+                    m.append(in[k] ? 'i' : !Float.isNaN(level[k]) ? (level[k] == floor ? 'f' : 'u') : walls[k] != null ? '#' : '.');
+                }
+                m.append('\n');
+            }
+            log("walkmap " + id + "\n" + m);
         }
         //a door drawn shut (up to three cells of wall with floor both sides, at one height): open
         boolean[] was = in.clone();
@@ -2173,6 +2204,25 @@ public class AutoTest {
                 if (Math.abs(level[k + g] - level[k - 1]) <= 0.07f)
                     for (int f2 = 0; f2 < g; f2++) { in[k + f2] = true; level[k + f2] = level[k - 1]; }
                 break;
+            }
+        }
+        //no way from one end to the other (benches as wide as the car but for a pixel or two by the wall, their
+        //armrests' sides drawn into it): an aisle along the clearest line, where there is floor and nothing on it
+        int ia = nx, ib = -1;
+        for (int k = 0; k < nx * nz; k++) if (in[k]) { ia = Math.min(ia, k / nz); ib = Math.max(ib, k / nz); }
+        if (ib > ia && !joined(in, nx, nz, ia, ib)) {
+            int bestJ = -1, bestN = 0;
+            for (int j = 0; j < nz; j++) {
+                int n = 0;
+                for (int i = ia; i <= ib; i++) if (clear(hs[i * nz + j], floor)) n++;
+                if (n > bestN) { bestN = n; bestJ = j; }
+            }
+            if (bestJ >= 0 && bestN > 0.6f * (ib - ia + 1)) {
+                for (int i = ia; i <= ib; i++) {
+                    int k = i * nz + bestJ;
+                    if (!in[k] && clear(hs[k], floor)) { in[k] = true; level[k] = floor; }
+                }
+                log("walk " + id + ": aisle carved along row " + bestJ + (joined(in, nx, nz, ia, ib) ? ", end to end" : ", still not end to end"));
             }
         }
         ceilings.sort((a, b) -> Float.compare(a[0], b[0]));
@@ -2258,6 +2308,31 @@ public class AutoTest {
             }
         }
         return blocked;
+    }
+
+    /** a cell with floor and nothing facing up on it lower than 1 over the floor */
+    private static boolean clear(java.util.List<float[]> h, float floor) {
+        if (h == null) return false;
+        boolean f = false;
+        for (float[] x : h) {
+            if (Math.abs(x[0] - floor) < 0.07f) f = true;
+            else if (x[0] > floor && x[0] < floor + 1f) return false;
+        }
+        return f;
+    }
+
+    /** whether the cells in reach from column ia (4 ways) reach column ib */
+    private static boolean joined(boolean[] in, int nx, int nz, int ia, int ib) {
+        boolean[] seen = new boolean[nx * nz];
+        java.util.ArrayDeque<Integer> q = new java.util.ArrayDeque<>();
+        for (int j = 0; j < nz; j++) if (in[ia * nz + j]) { seen[ia * nz + j] = true; q.add(ia * nz + j); }
+        while (!q.isEmpty()) {
+            int k = q.poll(), i = k / nz, j = k % nz;
+            if (i == ib) return true;
+            int[] nb = {i > 0 ? k - nz : -1, i < nx - 1 ? k + nz : -1, j > 0 ? k - 1 : -1, j < nz - 1 ? k + 1 : -1};
+            for (int n : nb) if (n >= 0 && in[n] && !seen[n]) { seen[n] = true; q.add(n); }
+        }
+        return false;
     }
 
     /** the highest surface facing up in that cell under max (a seat's back, not a rack over it) */

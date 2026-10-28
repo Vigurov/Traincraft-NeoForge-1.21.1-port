@@ -18,8 +18,11 @@ import java.util.Map;
 public final class WalkTable {
     private WalkTable() {}
 
-    /** half the width of a player as they walk the aisle (they are wider, but the models are small) */
-    private static final float RADIUS = 0.12f;
+    /**
+     * half the room a rider takes along (they are wider, but the models are small: a compartment's floor between
+     * its bench and its washstand is three cells, a door one)
+     */
+    private static final float RADIUS = 0.03f;
     /** across: the aisles of the models are as narrow as two pixels, a door one (within half a cell) */
     private static final float SIDE = 0.03f;
 

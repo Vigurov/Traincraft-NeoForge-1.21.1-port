@@ -531,26 +531,36 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
     }
 
     /**
-     * a seated rider keeps facing the way their seat does (legs out in front of it, not through the wall); the head
-     * turns 75 degrees either way (further would turn the body with it)
+     * a seated rider keeps facing the way their seat does (legs out in front of it, not through the wall); they look
+     * round freely (the camera all the way round), their head drawn turned 75 degrees at most. Seated anew, they look
+     * the way the seat faces.
      */
     @Override
     public void onPassengerTurned(Entity passenger) {
         clampSeated(passenger);
     }
 
+    /** the seat each rider was last kept in, to know when they take another */
+    private final java.util.Map<Integer, Integer> lookedSeat = new java.util.HashMap<>();
+
     private void clampSeated(Entity passenger) {
         float[][] seats = seats();
         Integer i = seatMap().get(passenger.getId());
-        if (!seatTops || seats == null || i == null || i >= seats.length || !shouldRiderSit()) return;
+        if (!seatTops || seats == null || i == null || i >= seats.length || !shouldRiderSit()) {
+            lookedSeat.remove(passenger.getId());
+            return;
+        }
         float facing = seats[i].length > 3 && seats[i][3] != 0 ? seats[i][3] : (seats[i][0] < 0 ? 1 : -1);
         //the car's x points along getYRot() - 90 in Minecraft's yaw; facing -1 the other way
         float body = getYRot() - 90 + (facing > 0 ? 0 : 180);
         passenger.setYBodyRot(body);
-        float d = Mth.wrapDegrees(passenger.getYRot() - body), c = Mth.clamp(d, -75, 75);
-        passenger.yRotO += c - d;
-        passenger.setYRot(passenger.getYRot() + c - d);
-        passenger.setYHeadRot(passenger.getYRot());
+        if (passenger instanceof net.minecraft.world.entity.LivingEntity le) le.yBodyRotO = body;
+        if (!i.equals(lookedSeat.put(passenger.getId(), i))) {
+            passenger.setYRot(body);
+            passenger.yRotO = body;
+        }
+        float d = Mth.wrapDegrees(passenger.getYRot() - body);
+        passenger.setYHeadRot(body + Mth.clamp(d, -75, 75));
     }
 
     /** whether the seats' heights are the tops of the seats in the model (a rider sits on them) */
