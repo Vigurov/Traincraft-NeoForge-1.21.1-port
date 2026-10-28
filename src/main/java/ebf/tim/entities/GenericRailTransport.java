@@ -562,7 +562,7 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
      * A rider of a coach whose inside is known (WalkTable) can stand up in it (shift while seated) and walk its aisle:
      * they stay its passenger, so they go along with it smoothly, and their client moves them about in it (shrunk
      * like a seated rider, on the floor). At the
-     * ends of the aisle they go on into the coach coupled there, or out when there is none.
+     * ends of the aisle they go on into the coach coupled there; out only with shift.
      */
     private ebf.tim.utility.WalkTable.Walk walkCache;
     private boolean walkLooked;
@@ -644,17 +644,8 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
         if (door) {
             GenericRailTransport next = coupledAt(end);
             if (Boolean.getBoolean("tc.walkdebug")) System.out.println("[TCTEST] door end " + end + " at " + along + " next " + next);
-            if (next == null) {
-                //out of the vestibule's door, beside the coach at its end
-                Vec3 u = alongDir(), v = acrossDir();
-                double side = (across >= 0 ? 1 : -1) * (getHitboxSize()[2] * 0.5 + 0.6);
-                Vec3 out = position().add(u.scale(along)).add(v.scale(side));
-                letGo = p;
-                p.stopRiding();
-                letGo = null;
-                if (p instanceof net.minecraft.server.level.ServerPlayer sp) sp.connection.teleport(out.x, getY() + 0.1, out.z, sp.getYRot(), sp.getXRot());
-                return;
-            }
+            //nothing coupled there: the door stays shut (out with shift, not by walking into it)
+            if (next == null) return;
             var nw = next.walk();
             if (nw != null) {
                 //on into the coach coupled there: in at its end that faces this one
