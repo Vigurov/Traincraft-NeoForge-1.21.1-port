@@ -34,8 +34,10 @@ public final class WalkClient {
             car = -1;
             return;
         }
-        if (local == null || car != t.getId()) {
-            local = t.standOf(p).clone();
+        float[] server = t.standOf(p);
+        //new in this car, or put somewhere else by the server: from where the server has them
+        if (local == null || car != t.getId() || Math.hypot(server[0] - local[0], server[1] - local[1]) > 1.0) {
+            local = server.clone();
             car = t.getId();
         }
         float fwd = p.input.forwardImpulse, str = p.input.leftImpulse;

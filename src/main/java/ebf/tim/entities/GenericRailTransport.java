@@ -668,6 +668,14 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
         setStand(p, along, across);
     }
 
+    /** tests: that player on board, standing there */
+    public void boardStanding(Entity e, float along, float across) {
+        if (e.getVehicle() != null) e.stopRiding();
+        pendingStand = new float[]{along, across};
+        e.startRiding(this, true);
+        pendingStand = null;
+    }
+
     /** the transport coupled at that end of this one (+1 the way its model's x points), or null */
     public GenericRailTransport coupledAt(int end) {
         Vec3 u = alongDir();

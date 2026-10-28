@@ -585,6 +585,29 @@ public class AutoTest {
                 log("linked " + placed.size());
             });
         }
+        if (p.containsKey("walkends") && tick >= 80 && placed.size() > 1) {
+            //walkends=1  for each placed transport but the last, the player standing in its aisle by its end toward
+            //the next, holding back (the train's transports all face one way) for 40 ticks: where they are then
+            int k = (tick - 80) / 50, ph = (tick - 80) % 50;
+            if (k + 1 < placed.size()) {
+                GenericRailTransport t = placed.get(k), next = placed.get(k + 1);
+                if (ph == 0) server.execute(() -> {
+                    var w = t.walk();
+                    int end = next.position().subtract(t.position()).dot(t.alongDir()) >= 0 ? 1 : -1;
+                    float[] at = w == null ? null : w.nearestAisle(end > 0 ? w.maxAlong() - 0.45f : w.minAlong() + 0.45f, 0);
+                    if (at != null) t.boardStanding(sp, at[0], at[1]);
+                    log("walkends " + k + " " + t.getClass().getSimpleName() + " end " + end + " at " + (at == null ? "none" : at[0] + "," + at[1]));
+                });
+                if (ph == 2) mc.options.keyDown.setDown(true);
+                if (ph == 45) {
+                    mc.options.keyDown.setDown(false);
+                    var v = mc.player.getVehicle();
+                    float[] st = v instanceof GenericRailTransport g ? g.standOf(mc.player) : null;
+                    log("walkends " + k + " -> " + (v == null ? "nothing" : v.getClass().getSimpleName() + (v.getId() == next.getId() ? " NEXT" : v.getId() == t.getId() ? " SAME" : " OTHER"))
+                            + (st == null ? "" : String.format(" standing %.2f,%.2f", st[0], st[1])));
+                }
+            }
+        }
         if (p.containsKey("useclick") && tick == Integer.parseInt(p.getProperty("useclick"))) {
             //useclick=tick  a right click as the player makes it (what the crosshair is on)
             log("useclick on " + (mc.hitResult == null ? "nothing" : mc.hitResult.getType() + (mc.hitResult instanceof net.minecraft.world.phys.EntityHitResult eh ? " " + eh.getEntity().getClass().getSimpleName() : "")));
@@ -2034,7 +2057,10 @@ public class AutoTest {
             float d = Math.abs(x0 + c * (i + 0.5f)) + 2 * Math.abs(z0 + c * (j + 0.5f));
             if (d < bd) { bd = d; best = i * nz + j; }
         }
-        if (best < 0 || Math.abs(x0 + c * (best / nz + 0.5f)) > 1.5f) return null;
+        if (best < 0) {
+            log("walk " + id + ": no floor");
+            return null;
+        }
         //and every other floor of 30 cells or more by itself (a corridor and compartments with their doors shut)
         boolean[] in = new boolean[nx * nz], seen = new boolean[nx * nz];
         int count = 0;
@@ -2051,23 +2077,32 @@ public class AutoTest {
             }
             if (part.size() < 30 && !part.contains(best)) continue;
             for (int k : part) in[k] = true;
-            if (part.contains(best)) count = part.size();
+            count += part.size();
         }
-        if (count < 30) return null;
-        //a door drawn shut (one or two cells of wall with floor both sides): open
+        if (count < 30) {
+            log("walk " + id + ": floor only " + count + " cells");
+            return null;
+        }
+        //a door drawn shut (up to three cells of wall with floor both sides): open
         boolean[] was = in.clone();
-        for (int i = 1; i < nx - 2; i++) for (int j = 0; j < nz; j++) {
+        for (int i = 1; i < nx; i++) for (int j = 0; j < nz; j++) {
             int k = i * nz + j;
-            if (was[k]) continue;
-            if (was[k - nz] && was[k + nz]) in[k] = true;
-            else if (was[k - nz] && !was[k + nz] && was[k + 2 * nz]) { in[k] = true; in[k + nz] = true; }
+            if (was[k] || !was[k - nz]) continue;
+            for (int g = 1; g <= 3 && i + g < nx; g++) {
+                if (!was[k + g * nz]) continue;
+                for (int f2 = 0; f2 < g; f2++) in[k + f2 * nz] = true;
+                break;
+            }
         }
         //and across (a compartment's door to the corridor)
-        for (int i = 0; i < nx; i++) for (int j = 1; j < nz - 2; j++) {
+        for (int i = 0; i < nx; i++) for (int j = 1; j < nz; j++) {
             int k = i * nz + j;
-            if (was[k]) continue;
-            if (was[k - 1] && was[k + 1]) in[k] = true;
-            else if (was[k - 1] && !was[k + 1] && was[k + 2]) { in[k] = true; in[k + 1] = true; }
+            if (was[k] || !was[k - 1]) continue;
+            for (int g = 1; g <= 3 && j + g < nz; g++) {
+                if (!was[k + g]) continue;
+                for (int f2 = 0; f2 < g; f2++) in[k + f2] = true;
+                break;
+            }
         }
         //the doors: walkable cells next to a cell with no floor and no wall (outside)
         float halfLong = Math.max(Math.abs(x0), Math.abs(x0 + c * nx));
