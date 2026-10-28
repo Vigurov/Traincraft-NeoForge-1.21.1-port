@@ -373,6 +373,16 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
                 }
                 //be sure the player has permission to enter the transport, and that the transport has a seat open.
                 if (seats() != null && getPermissions(p, false, true)) {
+                    if (p.getVehicle() == this) {
+                        //riding it already: to the free seat clicked on
+                        var m = seatMap();
+                        Integer mine = m.remove(p.getId());
+                        setSeatMap(m);
+                        int to = seatFor(p);
+                        m.put(p.getId(), to >= 0 ? to : (mine == null ? 0 : mine));
+                        setSeatMap(m);
+                        return true;
+                    }
                     if (getPassengers().size() < seats().length && !p.isPassenger()) {
                         pendingSeat = seatFor(p);
                         boolean ok = p.startRiding(this);
@@ -477,28 +487,64 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
     private float[][] generatedSeats;
 
     /**
-     * the seats: the transport's own, or, for a coach (or caboose) the 1.12 model gave one seat in the middle, two
-     * rows down its length either side of the aisle, every 0.9 of a block, at that seat's height
+     * the seats: for a coach (or caboose) the ones found in its model (SeatTable: along, the seat's top over the
+     * rails, across), or, when none were found there, two rows down its length either side of the aisle every 0.9
+     * of a block; otherwise the transport's own (a locomotive's first is the driver's)
      */
     public float[][] seats() {
         float[][] own = getRiderOffsets();
-        if (own == null || own.length != 1 || this instanceof EntityTrainCore
+        if (own == null || this instanceof EntityTrainCore
                 || !(getTypes().contains(TrainsInMotion.transportTypes.PASSENGER) || getTypes().contains(TrainsInMotion.transportTypes.WORKCAR))) {
             return own;
         }
         if (generatedSeats == null) {
-            float half = getHitboxSize()[0] * 0.5f - 0.6f, across = Math.min(0.3f, getHitboxSize()[2] * 0.5f - 0.25f);
-            int n = Math.max(1, (int) Math.floor(2 * half / 0.9f) + 1);
-            float[][] seats = new float[n * 2][];
-            for (int i = 0; i < n; i++) {
-                float along = n == 1 ? own[0][0] : -half + 2 * half * i / (n - 1);
-                seats[2 * i] = new float[]{along, own[0][1], -across};
-                seats[2 * i + 1] = new float[]{along, own[0][1], across};
+            var id = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(getType());
+            float[][] found = id == null ? null : ebf.tim.utility.SeatTable.of(id.getPath());
+            if (found != null && found.length > 0) {
+                seatTops = true;
+                generatedSeats = found;
+            } else if (own.length == 1) {
+                float half = getHitboxSize()[0] * 0.5f - 0.6f, across = Math.min(0.3f, getHitboxSize()[2] * 0.5f - 0.25f);
+                int n = Math.max(1, (int) Math.floor(2 * half / 0.9f) + 1);
+                float[][] seats = new float[n * 2][];
+                for (int i = 0; i < n; i++) {
+                    float along = n == 1 ? own[0][0] : -half + 2 * half * i / (n - 1);
+                    seats[2 * i] = new float[]{along, own[0][1], -across};
+                    seats[2 * i + 1] = new float[]{along, own[0][1], across};
+                }
+                generatedSeats = seats;
+            } else {
+                generatedSeats = own;
             }
-            generatedSeats = seats;
         }
         return generatedSeats;
     }
+
+    /**
+     * a seated rider keeps facing the way their seat does (legs out in front of it, not through the wall); the head
+     * turns 75 degrees either way (further would turn the body with it)
+     */
+    @Override
+    public void onPassengerTurned(Entity passenger) {
+        clampSeated(passenger);
+    }
+
+    private void clampSeated(Entity passenger) {
+        float[][] seats = seats();
+        Integer i = seatMap().get(passenger.getId());
+        if (!seatTops || seats == null || i == null || i >= seats.length || !shouldRiderSit()) return;
+        float facing = seats[i].length > 3 && seats[i][3] != 0 ? seats[i][3] : (seats[i][0] < 0 ? 1 : -1);
+        //the car's x points along getYRot() - 90 in Minecraft's yaw; facing -1 the other way
+        float body = getYRot() - 90 + (facing > 0 ? 0 : 180);
+        passenger.setYBodyRot(body);
+        float d = Mth.wrapDegrees(passenger.getYRot() - body), c = Mth.clamp(d, -75, 75);
+        passenger.yRotO += c - d;
+        passenger.setYRot(passenger.getYRot() + c - d);
+        passenger.setYHeadRot(passenger.getYRot());
+    }
+
+    /** whether the seats' heights are the tops of the seats in the model (a rider sits on them) */
+    private boolean seatTops;
 
     /** the seat each rider has, from the synced map */
     private java.util.Map<Integer, Integer> seatMap() {
@@ -579,6 +625,14 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
         }
         Vec3f seat = new Vec3f(seats[i][0], seats[i][1], seats[i][2])
                 .rotatePoint(getXRot(), getYRot(), 0f);
+        if (seatTops) {
+            //on the seat in the model: a sitting rider's hips (where the legs turn forward) are 0.75 over their feet,
+            //the seat's top is over the rails
+            float rail = entityData().get(BOGIE_Y_OFFSET);
+            callback.accept(passenger, getX() + seat.xCoord, getY() + rail + seat.yCoord - 0.75, getZ() + seat.zCoord);
+            clampSeated(passenger);
+            return;
+        }
         // the 1.7.10 seat height is the eyes: put them 0.45 above the seat, which matches the view from inside the cab
         callback.accept(passenger, getX() + seat.xCoord, getY() + seat.yCoord + 0.45 - passenger.getEyeHeight(), getZ() + seat.zCoord);
     }

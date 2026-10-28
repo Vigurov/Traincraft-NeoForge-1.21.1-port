@@ -486,6 +486,49 @@ public class AutoTest {
                 log("jukebox t=" + tick + " playing=" + cj.isPlaying() + " url=" + cj.getStreamURL() + " " + JukeboxClient.status(cj));
             }
         }
+        if (p.containsKey("steve") && !placed.isEmpty()) {
+            //steve=index:seat;dx,dy,dz,lookY,lookX;...  the player in that seat; the camera at each offset from the
+            //transport in turn (every 15 ticks from 85), looking at that point, the player seen from it (tc-steve-N.png)
+            String[] sv = p.getProperty("steve").split(";");
+            String[] ix = sv[0].split(":");
+            GenericRailTransport t = placed.get(Integer.parseInt(ix[0]));
+            if (tick == 72) server.execute(() -> log("steve seat " + ix[1] + " -> " + t.seat(sp, Integer.parseInt(ix[1])) + " map=" + t.entityData().get(GenericRailTransport.SEAT_MAP)));
+            int k = (tick - 85) / 15, ph = (tick - 85) % 15;
+            if (tick >= 85 && k + 1 < sv.length) {
+                if (ph == 0 && sv[k + 1].startsWith("fp")) {
+                    //fp,yaw,pitch  through the player's own eyes, turned that much from the transport's way
+                    String[] o = sv[k + 1].split(",");
+                    mc.setCameraEntity(mc.player);
+                    mc.options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON);
+                    //turned as the mouse turns one (Entity.turn: the seat keeps the body, the head turns as far as it may)
+                    float want = t.getYRot() - 90 + Float.parseFloat(o[1]);
+                    float dyaw = Mth.wrapDegrees(want - mc.player.getYRot()), dpitch = Float.parseFloat(o[2]) - mc.player.getXRot();
+                    for (int st = 0; st < 10; st++) mc.player.turn(dyaw / 10 / 0.15, dpitch / 10 / 0.15);
+                } else if (ph == 0) {
+                    String[] o = sv[k + 1].split(",");
+                    double dx = Double.parseDouble(o[0]), dy = Double.parseDouble(o[1]), dz = Double.parseDouble(o[2]);
+                    double look = Double.parseDouble(o[3]), tx = o.length > 4 ? Double.parseDouble(o[4]) : 0, ex = dx - tx;
+                    float yaw = (float) Math.toDegrees(Math.atan2(-ex, dz)) + 180, pitch = (float) Math.toDegrees(Math.atan2(dy - look, Math.hypot(ex, dz)));
+                    var cam = new net.minecraft.world.entity.decoration.ArmorStand(mc.level, t.getX() + dx, t.getY() + dy - 1.62, t.getZ() + dz);
+                    cam.setInvisible(true);
+                    cam.setYRot(yaw); cam.setXRot(pitch); cam.yRotO = yaw; cam.xRotO = pitch; cam.setYHeadRot(yaw);
+                    cam.setId(-4000 - k);
+                    mc.level.addEntity(cam);
+                    mc.setCameraEntity(cam);
+                }
+                if (ph == 12) {
+                    var seated = sp.getVehicle() == t;
+                    log(String.format("steve view %d seated=%s at %.2f,%.2f,%.2f pose=%s body=%.1f head=%.1f car=%.1f", k, seated, sp.getX() - t.getX(), sp.getY() - t.getY(), sp.getZ() - t.getZ(), mc.player.getPose(),
+                            mc.player.yBodyRot, mc.player.getYRot(), t.getYRot()));
+                    net.minecraft.client.Screenshot.grab(mc.gameDirectory, "tc-steve-" + k + ".png", mc.getMainRenderTarget(), m -> {});
+                }
+            }
+        }
+        if (p.containsKey("useclick") && tick == Integer.parseInt(p.getProperty("useclick"))) {
+            //useclick=tick  a right click as the player makes it (what the crosshair is on)
+            log("useclick on " + (mc.hitResult == null ? "nothing" : mc.hitResult.getType() + (mc.hitResult instanceof net.minecraft.world.phys.EntityHitResult eh ? " " + eh.getEntity().getClass().getSimpleName() : "")));
+            net.minecraft.client.KeyMapping.click(mc.options.keyUse.getKey());
+        }
         if (p.containsKey("seatmob") && tick == 70 && !placed.isEmpty()) {
             //seatmob=index:seat,seat,...  villagers in those seats of that placed transport
             String[] sm = p.getProperty("seatmob").split(":");
@@ -705,6 +748,9 @@ public class AutoTest {
                 log(String.format("camsmoke %s at %.2f,%.2f,%.2f", t.getClass().getSimpleName(), at.x, at.y, at.z));
                 break;
             }
+        }
+        if (tick == 30 && p.containsKey("seatscan")) {
+            seatScan(mc);
         }
         if (tick == 30 && p.containsKey("gaugecheck")) {
             gaugeCheck(mc);
@@ -1632,6 +1678,167 @@ public class AutoTest {
             }
         }
         log("gaugecheck done");
+    }
+
+    /**
+     * seatscan=1: the seats in every coach's model, written to src/main/resources/data/traincraft/transport_seats.json.
+     * The model seen from above through every surface facing up, every sixteenth of a block: its floor is the height
+     * most of its inside has; the seats are patches 0.25 to 0.6 over the floor, flat; each patch is cut into seats
+     * of about 0.6 along and 0.5 across, at its top
+     */
+    private static void seatScan(Minecraft mc) {
+        StringBuilder json = new StringBuilder("{\n");
+        int written = 0;
+        for (var holder : TiMGenericRegistry.TRANSPORTS) {
+            String id = BuiltInRegistries.ENTITY_TYPE.getKey(holder.get()).getPath();
+            try {
+                GenericRailTransport t = holder.get().create(mc.level);
+                if (t instanceof EntityTrainCore || t.getRiderOffsets() == null) continue;
+                var types = t.getTypes();
+                if (!types.contains(ebf.tim.TrainsInMotion.transportTypes.PASSENGER) && !types.contains(ebf.tim.TrainsInMotion.transportTypes.WORKCAR)) continue;
+                t.setPos(0, 0, 0);
+                float[] rp = t.rotationPoints();
+                t.frontBogie = new ebf.tim.entities.EntityBogie(t, rp[1], 0, 0, true);
+                t.backBogie = new ebf.tim.entities.EntityBogie(t, rp[0], 0, 0, false);
+                float railY = 0.3f;
+                t.frontBogie.yOffset = t.backBogie.yOffset = railY;
+                t.renderData.needsModelUpdate = true;
+                var verts = new java.util.ArrayList<org.joml.Vector3f>();
+                var faces = new java.util.ArrayList<org.joml.Vector3f[]>();
+                var up = new java.util.ArrayList<Float>();
+                fexcraft.tmt.slim.RenderContext.begin(new com.mojang.blaze3d.vertex.PoseStack(), null, 0, null);
+                fexcraft.tmt.slim.RenderContext.measure = verts;
+                fexcraft.tmt.slim.RenderContext.measureFaces = faces;
+                fexcraft.tmt.slim.RenderContext.measureFaceUp = up;
+                ebf.tim.render.RenderWagon.measuring = true;
+                try {
+                    ebf.tim.render.RenderWagon.doRender(t, t.getYRot(), 0, railY, false, null);
+                } finally {
+                    ebf.tim.render.RenderWagon.measuring = false;
+                    fexcraft.tmt.slim.RenderContext.measure = null;
+                    fexcraft.tmt.slim.RenderContext.measureFaces = null;
+                    fexcraft.tmt.slim.RenderContext.measureFaceUp = null;
+                    fexcraft.tmt.slim.RenderContext.end();
+                }
+                if (verts.isEmpty() || up.size() != faces.size()) continue;
+                var tops = new java.util.ArrayList<org.joml.Vector3f[]>();
+                for (int f = 0; f < faces.size(); f++) if (up.get(f) > 0.7f) tops.add(faces.get(f));
+                float x0 = Float.MAX_VALUE, x1 = -Float.MAX_VALUE, z0 = Float.MAX_VALUE, z1 = -Float.MAX_VALUE;
+                for (var v : verts) { x0 = Math.min(x0, v.x); x1 = Math.max(x1, v.x); z0 = Math.min(z0, v.z); z1 = Math.max(z1, v.z); }
+                float c = 1 / 16f;
+                int nx = (int) ((x1 - x0) / c), nz = (int) ((z1 - z0) / c);
+                java.util.List<float[]>[] hs = new java.util.List[nx * nz];
+                java.util.Map<Integer, Integer> hist = new java.util.TreeMap<>();
+                for (int i = 2; i < nx - 2; i++) for (int j = 2; j < nz - 2; j++) {
+                    float px = x0 + c * (i + 0.5f), pz = z0 + c * (j + 0.5f);
+                    java.util.List<float[]> l = new java.util.ArrayList<>();
+                    for (var f : tops) {
+                        for (int k = 1; k + 1 < f.length; k++) {
+                            var a = f[0]; var b = f[k]; var d = f[k + 1];
+                            float den = (b.z - d.z) * (a.x - d.x) + (d.x - b.x) * (a.z - d.z);
+                            if (Math.abs(den) < 1e-7f) continue;
+                            float l1 = ((b.z - d.z) * (px - d.x) + (d.x - b.x) * (pz - d.z)) / den;
+                            float l2 = ((d.z - a.z) * (px - d.x) + (a.x - d.x) * (pz - d.z)) / den;
+                            float l3 = 1 - l1 - l2;
+                            if (l1 < -1e-4f || l2 < -1e-4f || l3 < -1e-4f) continue;
+                            float h = l1 * a.y + l2 * b.y + l3 * d.y - railY;
+                            l.add(new float[]{h});
+                            if (h > 0.2f && h < 1.4f) hist.merge(Math.round(h * 32), 1, Integer::sum);
+                            break;
+                        }
+                    }
+                    hs[i * nz + j] = l;
+                }
+                //the floor: the height most of the inside has
+                int floorBin = -1, best = 0;
+                for (var e : hist.entrySet()) if (e.getValue() > best) { best = e.getValue(); floorBin = e.getKey(); }
+                if (floorBin < 0) continue;
+                float floor = floorBin / 32f;
+                if (p.getProperty("seatscan").equals(id)) {
+                    //the heights over the floor (in 1/16) of all the surfaces facing up between the floor and 1.2 over it
+                    StringBuilder mp = new StringBuilder();
+                    for (int j = 0; j < nz; j++) {
+                        for (int i = 0; i < nx; i++) {
+                            var l = hs[i * nz + j];
+                            String cell = " .";
+                            if (l != null) {
+                                float lo = Float.MAX_VALUE;
+                                for (float[] h : l) if (h[0] > floor + 0.05f && h[0] < floor + 1.2f) lo = Math.min(lo, h[0]);
+                                if (lo != Float.MAX_VALUE) cell = String.format("%2d", Math.round((lo - floor) * 16));
+                            }
+                            mp.append(cell);
+                        }
+                        mp.append("\n");
+                    }
+                    log("seatmap " + id + " floor " + floor + " x0 " + x0 + "\n" + mp);
+                }
+                //the seats' tops: the lowest surface 0.25..0.6 over the floor in each cell
+                float[] seat = new float[nx * nz];
+                java.util.Arrays.fill(seat, Float.NaN);
+                for (int k = 0; k < nx * nz; k++) {
+                    if (hs[k] == null) continue;
+                    for (float[] h : hs[k]) if (h[0] > floor + 0.08f && h[0] < floor + 0.6f && (Float.isNaN(seat[k]) || h[0] < seat[k])) seat[k] = h[0];
+                }
+                boolean[] seen = new boolean[nx * nz];
+                java.util.List<float[]> found = new java.util.ArrayList<>();
+                for (int s0 = 0; s0 < nx * nz; s0++) {
+                    if (Float.isNaN(seat[s0]) || seen[s0]) continue;
+                    java.util.ArrayDeque<Integer> q = new java.util.ArrayDeque<>();
+                    q.add(s0); seen[s0] = true;
+                    int n = 0, mi = nx, ma = 0, mj = nz, mb = 0;
+                    float top = 0;
+                    while (!q.isEmpty()) {
+                        int k = q.poll(), i = k / nz, j = k % nz;
+                        n++; top += seat[k];
+                        mi = Math.min(mi, i); ma = Math.max(ma, i); mj = Math.min(mj, j); mb = Math.max(mb, j);
+                        int[] nb = {i > 0 ? k - nz : -1, i < nx - 1 ? k + nz : -1, j > 0 ? k - 1 : -1, j < nz - 1 ? k + 1 : -1};
+                        for (int q2 : nb) if (q2 >= 0 && !seen[q2] && !Float.isNaN(seat[q2]) && Math.abs(seat[q2] - seat[k]) < 0.07f) { seen[q2] = true; q.add(q2); }
+                    }
+                    if (n < 12) continue;
+                    top /= n;
+                    float lx = (ma - mi + 1) * c, lz = (mb - mj + 1) * c;
+                    if (lx < 0.2f || lz < 0.2f) continue;
+                    int ca = Math.max(1, Math.round(lx / 0.6f)), cb = Math.max(1, Math.round(lz / 0.5f));
+                    //which way it faces: away from its back, the higher part next to it along the car (0: none)
+                    float back0 = 0, back1 = 0;
+                    for (int j = mj; j <= mb; j++) for (int g = 1; g <= 3; g++) {
+                        back0 = Math.max(back0, highest(hs, mi - g, j, nz, nx) - top);
+                        back1 = Math.max(back1, highest(hs, ma + g, j, nz, nx) - top);
+                    }
+                    float facing = back0 > 0.2f && back0 > back1 ? 1 : back1 > 0.2f ? -1 : 0;
+                    for (int u = 0; u < ca; u++) for (int w = 0; w < cb; w++) {
+                        float sx = x0 + c * mi + lx * (u + 0.5f) / ca, sz = z0 + c * mj + lz * (w + 0.5f) / cb;
+                        found.add(new float[]{sx, top, sz, facing});
+                    }
+                }
+                log(String.format(java.util.Locale.ROOT, "seats %-32s floor %.2f seats %d", id, floor, found.size()));
+                if (found.isEmpty()) continue;
+                json.append(written++ == 0 ? "" : ",\n").append("\"").append(id).append("\": [");
+                for (int k = 0; k < found.size(); k++) {
+                    float[] f = found.get(k);
+                    json.append(k == 0 ? "" : ", ").append(String.format(java.util.Locale.ROOT, "[%.3f, %.3f, %.3f, %.0f]", f[0], f[1], f[2], f[3]));
+                }
+                json.append("]");
+            } catch (Throwable e) {
+                log("seats " + id + " failed: " + e);
+            }
+        }
+        json.append("\n}\n");
+        try {
+            java.nio.file.Path out = java.nio.file.Path.of(System.getProperty("user.dir")).resolve("../src/main/resources/data/traincraft/transport_seats.json").normalize();
+            java.nio.file.Files.writeString(out, json);
+            log("seatscan wrote " + written + " to " + out);
+        } catch (java.io.IOException e) {
+            log("seatscan could not write: " + e);
+        }
+    }
+
+    /** the highest surface facing up in that cell (0 off the grid or none), over the rails */
+    private static float highest(java.util.List<float[]>[] hs, int i, int j, int nz, int nx) {
+        if (i < 0 || i >= nx || hs[i * nz + j] == null) return 0;
+        float m = 0;
+        for (float[] h : hs[i * nz + j]) if (h[0] < 1.6f) m = Math.max(m, h[0]);
+        return m;
     }
 
     /** the height of the first face a vertical ray down at (x, z) meets, or -MAX when none */
