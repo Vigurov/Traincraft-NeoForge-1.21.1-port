@@ -215,6 +215,8 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
     public static final EntityDataAccessor<String> CARGO_ITEMS = SynchedEntityData.defineId(GenericRailTransport.class, EntityDataSerializers.STRING);
     /** which seat each rider sits in: "entityId:seat entityId:seat" (a coach has many, one sits where one chose) */
     public static final EntityDataAccessor<String> SEAT_MAP = SynchedEntityData.defineId(GenericRailTransport.class, EntityDataSerializers.STRING);
+    /** the riders standing in it, where: "entityId:along:across ..." */
+    public static final EntityDataAccessor<String> STAND_MAP = SynchedEntityData.defineId(GenericRailTransport.class, EntityDataSerializers.STRING);
     public static final EntityDataAccessor<Integer> FUEL_CONSUMPTION = SynchedEntityData.defineId(GenericRailTransport.class, EntityDataSerializers.INT);
     public static final EntityDataAccessor<Integer> BOILER_HEAT = SynchedEntityData.defineId(GenericRailTransport.class, EntityDataSerializers.INT);
     public static final EntityDataAccessor<Float> BOGIE_Y_OFFSET = SynchedEntityData.defineId(GenericRailTransport.class, EntityDataSerializers.FLOAT);
@@ -239,6 +241,7 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
         builder.define(CARGO, 0);
         builder.define(CARGO_ITEMS, "");
         builder.define(SEAT_MAP, "");
+        builder.define(STAND_MAP, "");
     }
 
     /**1.12 name of the synced data; vanilla's own entityData field is the XML data here*/
@@ -372,12 +375,18 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
                     return interact(p, isFront, isBack, 1);
                 }
                 //be sure the player has permission to enter the transport, and that the transport has a seat open.
+                //boarding is from the sides only: at its ends one pushes it (and couples there)
+                if (p.getVehicle() != this && walk() != null) {
+                    double along = p.position().subtract(position()).dot(alongDir());
+                    if (Math.abs(along) > getHitboxSize()[0] * 0.5 - 0.2) return false;
+                }
                 if (seats() != null && getPermissions(p, false, true)) {
                     if (p.getVehicle() == this) {
                         //riding it already: to the free seat clicked on
                         var m = seatMap();
                         Integer mine = m.remove(p.getId());
                         setSeatMap(m);
+                        clearStand(p);
                         int to = seatFor(p);
                         m.put(p.getId(), to >= 0 ? to : (mine == null ? 0 : mine));
                         setSeatMap(m);
@@ -546,6 +555,161 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
     /** whether the seats' heights are the tops of the seats in the model (a rider sits on them) */
     private boolean seatTops;
 
+
+    /*
+     * <h2>standing and walking in a coach</h2>
+     * A rider of a coach whose inside is known (WalkTable) can stand up in it (shift while seated) and walk its aisle:
+     * they stay its passenger, so they go along with it smoothly, and their client moves them about in it (the
+     * models are smaller than a player: their legs go through the floor, their eyes are under the ceiling). At the
+     * ends of the aisle they go on into the coach coupled there, or out when there is none.
+     */
+    private ebf.tim.utility.WalkTable.Walk walkCache;
+    private boolean walkLooked;
+
+    public ebf.tim.utility.WalkTable.Walk walk() {
+        if (!walkLooked) {
+            walkLooked = true;
+            var id = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(getType());
+            walkCache = id == null ? null : ebf.tim.utility.WalkTable.of(id.getPath());
+        }
+        return walkCache;
+    }
+
+    private java.util.Map<Integer, float[]> standMap() {
+        java.util.Map<Integer, float[]> m = new java.util.LinkedHashMap<>();
+        for (String e : entityData().get(STAND_MAP).split(" ")) {
+            String[] f = e.split(":");
+            if (f.length == 3) m.put(Integer.parseInt(f[0]), new float[]{Float.parseFloat(f[1]), Float.parseFloat(f[2])});
+        }
+        return m;
+    }
+
+    private void setStandMap(java.util.Map<Integer, float[]> m) {
+        StringBuilder b = new StringBuilder();
+        for (var e : m.entrySet()) b.append(b.length() == 0 ? "" : " ").append(e.getKey()).append(':')
+                .append(String.format(java.util.Locale.ROOT, "%.3f:%.3f", e.getValue()[0], e.getValue()[1]));
+        entityData().set(STAND_MAP, b.toString());
+    }
+
+    /** where that rider stands in it, or null when they sit (or are no rider) */
+    public float[] standOf(Entity e) {
+        return standMap().get(e.getId());
+    }
+
+    public boolean isStanding(Entity e) {
+        return standOf(e) != null;
+    }
+
+    private void setStand(Entity e, float along, float across) {
+        var m = standMap();
+        m.put(e.getId(), new float[]{along, across});
+        setStandMap(m);
+        var s = seatMap();
+        if (s.remove(e.getId()) != null) setSeatMap(s);
+    }
+
+    private void clearStand(Entity e) {
+        var m = standMap();
+        if (m.remove(e.getId()) != null) setStandMap(m);
+    }
+
+    /** the transport's own directions in the world: along it (its model's x) and across it */
+    public Vec3 alongDir() {
+        Vec3f u = new Vec3f(1, 0, 0).rotatePoint(getXRot(), getYRot(), 0f);
+        return new Vec3(u.xCoord, u.yCoord, u.zCoord);
+    }
+
+    public Vec3 acrossDir() {
+        Vec3f u = new Vec3f(0, 0, 1).rotatePoint(getXRot(), getYRot(), 0f);
+        return new Vec3(u.xCoord, u.yCoord, u.zCoord);
+    }
+
+    /** a rider let off on purpose (a door), not stopped by onDismount */
+    private Entity letGo;
+    /** where the next rider stands (going on from the next coach), or null */
+    private float[] pendingStand;
+    /** riders who stood up with shift and still hold it: not put out by it */
+    private final java.util.Set<java.util.UUID> holdShift = new java.util.HashSet<>();
+
+    /** a standing rider walked there (from their client): checked, and at an end of the aisle through its door */
+    public void walkTo(Player p, float along, float across) {
+        var w = walk();
+        float[] was = standOf(p);
+        if (w == null || was == null || level().isClientSide) return;
+        if (Math.hypot(along - was[0], across - was[1]) > 1.2) return;
+        int end = w.end(along);
+        boolean door = end != 0 && Math.abs(along - was[0]) > 1e-4 && Math.signum(along - was[0]) == end;
+        if (!door && !w.ok(along, across)) return;
+        if (door) {
+            GenericRailTransport next = coupledAt(end);
+            if (Boolean.getBoolean("tc.walkdebug")) System.out.println("[TCTEST] door end " + end + " at " + along + " next " + next);
+            if (next == null) {
+                //out of the vestibule's door, beside the coach at its end
+                Vec3 u = alongDir(), v = acrossDir();
+                double side = (across >= 0 ? 1 : -1) * (getHitboxSize()[2] * 0.5 + 0.6);
+                Vec3 out = position().add(u.scale(along)).add(v.scale(side));
+                letGo = p;
+                p.stopRiding();
+                letGo = null;
+                if (p instanceof net.minecraft.server.level.ServerPlayer sp) sp.connection.teleport(out.x, getY() + 0.1, out.z, sp.getYRot(), sp.getXRot());
+                return;
+            }
+            var nw = next.walk();
+            if (nw != null) {
+                //on into the coach coupled there: in at its end that faces this one
+                int theirEnd = position().subtract(next.position()).dot(next.alongDir()) >= 0 ? 1 : -1;
+                float a = theirEnd > 0 ? nw.maxAlong() - 0.3f : nw.minAlong() + 0.3f;
+                float[] at = nw.nearestAisle(a, 0);
+                if (at != null) {
+                    letGo = p;
+                    p.stopRiding();
+                    letGo = null;
+                    next.pendingStand = at;
+                    p.startRiding(next, true);
+                    next.pendingStand = null;
+                    return;
+                }
+            }
+            //a locomotive there: no way on
+            return;
+        }
+        setStand(p, along, across);
+    }
+
+    /** the transport coupled at that end of this one (+1 the way its model's x points), or null */
+    public GenericRailTransport coupledAt(int end) {
+        Vec3 u = alongDir();
+        for (Integer id : new Integer[]{frontLinkedID, backLinkedID}) {
+            if (id == null || !(level().getEntity(id) instanceof GenericRailTransport o)) continue;
+            if (Math.signum(o.position().subtract(position()).dot(u)) == end) return o;
+        }
+        return null;
+    }
+
+    /** shift in a coach: a seated rider stands up in the aisle; a standing one gets out as before */
+    public static void onDismount(net.neoforged.neoforge.event.entity.EntityMountEvent e) {
+        if (!e.isDismounting() || e.getLevel().isClientSide() || !(e.getEntityBeingMounted() instanceof GenericRailTransport t)
+                || !(e.getEntityMounting() instanceof Player p) || t.letGo == p || !p.isAlive() || t.isRemoved() || !p.isShiftKeyDown()) {
+            return;
+        }
+        if (t.walk() == null) return;
+        if (t.holdShift.contains(p.getUUID())) {
+            e.setCanceled(true);
+            return;
+        }
+        Integer seat = t.seatMap().get(p.getId());
+        float[][] seats = t.seats();
+        if (seat == null || seats == null || seat >= seats.length) return;
+        float[] at = t.walk().nearestAisle(seats[seat][0], seats[seat][2]);
+        if (at == null) return;
+        t.setStand(p, at[0], at[1]);
+        t.holdShift.add(p.getUUID());
+        e.setCanceled(true);
+    }
+
+    /** the player being drawn (the client's render hook), so shouldRiderSit can tell a standing one */
+    public static Entity renderingRider;
+
     /** the seat each rider has, from the synced map */
     private java.util.Map<Integer, Integer> seatMap() {
         java.util.Map<Integer, Integer> m = new java.util.HashMap<>();
@@ -593,6 +757,10 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
     protected void addPassenger(Entity passenger) {
         super.addPassenger(passenger);
         if (level().isClientSide) return;
+        if (pendingStand != null) {
+            setStand(passenger, pendingStand[0], pendingStand[1]);
+            return;
+        }
         var m = seatMap();
         java.util.Set<Integer> taken = new java.util.HashSet<>(m.values());
         int seat = pendingSeat;
@@ -611,12 +779,27 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
     protected void removePassenger(Entity passenger) {
         super.removePassenger(passenger);
         if (level().isClientSide) return;
+        clearStand(passenger);
+        holdShift.remove(passenger.getUUID());
         var m = seatMap();
         if (m.remove(passenger.getId()) != null) setSeatMap(m);
     }
 
+    /** the client's own standing place, ahead of what the server has (set by train.client.WalkClient) */
+    public static java.util.function.BiFunction<GenericRailTransport, Entity, float[]> localStand = (t, e) -> null;
+
     @Override
     protected void positionRider(Entity passenger, MoveFunction callback) {
+        float[] stand = level().isClientSide ? localStand.apply(this, passenger) : null;
+        if (stand == null) stand = standOf(passenger);
+        var w = walk();
+        if (stand != null && w != null) {
+            //eyes a quarter under the ceiling, the legs through the floor
+            float rail = entityData().get(BOGIE_Y_OFFSET);
+            Vec3f at = new Vec3f(stand[0], 0, stand[1]).rotatePoint(getXRot(), getYRot(), 0f);
+            callback.accept(passenger, getX() + at.xCoord, getY() + rail + w.ceil() - 0.25 - 1.62 + at.yCoord, getZ() + at.zCoord);
+            return;
+        }
         float[][] seats = seats();
         Integer mapped = seatMap().get(passenger.getId());
         int i = mapped != null ? mapped : getPassengers().indexOf(passenger);
@@ -1064,6 +1247,13 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
      */
     @Override
     public void tick() {
+        if (!level().isClientSide && !holdShift.isEmpty()) {
+            //shift let go after standing up: it puts one out again
+            holdShift.removeIf(u -> {
+                Player q = level().getPlayerByUUID(u);
+                return q == null || q.getVehicle() != this || !q.isShiftKeyDown();
+            });
+        }
         //the load as saved (a loaded wagon is not marked dirty): once a second is enough
         if (tickCount % 20 == 1) syncCargo();
         //regen health after a while
@@ -1713,6 +1903,7 @@ public class GenericRailTransport extends Entity implements IEntityWithComplexSp
      */
     @Override
     public boolean shouldRiderSit(){
+        if (renderingRider != null && renderingRider.getVehicle() == this && isStanding(renderingRider)) return false;
         return !getTypes().contains(TrainsInMotion.transportTypes.STEAM) && !getTypes().contains(TrainsInMotion.transportTypes.NUCLEAR_STEAM);
     }
 

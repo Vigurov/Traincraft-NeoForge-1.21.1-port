@@ -524,6 +524,59 @@ public class AutoTest {
                 }
             }
         }
+        for (String c : p.getProperty("lkeys", "").split("\\|")) {
+            //lkeys=tick:key:on|tick:key:off  holds or lets go forward/back/left/right/jump/shift/sprint (the local player)
+            String[] k = c.trim().split(":");
+            if (k.length < 3 || Integer.parseInt(k[0]) != tick) continue;
+            boolean on = k[2].equals("on");
+            switch (k[1]) {
+                case "forward" -> mc.options.keyUp.setDown(on);
+                case "back" -> mc.options.keyDown.setDown(on);
+                case "left" -> mc.options.keyLeft.setDown(on);
+                case "right" -> mc.options.keyRight.setDown(on);
+                case "jump" -> mc.options.keyJump.setDown(on);
+                case "shift" -> mc.options.keyShift.setDown(on);
+                case "sprint" -> mc.options.keySprint.setDown(on);
+                default -> log("unknown key " + k[1]);
+            }
+            log("lkey " + c.trim());
+        }
+        if (p.containsKey("lookalong") && tick == Integer.parseInt(p.getProperty("lookalong").split(",")[0]) && !placed.isEmpty()) {
+            //lookalong=tick,index,dir  the player looks along that placed transport (+1 its model's x, -1 back)
+            String[] la = p.getProperty("lookalong").split(",");
+            var t = placed.get(Integer.parseInt(la[1]));
+            var u = t.alongDir().scale(Integer.parseInt(la[2]));
+            float yaw = (float) Math.toDegrees(Math.atan2(-u.x, u.z));
+            mc.player.setYRot(yaw); mc.player.yRotO = yaw; mc.player.setXRot(10);
+        }
+        if (p.containsKey("standlog") && tick % 5 == 0) {
+            //standlog=1  what the player rides and where they stand or sit in it
+            server.execute(() -> {
+                var v = sp.getVehicle();
+                if (v instanceof GenericRailTransport t) {
+                    float[] st = t.standOf(sp);
+                    log(String.format("stand t=%d yaw %.1f/%.1f in %s#%d %s seatmap=%s eyes over rails %.2f", tick, mc.player.getYRot(), sp.getYRot(), t.getClass().getSimpleName(), placed.indexOf(t),
+                            st == null ? "seated" : String.format("standing %.2f,%.2f", st[0], st[1]), t.entityData().get(GenericRailTransport.SEAT_MAP),
+                            sp.getEyeY() - t.getY() - t.entityData().get(GenericRailTransport.BOGIE_Y_OFFSET)));
+                } else {
+                    log(String.format("stand t=%d riding nothing at %.2f,%.2f,%.2f", tick, sp.getX() - base.getX(), sp.getY() - base.getY(), sp.getZ() - base.getZ()));
+                }
+            });
+        }
+        if (p.containsKey("linkall") && tick == 60) {
+            //linkall=1  couples each placed transport to the next, as touching would
+            server.execute(() -> {
+                for (int i = 0; i + 1 < placed.size(); i++) {
+                    var a = placed.get(i); var b = placed.get(i + 1);
+                    boolean aFront = Math.hypot(a.frontBogie.posX - b.getX(), a.frontBogie.posZ - b.getZ()) < Math.hypot(a.backBogie.posX - b.getX(), a.backBogie.posZ - b.getZ());
+                    boolean bFront = Math.hypot(b.frontBogie.posX - a.getX(), b.frontBogie.posZ - a.getZ()) < Math.hypot(b.backBogie.posX - a.getX(), b.backBogie.posZ - a.getZ());
+                    if (aFront) a.setFrontLinkedTransport(b); else a.setbackLinkedTransport(b);
+                    if (bFront) b.setFrontLinkedTransport(a); else b.setbackLinkedTransport(a);
+                    a.updateConsist();
+                }
+                log("linked " + placed.size());
+            });
+        }
         if (p.containsKey("useclick") && tick == Integer.parseInt(p.getProperty("useclick"))) {
             //useclick=tick  a right click as the player makes it (what the crosshair is on)
             log("useclick on " + (mc.hitResult == null ? "nothing" : mc.hitResult.getType() + (mc.hitResult instanceof net.minecraft.world.phys.EntityHitResult eh ? " " + eh.getEntity().getClass().getSimpleName() : "")));
@@ -1687,8 +1740,8 @@ public class AutoTest {
      * of about 0.6 along and 0.5 across, at its top
      */
     private static void seatScan(Minecraft mc) {
-        StringBuilder json = new StringBuilder("{\n");
-        int written = 0;
+        StringBuilder json = new StringBuilder("{\n"), walkJson = new StringBuilder("{\n");
+        int written = 0, walks = 0;
         for (var holder : TiMGenericRegistry.TRANSPORTS) {
             String id = BuiltInRegistries.ENTITY_TYPE.getKey(holder.get()).getPath();
             try {
@@ -1730,10 +1783,12 @@ public class AutoTest {
                 float x0 = Float.MAX_VALUE, x1 = -Float.MAX_VALUE, z0 = Float.MAX_VALUE, z1 = -Float.MAX_VALUE;
                 for (var v : verts) { x0 = Math.min(x0, v.x); x1 = Math.max(x1, v.x); z0 = Math.min(z0, v.z); z1 = Math.max(z1, v.z); }
                 float c = 1 / 16f;
-                int nx = (int) ((x1 - x0) / c), nz = (int) ((z1 - z0) / c);
+                //a quarter of a block round the model, so its outer walls are inside the grid
+                x0 -= 0.25f; z0 -= 0.25f; x1 += 0.25f; z1 += 0.25f;
+                int nx = (int) Math.ceil((x1 - x0) / c), nz = (int) Math.ceil((z1 - z0) / c);
                 java.util.List<float[]>[] hs = new java.util.List[nx * nz];
                 java.util.Map<Integer, Integer> hist = new java.util.TreeMap<>();
-                for (int i = 2; i < nx - 2; i++) for (int j = 2; j < nz - 2; j++) {
+                for (int i = 0; i < nx; i++) for (int j = 0; j < nz; j++) {
                     float px = x0 + c * (i + 0.5f), pz = z0 + c * (j + 0.5f);
                     java.util.List<float[]> l = new java.util.ArrayList<>();
                     for (var f : tops) {
@@ -1831,6 +1886,8 @@ public class AutoTest {
                     }
                 }
                 log(String.format(java.util.Locale.ROOT, "seats %-32s floor %.2f seats %d", id, floor, found.size()));
+                String walk = ebf.tim.utility.WalkShapes.of(id) != null ? null : walkGrid(id, faces, up, hs, x0, z0, c, nx, nz, floor, railY);
+                if (walk != null) walkJson.append(walks++ == 0 ? "" : ",\n").append(walk);
                 if (found.isEmpty()) continue;
                 json.append(written++ == 0 ? "" : ",\n").append("\"").append(id).append("\": [");
                 for (int k = 0; k < found.size(); k++) {
@@ -1847,9 +1904,116 @@ public class AutoTest {
             java.nio.file.Path out = java.nio.file.Path.of(System.getProperty("user.dir")).resolve("../src/main/resources/data/traincraft/transport_seats.json").normalize();
             java.nio.file.Files.writeString(out, json);
             log("seatscan wrote " + written + " to " + out);
+            walkJson.append("\n}\n");
+            java.nio.file.Path wout = out.resolveSibling("transport_walk.json");
+            java.nio.file.Files.writeString(wout, walkJson);
+            log("seatscan wrote " + walks + " walks to " + wout);
         } catch (java.io.IOException e) {
             log("seatscan could not write: " + e);
         }
+    }
+
+    /**
+     * the inside of a coach one can walk: cells of a sixteenth with floor (a surface facing up at the floor's
+     * height), nothing over it up to 1.2 (seats, tables) and no wall through it (a vertical face between 0.25 and
+     * 1.1 over the floor), joined to the middle of the coach. Its cells next to where there is no floor are doors:
+     * 'E' at the ends (to the next coach), 'S' at the sides (out). The ceiling: the lowest surface facing down over
+     * the walkable cells, most of them. As json: "id": {x0, z0, c, nx, nz, floor, ceil, walk: rows of 0/1/E/S}
+     */
+    private static String walkGrid(String id, java.util.List<org.joml.Vector3f[]> faces, java.util.List<Float> up, java.util.List<float[]>[] hs,
+                                   float x0, float z0, float c, int nx, int nz, float floor, float railY) {
+        boolean[] blocked = new boolean[nx * nz];
+        java.util.List<float[]> ceilings = new java.util.ArrayList<>();
+        for (int f = 0; f < faces.size(); f++) {
+            if (Math.abs(up.get(f)) > 0.3f) continue;
+            var v = faces.get(f);
+            float lo = Float.MAX_VALUE, hi = -Float.MAX_VALUE;
+            for (var p : v) { lo = Math.min(lo, p.y - railY); hi = Math.max(hi, p.y - railY); }
+            if (hi < floor + 0.25f || lo > floor + 1.1f) continue;
+            //its line on the floor, every quarter of a cell
+            for (int k = 0; k < v.length; k++) {
+                var a = v[k]; var b = v[(k + 1) % v.length];
+                int steps = (int) Math.ceil(Math.hypot(b.x - a.x, b.z - a.z) / (c / 4)) + 1;
+                for (int q = 0; q <= steps; q++) {
+                    float px = a.x + (b.x - a.x) * q / steps, pz = a.z + (b.z - a.z) * q / steps;
+                    int i = (int) Math.floor((px - x0) / c), j = (int) Math.floor((pz - z0) / c);
+                    if (i >= 0 && j >= 0 && i < nx && j < nz) blocked[i * nz + j] = true;
+                }
+            }
+        }
+        for (int f = 0; f < faces.size(); f++) {
+            if (up.get(f) > -0.7f) continue;
+            float h = 0;
+            for (var p : faces.get(f)) h += p.y - railY;
+            h /= faces.get(f).length;
+            if (h > floor + 0.9f) ceilings.add(new float[]{h});
+        }
+        int[] state = new int[nx * nz];
+        for (int k = 0; k < nx * nz; k++) {
+            if (hs[k] == null || blocked[k]) continue;
+            boolean hasFloor = false, cluttered = false;
+            for (float[] h : hs[k]) {
+                if (Math.abs(h[0] - floor) < 0.07f) hasFloor = true;
+                else if (h[0] > floor + 0.07f && h[0] < floor + 1.2f) cluttered = true;
+            }
+            if (hasFloor && !cluttered) state[k] = 1;
+        }
+        //joined to the middle
+        int mi = Math.round((0 - x0) / c), best = -1;
+        float bd = Float.MAX_VALUE;
+        for (int i = 0; i < nx; i++) for (int j = 0; j < nz; j++) {
+            if (state[i * nz + j] != 1) continue;
+            float d = Math.abs(x0 + c * (i + 0.5f)) + 2 * Math.abs(z0 + c * (j + 0.5f));
+            if (d < bd) { bd = d; best = i * nz + j; }
+        }
+        if (best < 0 || Math.abs(x0 + c * (best / nz + 0.5f)) > 1.5f) return null;
+        boolean[] in = new boolean[nx * nz];
+        java.util.ArrayDeque<Integer> q = new java.util.ArrayDeque<>();
+        q.add(best); in[best] = true;
+        int count = 0;
+        while (!q.isEmpty()) {
+            int k = q.poll(), i = k / nz, j = k % nz;
+            count++;
+            int[] nb = {i > 0 ? k - nz : -1, i < nx - 1 ? k + nz : -1, j > 0 ? k - 1 : -1, j < nz - 1 ? k + 1 : -1};
+            for (int n : nb) if (n >= 0 && !in[n] && state[n] == 1) { in[n] = true; q.add(n); }
+        }
+        if (count < 30) return null;
+        //the doors: walkable cells next to a cell with no floor and no wall (outside)
+        float halfLong = Math.max(Math.abs(x0), Math.abs(x0 + c * nx));
+        StringBuilder rows = new StringBuilder();
+        int ends = 0, sides = 0;
+        float minA = Float.MAX_VALUE, maxA = -Float.MAX_VALUE;
+        for (int k = 0; k < nx * nz; k++) if (in[k]) { float a = x0 + c * (k / nz + 0.5f); minA = Math.min(minA, a); maxA = Math.max(maxA, a); }
+        for (int i = 0; i < nx; i++) {
+            for (int j = 0; j < nz; j++) {
+                int k = i * nz + j;
+                char ch = '0';
+                if (in[k]) {
+                    ch = '1';
+                    int[] nb = {i > 0 ? k - nz : -1, i < nx - 1 ? k + nz : -1, j > 0 ? k - 1 : -1, j < nz - 1 ? k + 1 : -1};
+                    for (int n : nb) {
+                        //outside: no wall there, and no floor (or step) near the floor's height
+                        boolean outside = n < 0;
+                        if (n >= 0 && !blocked[n]) {
+                            boolean anyFloor = false;
+                            if (hs[n] != null) for (float[] h : hs[n]) if (Math.abs(h[0] - floor) < 0.3f) anyFloor = true;
+                            outside = !anyFloor;
+                        }
+                        if (!outside) continue;
+                        float a = x0 + c * (i + 0.5f);
+                        //at the end of the walkable length: an end door, else a side door
+                        if (a < minA + 0.2f || a > maxA - 0.2f) { ch = 'E'; ends++; } else { ch = 'S'; sides++; }
+                        break;
+                    }
+                }
+                rows.append(ch);
+            }
+        }
+        ceilings.sort((a, b) -> Float.compare(a[0], b[0]));
+        float ceil = ceilings.isEmpty() ? floor + 1.4f : ceilings.get(ceilings.size() / 4)[0];
+        log(String.format(java.util.Locale.ROOT, "walk %-32s cells %d end doors %d side doors %d ceiling %.2f", id, count, ends, sides, ceil));
+        return String.format(java.util.Locale.ROOT, "\"%s\": {\"x0\": %.4f, \"z0\": %.4f, \"c\": %.4f, \"nx\": %d, \"nz\": %d, \"floor\": %.3f, \"ceil\": %.3f, \"walk\": \"%s\"}",
+                id, x0, z0, c, nx, nz, floor, ceil, rows);
     }
 
     /** the highest surface facing up in that cell (0 off the grid or none), over the rails */

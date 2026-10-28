@@ -86,6 +86,8 @@ public class Traincraft {
         train.common.ClassicTracks.register(modBus);
         modBus.addListener(this::commonSetup);
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.TagsUpdatedEvent e) -> ebf.tim.utility.RecipeManager.tagsChanged());
+        //getting up in a coach (shift) stands one in its aisle instead of putting one out
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(ebf.tim.entities.GenericRailTransport::onDismount);
         modBus.addListener(this::registerPayloads);
     }
 
@@ -95,6 +97,7 @@ public class Traincraft {
 
     private void registerPayloads(RegisterPayloadHandlersEvent event) {
         event.registrar("1").playToServer(PacketInteract.TYPE, PacketInteract.CODEC, PacketInteract::handle)
+                .playToServer(ebf.tim.networking.PacketWalk.TYPE, ebf.tim.networking.PacketWalk.CODEC, ebf.tim.networking.PacketWalk::handle)
                 .playToServer(train.blocks.lantern.PacketLantern.TYPE, train.blocks.lantern.PacketLantern.CODEC, train.blocks.lantern.PacketLantern::handle)
                 .playToServer(train.core.network.PacketSetJukeboxStreamingUrl.TYPE, train.core.network.PacketSetJukeboxStreamingUrl.CODEC, train.core.network.PacketSetJukeboxStreamingUrl::handle)
                 .playToServer(train.blocks.catenary.PacketCutWire.TYPE, train.blocks.catenary.PacketCutWire.CODEC, train.blocks.catenary.PacketCutWire::handle);
