@@ -378,8 +378,10 @@ public class ModelPassenger_DB_oriental extends ModelBase
 		passenger_db_orientalModel[77].addBox(0F, 0F, 0F, 52, 19, 1, 0F); // Box 105
 		passenger_db_orientalModel[77].setRotationPoint(-26F, 8F, -11F);
 
-		passenger_db_orientalModel[78].addBox(0F, 0F, 0F, 1, 19, 4, 0F); // Box 106
-		passenger_db_orientalModel[78].setRotationPoint(26F, 8F, 7F);
+		//(it closes the side between the car's wall and the vestibule's door set in; it stood a pixel past the door
+		//into the corridor: as deep as the one at the other end)
+		passenger_db_orientalModel[78].addBox(0F, 0F, 0F, 1, 19, 3, 0F); // Box 106
+		passenger_db_orientalModel[78].setRotationPoint(26F, 8F, 8F);
 
 		passenger_db_orientalModel[79].addBox(0F, 0F, 0F, 1, 20, 15, 0F); // Box 107
 		passenger_db_orientalModel[79].setRotationPoint(-22F, 10F, -10F);
@@ -406,8 +408,6 @@ public class ModelPassenger_DB_oriental extends ModelBase
 		//the slanted boards in the compartments' corners and the vestibule door drawn half open: left out, the way
 		//through free
 		for (int k : new int[]{1, 3, 16, 57}) passenger_db_orientalModel[k].showModel = false;
-		//and the stubs of wall between the corridor and the vestibules, by the side wall
-		for (int k : new int[]{29, 78}) passenger_db_orientalModel[k].showModel = false;
 		bodyModel=passenger_db_orientalModel;
 	}
 
