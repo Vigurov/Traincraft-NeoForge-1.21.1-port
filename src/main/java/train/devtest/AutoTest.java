@@ -2254,6 +2254,8 @@ public class AutoTest {
                     top /= n;
                     float lx = (ma - mi + 1) * c, lz = (mb - mj + 1) * c;
                     if (lx < 0.15f || lz < 0.2f) continue;
+                    //a sill along the windows, long and narrow: no seat
+                    if (lx > 2.5f && lz < 0.3f) continue;
                     //which way it faces: away from its back, the higher part next to it along the car (0: none)
                     float back0 = 0, back1 = 0;
                     for (int j = mj; j <= mb; j++) for (int g = 1; g <= 3; g++) {
@@ -2502,10 +2504,6 @@ public class AutoTest {
             for (int k : part) in[k] = true;
             count += part.size();
         }
-        if (count < 30) {
-            log("walk " + id + ": floor only " + count + " cells");
-            return null;
-        }
         if (java.util.Arrays.asList(p.getProperty("seatscan").split(",")).contains(id)) {
             StringBuilder m = new StringBuilder();
             for (int j = 0; j < nz; j++) {
@@ -2516,6 +2514,10 @@ public class AutoTest {
                 m.append('\n');
             }
             log("walkmap " + id + "\n" + m);
+        }
+        if (count < 30) {
+            log("walk " + id + ": floor only " + count + " cells");
+            return null;
         }
         //a door drawn shut (up to three cells of wall with floor both sides, at one height): open
         boolean[] was = in.clone();
